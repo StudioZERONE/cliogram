@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <!-- Background with rounded rectangle for app icon -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="8" />
+  
+  <!-- Outer glowing orbital ring -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#accent)" stroke-width="12" stroke-dasharray="700 200" stroke-linecap="round" opacity="0.85" />
+  
+  <!-- Dynamic Graph Chart / Growth Trend Line -->
+  <path d="M 140 330 L 210 270 L 280 300 L 370 170" fill="none" stroke="url(#glow)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="370" cy="170" r="14" fill="#10b981" />
+
+  <!-- Center Symbol: Stylized C for CLIO -->
+  <path d="M 290 190 C 230 190 180 220 180 270 C 180 320 230 350 290 350" fill="none" stroke="url(#accent)" stroke-width="22" stroke-linecap="round" />
+</svg>
