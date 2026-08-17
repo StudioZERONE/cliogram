@@ -24,6 +24,7 @@ interface StockRecord {
 export default function StocksPage() {
   const router = useRouter();
   const { refreshCounts } = useCounts();
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [stocks, setStocks] = useState<StockRecord[]>([]);
   const [deleteTargetTicker, setDeleteTargetTicker] = useState<string | null>(null);
 
@@ -38,9 +39,10 @@ export default function StocksPage() {
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
       if (!valid) {
-        router.replace('/');
+        router.replace('/?error=unauthorized');
         return;
       }
+      setIsAuthChecking(false);
       fetchStocks();
     });
   }, [router]);
@@ -56,7 +58,7 @@ export default function StocksPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.replace('/');
+      router.replace('/?error=unauthorized');
       return;
     }
 
@@ -86,6 +88,10 @@ export default function StocksPage() {
     }
     setDeleteTargetTicker(null);
   };
+
+  if (isAuthChecking) {
+    return <div className="min-h-screen bg-[var(--bg)]" />;
+  }
 
   const renderFlagEmoji = (curr: string) => {
     if (curr === 'USD') return <span className="text-2xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;

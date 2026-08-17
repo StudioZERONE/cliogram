@@ -27,6 +27,7 @@ interface DividendRecord {
 export default function DividendsPage() {
   const router = useRouter();
   const { refreshCounts } = useCounts();
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [dividends, setDividends] = useState<DividendRecord[]>([]);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
@@ -47,9 +48,10 @@ export default function DividendsPage() {
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
       if (!valid) {
-        router.replace('/');
+        router.replace('/?error=unauthorized');
         return;
       }
+      setIsAuthChecking(false);
       fetchDividends();
     });
   }, [router]);
@@ -65,7 +67,7 @@ export default function DividendsPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.replace('/');
+      router.replace('/?error=unauthorized');
       return;
     }
 
@@ -95,6 +97,10 @@ export default function DividendsPage() {
     }
     setDeleteTargetId(null);
   };
+
+  if (isAuthChecking) {
+    return <div className="min-h-screen bg-[var(--bg)]" />;
+  }
 
   const renderFlagEmoji = (curr: string) => {
     if (curr === 'USD') return <span className="text-2xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;
@@ -198,10 +204,7 @@ export default function DividendsPage() {
                         <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                         <td className="py-3.5 px-4 text-left font-semibold text-emerald-600 dark:text-emerald-400">{item.stock_name}</td>
                         <td className="py-3.5 px-4 text-right font-mono">{item.amount.toLocaleString()}</td>
-
-                        {/* Restored Red Color for Tax Column */}
                         <td className="py-3.5 px-4 text-right font-mono font-semibold text-red-600 dark:text-red-400">{item.tax.toLocaleString()}</td>
-
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{(item.amount - item.tax).toLocaleString()}</td>
                         <td className="py-3.5 px-4 text-center">
                           <button onClick={() => setDeleteTargetId(item.id || null)} className="text-red-500 dark:text-red-400 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>

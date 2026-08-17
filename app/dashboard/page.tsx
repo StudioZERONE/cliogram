@@ -34,6 +34,7 @@ interface DividendRecord {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [dividends, setDividends] = useState<DividendRecord[]>([]);
   const [stocks, setStocks] = useState<StockRecord[]>([]);
@@ -45,6 +46,7 @@ export default function DashboardPage() {
         router.replace('/?error=unauthorized');
         return;
       }
+      setIsAuthChecking(false);
       fetchData();
     });
 
@@ -67,6 +69,11 @@ export default function DashboardPage() {
     if (divRes.data) setDividends(divRes.data as DividendRecord[]);
     if (stocksRes.data) setStocks(stocksRes.data as StockRecord[]);
   };
+
+  // Prevent flash of unauthenticated content completely
+  if (isAuthChecking) {
+    return <div className="min-h-screen bg-[var(--bg)]" />;
+  }
 
   const renderFlagEmoji = (curr: string) => {
     if (curr === 'USD') return <span className="text-2xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;

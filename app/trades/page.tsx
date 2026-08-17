@@ -31,6 +31,7 @@ interface TradeRecord {
 export default function TradesPage() {
   const router = useRouter();
   const { refreshCounts } = useCounts();
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
@@ -59,9 +60,10 @@ export default function TradesPage() {
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
       if (!valid) {
-        router.replace('/');
+        router.replace('/?error=unauthorized');
         return;
       }
+      setIsAuthChecking(false);
       fetchTrades();
     });
   }, [router]);
@@ -77,7 +79,7 @@ export default function TradesPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.replace('/');
+      router.replace('/?error=unauthorized');
       return;
     }
 
@@ -111,6 +113,10 @@ export default function TradesPage() {
     }
     setDeleteTargetId(null);
   };
+
+  if (isAuthChecking) {
+    return <div className="min-h-screen bg-[var(--bg)]" />;
+  }
 
   const renderFlagEmoji = (curr: string) => {
     if (curr === 'USD') return <span className="text-2xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;
