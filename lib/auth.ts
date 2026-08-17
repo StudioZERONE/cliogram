@@ -33,6 +33,14 @@ export async function signInWithGoogle(rememberMe: boolean) {
 export async function checkSessionExpiry() {
   if (typeof window === 'undefined') return true;
 
+  // 1. Supabase Auth Active Session Check
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    // Unauthenticated user -> Must redirect to index immediately
+    return false;
+  }
+
+  // 2. Remember Me 30 days Expiry Check
   const rememberMe = localStorage.getItem(REMEMBER_KEY);
   const expiryStr = localStorage.getItem(EXPIRY_KEY);
 

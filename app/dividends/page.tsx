@@ -16,6 +16,7 @@ import { useCounts } from '@/components/CountsProvider';
 
 interface DividendRecord {
   id?: string;
+  user_id?: string;
   payment_date: string;
   stock_name: string;
   amount: number;
@@ -46,7 +47,7 @@ export default function DividendsPage() {
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
       if (!valid) {
-        router.push('/');
+        router.replace('/');
         return;
       }
       fetchDividends();
@@ -62,7 +63,14 @@ export default function DividendsPage() {
     e.preventDefault();
     if (!dividendForm.stock_name || !dividendForm.amount) return;
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.replace('/');
+      return;
+    }
+
     const newRecord: Partial<DividendRecord> = {
+      user_id: user.id,
       payment_date: format(dividendForm.payment_date, 'yyyy-MM-dd'),
       stock_name: dividendForm.stock_name,
       amount: parseFloat(dividendForm.amount),
@@ -191,12 +199,12 @@ export default function DividendsPage() {
                         <td className="py-3.5 px-4 text-left font-semibold text-emerald-600 dark:text-emerald-400">{item.stock_name}</td>
                         <td className="py-3.5 px-4 text-right font-mono">{item.amount.toLocaleString()}</td>
 
-                        {/* Neutralized Muted Text per Requirement 2 */}
-                        <td className="py-3.5 px-4 text-right font-mono text-[var(--fg-muted)]">{item.tax.toLocaleString()}</td>
+                        {/* Restored Red Color for Tax Column */}
+                        <td className="py-3.5 px-4 text-right font-mono font-semibold text-red-600 dark:text-red-400">{item.tax.toLocaleString()}</td>
 
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{(item.amount - item.tax).toLocaleString()}</td>
                         <td className="py-3.5 px-4 text-center">
-                          <button onClick={() => setDeleteTargetId(item.id || null)} className="text-[var(--fg-muted)] hover:text-red-500 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
+                          <button onClick={() => setDeleteTargetId(item.id || null)} className="text-red-500 dark:text-red-400 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                         </td>
                       </tr>
                     ))}

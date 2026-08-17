@@ -117,12 +117,12 @@ export function Header({ title }: HeaderProps) {
                   <span>계정 정보 관리</span>
                 </button>
 
-                {/* Requirement 3: Explicit handleLogout Redirect to Index Page */}
+                {/* Restored Red Color for Logout Button */}
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--bg)] cursor-pointer transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer transition-colors"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-4 w-4 text-red-500 dark:text-red-400" />
                   <span>로그아웃</span>
                 </button>
               </div>

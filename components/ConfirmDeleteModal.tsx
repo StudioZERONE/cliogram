@@ -51,7 +51,7 @@ export function ConfirmDeleteModal({
         className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-5 animate-in zoom-in-95 cursor-default"
       >
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
-          <div className="flex items-center gap-2.5 text-red-500">
+          <div className="flex items-center gap-2.5 text-red-500 dark:text-red-400">
             <AlertTriangle className="h-6 w-6 shrink-0" />
             <h3 className="text-xl font-bold text-[var(--fg)]">{title}</h3>
           </div>
@@ -63,7 +63,7 @@ export function ConfirmDeleteModal({
           </button>
         </div>
 
-        {/* Clean Line-Broken Message Paragraphs (Requirement 4) */}
+        {/* Clean Line-Broken Message Paragraphs */}
         <div className="py-2 text-base text-[var(--fg)] space-y-1.5 leading-relaxed font-medium">
           {messageLines.map((line, idx) => (
             <p key={idx} className={idx > 0 ? 'text-sm text-[var(--fg-muted)]' : ''}>
@@ -86,7 +86,7 @@ export function ConfirmDeleteModal({
               onConfirm();
               onClose();
             }}
-            className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-500 transition-colors shadow-xs cursor-pointer"
+            className="rounded-xl bg-red-600 dark:bg-red-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-500 dark:hover:bg-red-600 transition-colors shadow-xs cursor-pointer"
           >
             삭제하기
           </button>

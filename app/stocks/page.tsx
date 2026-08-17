@@ -12,6 +12,8 @@ import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
 
 interface StockRecord {
+  id?: string;
+  user_id?: string;
   ticker: string;
   name: string;
   type: string;
@@ -36,7 +38,7 @@ export default function StocksPage() {
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
       if (!valid) {
-        router.push('/');
+        router.replace('/');
         return;
       }
       fetchStocks();
@@ -52,7 +54,14 @@ export default function StocksPage() {
     e.preventDefault();
     if (!stockForm.ticker || !stockForm.name) return;
 
-    const newStock: StockRecord = {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.replace('/');
+      return;
+    }
+
+    const newStock: Partial<StockRecord> = {
+      user_id: user.id,
       ticker: stockForm.ticker.toUpperCase(),
       name: stockForm.name,
       type: stockForm.type,
@@ -60,9 +69,9 @@ export default function StocksPage() {
       market: stockForm.market
     };
 
-    const { error } = await supabase.from('stocks').insert([newStock]);
-    if (!error) {
-      setStocks([...stocks, newStock]);
+    const { data, error } = await supabase.from('stocks').insert([newStock]).select();
+    if (!error && data) {
+      setStocks([...stocks, data[0] as StockRecord]);
       setStockForm({ ticker: '', name: '', type: 'Growth', currency: 'USD', market: 'NASDAQ' });
       refreshCounts();
     }
@@ -163,14 +172,14 @@ export default function StocksPage() {
                     {stocks.map((item) => (
                       <tr key={item.ticker} className="hover:bg-[var(--bg)]/50 transition-colors">
                         <td className="py-3.5 px-4 text-left font-bold text-[var(--fg)]">{item.name}</td>
-                        <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-500">{item.ticker}</td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">{item.ticker}</td>
                         <td className="py-3.5 px-4 text-center">
                           <span className="rounded-md bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">{item.type}</span>
                         </td>
                         <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                         <td className="py-3.5 px-4 text-center font-mono text-[var(--fg-muted)]">{item.market}</td>
                         <td className="py-3.5 px-4 text-center">
-                          <button onClick={() => setDeleteTargetTicker(item.ticker)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
+                          <button onClick={() => setDeleteTargetTicker(item.ticker)} className="text-red-500 dark:text-red-400 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                         </td>
                       </tr>
                     ))}
