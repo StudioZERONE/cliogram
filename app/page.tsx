@@ -42,11 +42,11 @@ export default function IndexPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      {/* Top Header Bar */}
+      {/* Top Header Bar (Clean Transparent Brand Logo - 100% Matched with Dashboard Sidebar) */}
       <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/30 border border-emerald-500/20 overflow-hidden shadow-xs shrink-0">
-            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={34} height={34} className="h-9 w-9 object-contain" priority />
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden shrink-0">
+            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">KLIOGRAM</h1>
@@ -84,8 +84,8 @@ export default function IndexPage() {
       <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl space-y-6">
           <div className="text-center space-y-2">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-950/30 border border-emerald-500/20 mb-4 overflow-hidden">
-              <Image src="/icon.svg" alt="Logo" width={48} height={48} className="h-12 w-12 object-contain" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden mb-3">
+              <Image src="/icon.svg" alt="Logo" width={56} height={56} className="h-14 w-14 object-contain" />
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-[var(--fg)]">KLIOGRAM</h2>
             <p className="text-sm font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
@@ -127,7 +127,7 @@ export default function IndexPage() {
                 <span>Google 계정으로 로그인</span>
               </button>
 
-              {/* 30일간 로그인 유지 (Box removed, centered alignment under button / Requirement 2) */}
+              {/* 30일간 로그인 유지 (Centered under button) */}
               <div className="flex items-center justify-center text-xs py-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors">
                   <input

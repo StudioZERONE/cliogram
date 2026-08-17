@@ -191,12 +191,12 @@ export default function DividendsPage() {
                         <td className="py-3.5 px-4 text-left font-semibold text-emerald-600 dark:text-emerald-400">{item.stock_name}</td>
                         <td className="py-3.5 px-4 text-right font-mono">{item.amount.toLocaleString()}</td>
 
-                        {/* Requirement 2: High Legibility Rose/Salmon Red in Dark Mode for Tax Column */}
-                        <td className="py-3.5 px-4 text-right font-mono font-semibold text-red-600 dark:text-rose-400">{item.tax.toLocaleString()}</td>
+                        {/* Soft Pastel Rose Coral in Dark Mode (#fda4af) for High Legibility & Comfort */}
+                        <td className="py-3.5 px-4 text-right font-mono font-medium text-red-600 dark:text-[#fda4af]">{item.tax.toLocaleString()}</td>
 
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{(item.amount - item.tax).toLocaleString()}</td>
                         <td className="py-3.5 px-4 text-center">
-                          <button onClick={() => setDeleteTargetId(item.id || null)} className="text-red-500 dark:text-rose-400 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
+                          <button onClick={() => setDeleteTargetId(item.id || null)} className="text-red-500 dark:text-[#fda4af] hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                         </td>
                       </tr>
                     ))}

@@ -221,7 +221,7 @@ export default function TradesPage() {
                       <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
                         <td className="py-3.5 px-4 text-center font-mono text-sm">{item.trade_date}</td>
                         <td className="py-3.5 px-4 text-center">
-                          <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-red-600 dark:text-rose-300'}`}>{item.trade_type}</span>
+                          <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-red-600 dark:text-[#fda4af]'}`}>{item.trade_type}</span>
                         </td>
                         <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                         <td className="py-3.5 px-4 text-left font-semibold">{item.stock_name}</td>
@@ -229,7 +229,7 @@ export default function TradesPage() {
                         <td className="py-3.5 px-4 text-right font-mono">{item.price.toLocaleString()}</td>
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{(item.quantity * item.price).toLocaleString()}</td>
                         <td className="py-3.5 px-4 text-center">
-                          <button onClick={() => setDeleteTargetId(item.id || null)} className="text-red-500 dark:text-rose-400 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
+                          <button onClick={() => setDeleteTargetId(item.id || null)} className="text-red-500 dark:text-[#fda4af] hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                         </td>
                       </tr>
                     ))}

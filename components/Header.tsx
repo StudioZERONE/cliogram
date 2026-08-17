@@ -112,12 +112,12 @@ export function Header({ title }: HeaderProps) {
                   <span>계정 정보 관리</span>
                 </button>
 
-                {/* Soft Salmon Red in Dark Mode (High Legibility & Comfort) */}
+                {/* Soft Pastel Rose Coral in Dark Mode (#fda4af) for High Legibility & Zero Eye Strain */}
                 <button
                   onClick={() => signOutUser()}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-red-600 dark:text-rose-400 hover:bg-red-500/10 cursor-pointer transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-red-600 dark:text-[#fda4af] hover:bg-rose-500/10 cursor-pointer transition-colors"
                 >
-                  <LogOut className="h-4 w-4 text-red-500 dark:text-rose-400" />
+                  <LogOut className="h-4 w-4 text-red-500 dark:text-[#fda4af]" />
                   <span>로그아웃</span>
                 </button>
               </div>
