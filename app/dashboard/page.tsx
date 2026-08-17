@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
@@ -62,14 +63,22 @@ interface DividendRecord {
   currency: 'KRW' | 'USD' | 'EUR';
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
 
-  const [activeMenu, setActiveMenu] = useState<'overview' | 'trade' | 'dividend' | 'stocks' | 'codes'>('overview');
+  // Tab State connected to URL Query Parameter (?tab=trades)
+  const tabParam = searchParams.get('tab') as 'overview' | 'trades' | 'dividends' | 'stocks' | 'codes' | null;
+  const activeTab = tabParam || 'overview';
+
+  const setActiveTab = (tab: 'overview' | 'trades' | 'dividends' | 'stocks' | 'codes') => {
+    router.push(`/dashboard?tab=${tab}`);
+  };
+
   const [userNickname, setUserNickname] = useState<string>('회원');
   const [userEmail, setUserEmail] = useState<string>('');
-  const [exchangeRate, setExchangeRate] = useState<number>(1380);
+  const [exchangeRate, setExchangeRate] = useState<number>(1415); // Fallback updated to live market rate
 
   // User Profile Dropdown & Modal state
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
@@ -167,10 +176,10 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    if (activeMenu === 'codes') {
+    if (activeTab === 'codes') {
       fetchCommonCodesByGroup(selectedGroupId);
     }
-  }, [activeMenu, selectedGroupId]);
+  }, [activeTab, selectedGroupId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -184,7 +193,7 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Remove limit(50) to fetch ALL records
+      // Fetch ALL records (no 50 limit)
       const [tradesRes, divRes, stocksRes] = await Promise.all([
         supabase.from('trades').select('*').order('trade_date', { ascending: false }),
         supabase.from('dividends').select('*').order('payment_date', { ascending: false }),
@@ -334,24 +343,22 @@ export default function DashboardPage() {
     if (!error) setStocks(stocks.filter((s) => s.ticker !== ticker));
   };
 
-  // Helper: Currency Flag / Badge Render
-  const renderCurrencyBadge = (curr: string) => {
-    if (curr === 'USD') return <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-bold text-blue-600 dark:text-blue-400">🇺🇸 USD</span>;
-    if (curr === 'KRW') return <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">🇰🇷 KRW</span>;
-    if (curr === 'EUR') return <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 px-2 py-0.5 text-xs font-bold text-purple-600 dark:text-purple-400">🇪🇺 EUR</span>;
-    return <span className="inline-flex items-center gap-1 rounded-md bg-gray-500/10 px-2 py-0.5 text-xs font-bold text-gray-500">{curr}</span>;
+  // Helper: Large Round Flag Emoji Render (Requirement 12)
+  const renderFlagEmoji = (curr: string) => {
+    if (curr === 'USD') return <span className="text-2xl md:text-3xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;
+    if (curr === 'KRW') return <span className="text-2xl md:text-3xl leading-none inline-block align-middle" title="대한민국 원 (KRW)">🇰🇷</span>;
+    if (curr === 'EUR') return <span className="text-2xl md:text-3xl leading-none inline-block align-middle" title="유로화 (EUR)">🇪🇺</span>;
+    return <span className="text-lg font-bold text-[var(--fg-muted)]">{curr}</span>;
   };
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
       {/* Uplon Style Left Fixed Navigation Sidebar */}
-      <aside className="sticky top-0 z-40 flex h-screen w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-        {/* Brand Logo & Slogan */}
+      <aside className="sticky top-0 z-40 flex h-screen w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs">
+        {/* Brand Logo with /public/icon.svg Source of Truth (Requirement 6) */}
         <div className="flex items-center gap-3 pb-6 border-b border-[var(--border)]">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950 text-emerald-400 border border-emerald-800/50 shadow-md">
-            <svg className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L4.5 13.5H9V22H15V13.5H19.5L12 2Z" />
-            </svg>
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/40 border border-emerald-500/30 overflow-hidden shadow-xs shrink-0">
+            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={32} height={32} className="h-8 w-8 object-contain" priority />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-emerald-500">KLIOGRAM</h1>
@@ -359,81 +366,79 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Sidebar Navigation Links (Uplon Style) */}
+        {/* Sidebar Navigation Links (Uplon Style - No NAVIGATION header) */}
         <nav className="mt-6 flex-1 space-y-2">
-          <span className="px-3 text-xs font-bold uppercase tracking-wider text-[var(--fg-muted)]">Navigation</span>
-          
           <button
-            onClick={() => setActiveMenu('overview')}
-            className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
-              activeMenu === 'overview'
+            onClick={() => setActiveTab('overview')}
+            className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all cursor-pointer ${
+              activeTab === 'overview'
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
           >
-            {activeMenu === 'overview' && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
-            <LayoutDashboard className="h-4 w-4 shrink-0" />
-            <span>대시보드 개요</span>
+            {activeTab === 'overview' && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
+            <LayoutDashboard className="h-5 w-5 shrink-0" />
+            <span>대시보드</span>
           </button>
 
           <button
-            onClick={() => setActiveMenu('trade')}
-            className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
-              activeMenu === 'trade'
+            onClick={() => setActiveTab('trades')}
+            className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all cursor-pointer ${
+              activeTab === 'trades'
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
           >
-            {activeMenu === 'trade' && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
-            <TrendingUp className="h-4 w-4 shrink-0" />
-            <span>매매 내역 관리</span>
+            {activeTab === 'trades' && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
+            <TrendingUp className="h-5 w-5 shrink-0" />
+            <span>매매 내역</span>
             <span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{trades.length}</span>
           </button>
 
           <button
-            onClick={() => setActiveMenu('dividend')}
-            className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
-              activeMenu === 'dividend'
+            onClick={() => setActiveTab('dividends')}
+            className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all cursor-pointer ${
+              activeTab === 'dividends'
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
           >
-            {activeMenu === 'dividend' && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
-            <DollarSign className="h-4 w-4 shrink-0" />
-            <span>배당 내역 관리</span>
+            {activeTab === 'dividends' && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
+            <DollarSign className="h-5 w-5 shrink-0" />
+            <span>배당 내역</span>
             <span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{dividends.length}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveMenu('stocks')}
-            className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
-              activeMenu === 'stocks'
-                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
-                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
-            }`}
-          >
-            {activeMenu === 'stocks' && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span>종목 마스터 관리</span>
-            <span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{stocks.length}</span>
           </button>
         </nav>
 
-        {/* Sidebar Bottom Common Code Manager Card Box (Requirement 11) */}
-        <div className="pt-4 mt-auto">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)]/80 p-3.5 space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--fg-muted)]">System Settings</span>
+        {/* Sidebar Bottom Single Pale Gray Box for Settings (Requirements 3, 7 & 8) */}
+        <div className="mt-auto">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3 space-y-2">
             <button
-              onClick={() => setActiveMenu('codes')}
-              className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                activeMenu === 'codes'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] hover:border-emerald-500 hover:text-emerald-500'
+              onClick={() => setActiveTab('stocks')}
+              className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all cursor-pointer ${
+                activeTab === 'stocks'
+                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                  : 'bg-[var(--surface)] text-[var(--fg)] hover:border-emerald-500 border border-[var(--border)]'
               }`}
             >
-              <span className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                ⚙️ 공통 코드 관리
+              <span className="flex items-center gap-2.5">
+                <Building2 className="h-4.5 w-4.5" />
+                종목 마스터
+              </span>
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{stocks.length}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('codes')}
+              className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all cursor-pointer ${
+                activeTab === 'codes'
+                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                  : 'bg-[var(--surface)] text-[var(--fg)] hover:border-emerald-500 border border-[var(--border)]'
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <Settings className="h-4.5 w-4.5" />
+                공통코드
               </span>
             </button>
           </div>
@@ -443,20 +448,21 @@ export default function DashboardPage() {
       {/* Main Canvas & Content Area (Wide Screen Layout) */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/90 px-8 py-4 backdrop-blur-md">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl md:text-2xl font-bold">
-              {activeMenu === 'overview' && '📊 대시보드 개요'}
-              {activeMenu === 'trade' && '📈 주식 매매 내역 관리'}
-              {activeMenu === 'dividend' && '💰 주식 배당 내역 관리'}
-              {activeMenu === 'stocks' && '🏢 주식 종목 마스터 관리'}
-              {activeMenu === 'codes' && '⚙️ 공통 코드 설정'}
+            {/* Title with NO icon (Requirement 5) */}
+            <h2 className="text-2xl font-bold tracking-tight">
+              {activeTab === 'overview' && '대시보드'}
+              {activeTab === 'trades' && '매매 내역'}
+              {activeTab === 'dividends' && '배당 내역'}
+              {activeTab === 'stocks' && '종목 마스터'}
+              {activeTab === 'codes' && '공통코드'}
             </h2>
           </div>
 
           <div className="flex items-center gap-5">
             {/* Live Exchange Rate Indicator */}
-            <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-xs md:text-sm font-medium">
+            <div className="flex items-center gap-2.5 rounded-full border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-medium">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="text-[var(--fg-muted)]">USD/KRW:</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">{exchangeRate.toLocaleString()}원</span>
@@ -469,21 +475,21 @@ export default function DashboardPage() {
                 className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'light' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
                 title="White Mode"
               >
-                <Sun className="h-4 w-4" />
+                <Sun className="h-4.5 w-4.5" />
               </button>
               <button
                 onClick={() => setTheme('dark')}
                 className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'dark' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
                 title="Dark Mode"
               >
-                <Moon className="h-4 w-4" />
+                <Moon className="h-4.5 w-4.5" />
               </button>
               <button
                 onClick={() => setTheme('system')}
                 className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'system' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
                 title="System Mode"
               >
-                <Monitor className="h-4 w-4" />
+                <Monitor className="h-4.5 w-4.5" />
               </button>
             </div>
 
@@ -497,27 +503,27 @@ export default function DashboardPage() {
                   {userNickname.substring(0, 1)}
                 </div>
                 <div className="text-left hidden sm:block">
-                  <p className="text-xs font-bold leading-tight">{userNickname}</p>
-                  <p className="text-[10px] text-[var(--fg-muted)] leading-tight">Google Auth</p>
+                  <p className="text-sm font-bold leading-tight">{userNickname}</p>
+                  <p className="text-xs text-[var(--fg-muted)] leading-tight">Google Auth</p>
                 </div>
                 <ChevronDown className={`h-4 w-4 text-[var(--fg-muted)] transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180 text-[var(--accent)]' : ''}`} />
               </button>
 
               {/* Profile Dropdown Popover */}
               {isProfileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-xl backdrop-blur-md z-50 animate-in fade-in-50 zoom-in-95">
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
                   <div className="px-3 py-2 border-b border-[var(--border)] mb-1">
-                    <p className="text-xs font-bold truncate">{userNickname}</p>
-                    <p className="text-[10px] text-[var(--fg-muted)] truncate">{userEmail}</p>
+                    <p className="text-sm font-bold truncate">{userNickname}</p>
+                    <p className="text-xs text-[var(--fg-muted)] truncate">{userEmail}</p>
                   </div>
                   <button
                     onClick={() => {
                       setIsProfileMenuOpen(false);
                       setIsProfileModalOpen(true);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-[var(--fg)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[var(--fg)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
                   >
-                    <User className="h-4 w-4 text-emerald-500" />
+                    <User className="h-4.5 w-4.5 text-emerald-500" />
                     <span>계정 정보 관리</span>
                   </button>
                   <button
@@ -525,9 +531,9 @@ export default function DashboardPage() {
                       setIsProfileMenuOpen(false);
                       signOutUser().then(() => router.push('/'));
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-500/10 transition-colors cursor-pointer dark:text-red-400"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-500/10 transition-colors cursor-pointer dark:text-red-400"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-4.5 w-4.5" />
                     <span>로그아웃</span>
                   </button>
                 </div>
@@ -538,12 +544,12 @@ export default function DashboardPage() {
 
         {/* Uplon Style Main Content Body */}
         <main className="p-8 space-y-8 flex-1">
-          {/* Top Stat KPI Cards (Uplon Admin Style) */}
+          {/* Top Stat KPI Cards (Uplon Admin Style - NO HOVER border color change / Requirement 9) */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs transition-all hover:border-[var(--accent)]">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--fg-muted)]">보유 종목 마스터</p>
+                  <p className="text-sm font-bold text-[var(--fg-muted)]">보유 종목 마스터</p>
                   <h3 className="text-3xl font-bold mt-1.5">{stocks.length}<span className="text-sm font-normal text-[var(--fg-muted)] ml-1">개</span></h3>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500">
@@ -552,10 +558,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs transition-all hover:border-[var(--accent)]">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--fg-muted)]">총 매매 내역 기록</p>
+                  <p className="text-sm font-bold text-[var(--fg-muted)]">총 매매 내역 기록</p>
                   <h3 className="text-3xl font-bold mt-1.5">{trades.length}<span className="text-sm font-normal text-[var(--fg-muted)] ml-1">건</span></h3>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500">
@@ -564,10 +570,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs transition-all hover:border-[var(--accent)]">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--fg-muted)]">총 배당 수령 기록</p>
+                  <p className="text-sm font-bold text-[var(--fg-muted)]">총 배당 수령 기록</p>
                   <h3 className="text-3xl font-bold mt-1.5">{dividends.length}<span className="text-sm font-normal text-[var(--fg-muted)] ml-1">건</span></h3>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
@@ -576,10 +582,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs transition-all hover:border-[var(--accent)]">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--fg-muted)]">실시간 환율 (USD)</p>
+                  <p className="text-sm font-bold text-[var(--fg-muted)]">실시간 환율 (USD)</p>
                   <h3 className="text-3xl font-bold mt-1.5">₩{exchangeRate.toLocaleString()}</h3>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-500">
@@ -590,19 +596,16 @@ export default function DashboardPage() {
           </div>
 
           {/* Overview Mode */}
-          {activeMenu === 'overview' && (
+          {activeTab === 'overview' && (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
               {/* Recent Trades Table */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-bold flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-emerald-500" />
-                    최근 매매 내역
-                  </h3>
-                  <button onClick={() => setActiveMenu('trade')} className="text-xs font-semibold text-emerald-500 hover:underline cursor-pointer">전체보기 →</button>
+                  <h3 className="text-lg font-bold">최근 매매 내역</h3>
+                  <button onClick={() => setActiveTab('trades')} className="text-sm font-semibold text-emerald-500 hover:underline cursor-pointer">전체보기 →</button>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-base">
                     <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
                       <tr>
                         <th className="py-3 px-4 text-center">날짜</th>
@@ -615,11 +618,11 @@ export default function DashboardPage() {
                     <tbody className="divide-y divide-[var(--border)]">
                       {trades.slice(0, 5).map((item) => (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                          <td className="py-3.5 px-4 text-center font-mono text-xs">{item.trade_date}</td>
+                          <td className="py-3.5 px-4 text-center font-mono text-sm">{item.trade_date}</td>
                           <td className="py-3.5 px-4 text-center">
                             <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{item.trade_type}</span>
                           </td>
-                          <td className="py-3.5 px-4 text-center">{renderCurrencyBadge(item.currency)}</td>
+                          <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                           <td className="py-3.5 px-4 text-left font-semibold">{item.stock_name}</td>
                           <td className="py-3.5 px-4 text-right font-mono font-bold">{item.price.toLocaleString()}</td>
                         </tr>
@@ -632,14 +635,11 @@ export default function DashboardPage() {
               {/* Recent Dividends Table */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-bold flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-emerald-500" />
-                    최근 배당 내역
-                  </h3>
-                  <button onClick={() => setActiveMenu('dividend')} className="text-xs font-semibold text-emerald-500 hover:underline cursor-pointer">전체보기 →</button>
+                  <h3 className="text-lg font-bold">최근 배당 내역</h3>
+                  <button onClick={() => setActiveTab('dividends')} className="text-sm font-semibold text-emerald-500 hover:underline cursor-pointer">전체보기 →</button>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-base">
                     <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
                       <tr>
                         <th className="py-3 px-4 text-center">지급일</th>
@@ -652,8 +652,8 @@ export default function DashboardPage() {
                     <tbody className="divide-y divide-[var(--border)]">
                       {dividends.slice(0, 5).map((item) => (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                          <td className="py-3.5 px-4 text-center font-mono text-xs">{item.payment_date}</td>
-                          <td className="py-3.5 px-4 text-center">{renderCurrencyBadge(item.currency)}</td>
+                          <td className="py-3.5 px-4 text-center font-mono text-sm">{item.payment_date}</td>
+                          <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                           <td className="py-3.5 px-4 text-left font-semibold text-emerald-500">{item.stock_name}</td>
                           <td className="py-3.5 px-4 text-right font-mono">{item.amount.toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-500">{(item.amount - item.tax).toLocaleString()}</td>
@@ -667,89 +667,89 @@ export default function DashboardPage() {
           )}
 
           {/* Trade CRUD Mode */}
-          {activeMenu === 'trade' && (
+          {activeTab === 'trades' && (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs h-fit">
-                <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
+                <h3 className="text-xl font-bold mb-5 flex items-center gap-2">
                   <Plus className="h-5 w-5 text-emerald-500" />
                   매매 내역 신규 등록
                 </h3>
                 <form onSubmit={handleAddTrade} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">거래 일자</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">거래 일자</label>
                     <DatePicker
                       selected={tradeForm.trade_date}
                       onChange={(date: Date | null) => date && setTradeForm({ ...tradeForm, trade_date: date })}
                       dateFormat="yyyy-MM-dd"
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">거래 유형 (TRADE_TYPE)</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">거래 유형</label>
                       <CodeSelect groupId="TRADE_TYPE" value={tradeForm.trade_type} onChange={(val) => setTradeForm({ ...tradeForm, trade_type: val as any })} />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">통화 (CURRENCY)</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">통화</label>
                       <CodeSelect groupId="CURRENCY" value={tradeForm.currency} onChange={(val) => setTradeForm({ ...tradeForm, currency: val as any })} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">종목명 / 티커</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">종목명 / 티커</label>
                     <input
                       type="text"
                       placeholder="예: Apple (AAPL)"
                       value={tradeForm.stock_name}
                       onChange={(e) => setTradeForm({ ...tradeForm, stock_name: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">거래 수량</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">거래 수량</label>
                       <input
                         type="number"
                         step="any"
                         placeholder="10"
                         value={tradeForm.quantity}
                         onChange={(e) => setTradeForm({ ...tradeForm, quantity: e.target.value })}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">거래 단가</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">거래 단가</label>
                       <input
                         type="number"
                         step="any"
                         placeholder="180.5"
                         value={tradeForm.price}
                         onChange={(e) => setTradeForm({ ...tradeForm, price: e.target.value })}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">비고 (선택)</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">비고 (선택)</label>
                     <input
                       type="text"
                       placeholder="손절, 해외대체입고 등"
                       value={tradeForm.notes}
                       onChange={(e) => setTradeForm({ ...tradeForm, notes: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
                   </div>
-                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition-colors shadow-sm cursor-pointer hover:bg-emerald-500">
+                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white transition-colors shadow-xs cursor-pointer hover:bg-emerald-500">
                     매매 내역 추가하기
                   </button>
                 </form>
               </div>
               <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-                <h3 className="text-lg font-bold mb-5 flex items-center justify-between">
+                <h3 className="text-xl font-bold mb-5 flex items-center justify-between">
                   <span>전체 매매 내역 목록</span>
-                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {trades.length}건</span>
+                  <span className="text-sm text-[var(--fg-muted)] font-normal">총 {trades.length}건</span>
                 </h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-base">
                     <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
                       <tr>
                         <th className="py-3 px-4 text-center">날짜</th>
@@ -765,17 +765,17 @@ export default function DashboardPage() {
                     <tbody className="divide-y divide-[var(--border)]">
                       {trades.map((item) => (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                          <td className="py-3.5 px-4 text-center font-mono text-xs">{item.trade_date}</td>
+                          <td className="py-3.5 px-4 text-center font-mono text-sm">{item.trade_date}</td>
                           <td className="py-3.5 px-4 text-center">
                             <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{item.trade_type}</span>
                           </td>
-                          <td className="py-3.5 px-4 text-center">{renderCurrencyBadge(item.currency)}</td>
+                          <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                           <td className="py-3.5 px-4 text-left font-semibold">{item.stock_name}</td>
                           <td className="py-3.5 px-4 text-right font-mono">{item.quantity.toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-right font-mono">{item.price.toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{(item.quantity * item.price).toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-center">
-                            <button onClick={() => handleDeleteTrade(item.id)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-4 w-4 mx-auto" /></button>
+                            <button onClick={() => handleDeleteTrade(item.id)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                           </td>
                         </tr>
                       ))}
@@ -787,73 +787,73 @@ export default function DashboardPage() {
           )}
 
           {/* Dividend CRUD Mode */}
-          {activeMenu === 'dividend' && (
+          {activeTab === 'dividends' && (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs h-fit">
-                <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
+                <h3 className="text-xl font-bold mb-5 flex items-center gap-2">
                   <Plus className="h-5 w-5 text-emerald-500" />
                   배당 내역 신규 등록
                 </h3>
                 <form onSubmit={handleAddDividend} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">지급 일자</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">지급 일자</label>
                     <DatePicker
                       selected={dividendForm.payment_date}
                       onChange={(date: Date | null) => date && setDividendForm({ ...dividendForm, payment_date: date })}
                       dateFormat="yyyy-MM-dd"
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">통화 (CURRENCY)</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">통화</label>
                     <CodeSelect groupId="CURRENCY" value={dividendForm.currency} onChange={(val) => setDividendForm({ ...dividendForm, currency: val as any })} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">종목명 / 티커</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">종목명 / 티커</label>
                     <input
                       type="text"
                       placeholder="예: Apple (AAPL)"
                       value={dividendForm.stock_name}
                       onChange={(e) => setDividendForm({ ...dividendForm, stock_name: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">세전 배당금액</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">세전 배당금액</label>
                       <input
                         type="number"
                         step="any"
                         placeholder="25.5"
                         value={dividendForm.amount}
                         onChange={(e) => setDividendForm({ ...dividendForm, amount: e.target.value })}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">세금</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">세금</label>
                       <input
                         type="number"
                         step="any"
                         placeholder="3.8"
                         value={dividendForm.tax}
                         onChange={(e) => setDividendForm({ ...dividendForm, tax: e.target.value })}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                       />
                     </div>
                   </div>
-                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition-colors shadow-sm cursor-pointer hover:bg-emerald-500">
+                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white transition-colors shadow-xs cursor-pointer hover:bg-emerald-500">
                     배당 내역 추가하기
                   </button>
                 </form>
               </div>
               <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-                <h3 className="text-lg font-bold mb-5 flex items-center justify-between">
+                <h3 className="text-xl font-bold mb-5 flex items-center justify-between">
                   <span>전체 배당 내역 목록</span>
-                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {dividends.length}건</span>
+                  <span className="text-sm text-[var(--fg-muted)] font-normal">총 {dividends.length}건</span>
                 </h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-base">
                     <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
                       <tr>
                         <th className="py-3 px-4 text-center">지급일</th>
@@ -868,14 +868,14 @@ export default function DashboardPage() {
                     <tbody className="divide-y divide-[var(--border)]">
                       {dividends.map((item) => (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                          <td className="py-3.5 px-4 text-center font-mono text-xs">{item.payment_date}</td>
-                          <td className="py-3.5 px-4 text-center">{renderCurrencyBadge(item.currency)}</td>
+                          <td className="py-3.5 px-4 text-center font-mono text-sm">{item.payment_date}</td>
+                          <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                           <td className="py-3.5 px-4 text-left font-semibold text-emerald-500">{item.stock_name}</td>
                           <td className="py-3.5 px-4 text-right font-mono">{item.amount.toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-right font-mono text-red-500">{item.tax.toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{(item.amount - item.tax).toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-center">
-                            <button onClick={() => handleDeleteDividend(item.id)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-4 w-4 mx-auto" /></button>
+                            <button onClick={() => handleDeleteDividend(item.id)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                           </td>
                         </tr>
                       ))}
@@ -887,65 +887,65 @@ export default function DashboardPage() {
           )}
 
           {/* Stocks Master CRUD Mode */}
-          {activeMenu === 'stocks' && (
+          {activeTab === 'stocks' && (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs h-fit">
-                <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
+                <h3 className="text-xl font-bold mb-5 flex items-center gap-2">
                   <Plus className="h-5 w-5 text-emerald-500" />
                   주식 종목 마스터 신규 등록
                 </h3>
                 <form onSubmit={handleAddStock} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">티커 코드 (Ticker)</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">티커 코드 (Ticker)</label>
                     <input
                       type="text"
                       placeholder="예: AAPL, 005930"
                       value={stockForm.ticker}
                       onChange={(e) => setStockForm({ ...stockForm, ticker: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-center font-mono text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-center font-mono text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">종목명 (Stock Name)</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">종목명 (Stock Name)</label>
                     <input
                       type="text"
                       placeholder="예: Apple, 삼성전자"
                       value={stockForm.name}
                       onChange={(e) => setStockForm({ ...stockForm, name: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">종목 유형 (STOCK_TYPE)</label>
+                    <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">종목 유형</label>
                     <CodeSelect groupId="STOCK_TYPE" value={stockForm.type} onChange={(val) => setStockForm({ ...stockForm, type: val })} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">통화 (CURRENCY)</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">통화</label>
                       <CodeSelect groupId="CURRENCY" value={stockForm.currency} onChange={(val) => setStockForm({ ...stockForm, currency: val })} />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">상장 시장 (MARKET_TYPE)</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">상장 시장</label>
                       <CodeSelect groupId="MARKET_TYPE" value={stockForm.market} onChange={(val) => setStockForm({ ...stockForm, market: val })} />
                     </div>
                   </div>
-                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition-colors shadow-sm cursor-pointer hover:bg-emerald-500">
+                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white transition-colors shadow-xs cursor-pointer hover:bg-emerald-500">
                     종목 추가하기
                   </button>
                 </form>
               </div>
               <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-                <h3 className="text-lg font-bold mb-5 flex items-center justify-between">
+                <h3 className="text-xl font-bold mb-5 flex items-center justify-between">
                   <span>등록된 주식 종목 목록</span>
-                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {stocks.length}개</span>
+                  <span className="text-sm text-[var(--fg-muted)] font-normal">총 {stocks.length}개</span>
                 </h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-base">
                     <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
                       <tr>
-                        <th className="py-3 px-4 text-left">종목명 (Name)</th>
-                        <th className="py-3 px-4 text-center">티커 (Ticker)</th>
-                        <th className="py-3 px-4 text-center">유형 (Type)</th>
+                        <th className="py-3 px-4 text-left">종목명</th>
+                        <th className="py-3 px-4 text-center">티커</th>
+                        <th className="py-3 px-4 text-center">유형</th>
                         <th className="py-3 px-4 text-center">통화</th>
                         <th className="py-3 px-4 text-center">상장 시장</th>
                         <th className="py-3 px-4 text-center">삭제</th>
@@ -959,10 +959,10 @@ export default function DashboardPage() {
                           <td className="py-3.5 px-4 text-center">
                             <span className="rounded-md bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">{item.type}</span>
                           </td>
-                          <td className="py-3.5 px-4 text-center">{renderCurrencyBadge(item.currency)}</td>
+                          <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                           <td className="py-3.5 px-4 text-center font-mono text-[var(--fg-muted)]">{item.market}</td>
                           <td className="py-3.5 px-4 text-center">
-                            <button onClick={() => handleDeleteStock(item.ticker)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-4 w-4 mx-auto" /></button>
+                            <button onClick={() => handleDeleteStock(item.ticker)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                           </td>
                         </tr>
                       ))}
@@ -974,11 +974,11 @@ export default function DashboardPage() {
           )}
 
           {/* Common Code Manager Mode */}
-          {activeMenu === 'codes' && (
+          {activeTab === 'codes' && (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-6 h-fit">
                 <div>
-                  <h3 className="text-base font-bold mb-3 flex items-center gap-2">
+                  <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
                     <Settings className="h-5 w-5 text-emerald-500" />
                     코드 그룹 선택
                   </h3>
@@ -992,7 +992,7 @@ export default function DashboardPage() {
                       <button
                         key={g.id}
                         onClick={() => setSelectedGroupId(g.id as any)}
-                        className={`rounded-xl border p-3 text-[11px] font-bold transition-colors cursor-pointer ${
+                        className={`rounded-xl border p-3 text-xs font-bold transition-colors cursor-pointer ${
                           selectedGroupId === g.id
                             ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                             : 'border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] hover:text-[var(--fg)]'
@@ -1005,41 +1005,41 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="border-t border-[var(--border)] pt-5">
-                  <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
-                    <Plus className="h-4 w-4 text-emerald-500" />
+                  <h4 className="text-base font-bold mb-4 flex items-center gap-2">
+                    <Plus className="h-5 w-5 text-emerald-500" />
                     신규 공통 코드 등록 ({selectedGroupId})
                   </h4>
                   <form onSubmit={handleAddCode} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">코드 (Code)</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">코드 (Code)</label>
                       <input
                         type="text"
                         placeholder="예: GBP, Crypto"
                         value={codeForm.code}
                         onChange={(e) => setCodeForm({ ...codeForm, code: e.target.value })}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-center font-mono text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-center font-mono text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">코드명 (Code Name)</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">코드명 (Code Name)</label>
                       <input
                         type="text"
                         placeholder="예: 영국 파운드 (£)"
                         value={codeForm.code_name}
                         onChange={(e) => setCodeForm({ ...codeForm, code_name: e.target.value })}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1.5">정렬 순서 (Sort Order)</label>
+                      <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">정렬 순서</label>
                       <input
                         type="number"
                         value={codeForm.sort_order}
                         onChange={(e) => setCodeForm({ ...codeForm, sort_order: e.target.value })}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                       />
                     </div>
-                    <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition-colors shadow-sm cursor-pointer hover:bg-emerald-500">
+                    <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white transition-colors shadow-xs cursor-pointer hover:bg-emerald-500">
                       공통 코드 추가하기
                     </button>
                   </form>
@@ -1047,12 +1047,12 @@ export default function DashboardPage() {
               </div>
 
               <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-                <h3 className="text-lg font-bold mb-5 flex items-center justify-between">
+                <h3 className="text-xl font-bold mb-5 flex items-center justify-between">
                   <span>[{selectedGroupId}] 그룹 코드 목록</span>
-                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {commonCodesList.length}개</span>
+                  <span className="text-sm text-[var(--fg-muted)] font-normal">총 {commonCodesList.length}개</span>
                 </h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-base">
                     <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
                       <tr>
                         <th className="py-3 px-4 text-center">코드 (Code)</th>
@@ -1087,7 +1087,7 @@ export default function DashboardPage() {
                             </button>
                           </td>
                           <td className="py-3.5 px-4 text-center">
-                            <button onClick={() => handleDeleteCode(item)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-4 w-4 mx-auto" /></button>
+                            <button onClick={() => handleDeleteCode(item)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="삭제"><Trash2 className="h-5 w-5 mx-auto" /></button>
                           </td>
                         </tr>
                       ))}
@@ -1105,7 +1105,7 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in-50">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
-              <h3 className="text-lg font-bold flex items-center gap-2">
+              <h3 className="text-xl font-bold flex items-center gap-2">
                 <User className="h-5 w-5 text-emerald-500" />
                 계정 정보 관리
               </h3>
@@ -1116,13 +1116,13 @@ export default function DashboardPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="py-8 text-center text-sm text-[var(--fg-muted)] space-y-2">
+            <div className="py-8 text-center text-base text-[var(--fg-muted)] space-y-2">
               <p className="font-semibold text-[var(--fg)]">계정 정보 관리 페이지입니다.</p>
-              <p className="text-xs">상세 관리 기능은 곧 추가될 예정입니다.</p>
+              <p className="text-sm">상세 관리 기능은 곧 추가될 예정입니다.</p>
             </div>
             <button
               onClick={() => setIsProfileModalOpen(false)}
-              className="w-full rounded-xl bg-[var(--bg)] border border-[var(--border)] py-2.5 text-xs font-bold text-[var(--fg)] hover:border-emerald-500 transition-colors cursor-pointer"
+              className="w-full rounded-xl bg-[var(--bg)] border border-[var(--border)] py-3 text-sm font-bold text-[var(--fg)] hover:border-emerald-500 transition-colors cursor-pointer"
             >
               닫기
             </button>
@@ -1130,5 +1130,13 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-sm">로딩 중...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

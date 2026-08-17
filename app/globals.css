@@ -1,137 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-/* ── Light Theme (Default Vercel White) ─────────────── */
-:root {
-  --bg:           #ffffff;
-  --surface:      #ffffff;
-  --surface-sub:  #fcfcfc;
-  --surface-hover:#f4f4f5;
-  --border:       #e4e4e7;
-  --border-hi:    #d4d4d8;
-  --text:         #09090b;
-  --text-sub:     #52525b;
-  --text-muted:   #71717a;
-  --accent:       #0070f3;
-  --accent-hi:    #0060df;
-  --accent-bg:    rgba(0, 112, 243, 0.07);
-  --accent-border:rgba(0, 112, 243, 0.25);
-  --success:      #10b981;
-  --success-bg:   rgba(16, 185, 129, 0.08);
-  --danger:       #ef4444;
-  --danger-bg:    rgba(239, 68, 68, 0.08);
-  --warning:      #f59e0b;
-  --warning-bg:   rgba(245, 158, 11, 0.08);
-  --shadow:       0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-lg:    0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+@layer base {
+  /* Uplon Light Template (index.html) Original RGB Color Tokens */
+  :root {
+    --bg: #f4f8fb;
+    --surface: #ffffff;
+    --border: #e7eef1;
+    --fg: #313a46;
+    --fg-muted: #98a6ad;
+    --accent: #1bb99a;
+  }
+
+  /* Uplon Dark Template (index-dark.html) Original RGB Color Tokens */
+  .dark {
+    --bg: #212734;
+    --surface: #2b3243;
+    --border: #363d4f;
+    --fg: #e3eaef;
+    --fg-muted: #98a6ad;
+    --accent: #1bb99a;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
 }
-
-/* ── Dark Theme (Vercel Midnight) ───────────────────── */
-.dark {
-  --bg:           #0a0a0a;
-  --surface:      #111111;
-  --surface-sub:  #161616;
-  --surface-hover:#1c1c1c;
-  --border:       #27272a;
-  --border-hi:    #3f3f46;
-  --text:         #f4f4f5;
-  --text-sub:     #a1a1aa;
-  --text-muted:   #71717a;
-  --accent:       #0070f3;
-  --accent-hi:    #3b82f6;
-  --accent-bg:    rgba(0, 112, 243, 0.12);
-  --accent-border:rgba(0, 112, 243, 0.3);
-  --success:      #10b981;
-  --success-bg:   rgba(16, 185, 129, 0.15);
-  --danger:       #f43f5e;
-  --danger-bg:    rgba(244, 63, 94, 0.15);
-  --warning:      #f59e0b;
-  --warning-bg:   rgba(245, 158, 11, 0.15);
-  --shadow:       0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg:    0 20px 40px rgba(0, 0, 0, 0.6);
-}
-
-/* ── Base Reset & Font ──────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  background-color: var(--bg);
-  color: var(--text);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-/* ── Number input – hide arrows ─────────────────────── */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type="number"] { -moz-appearance: textfield; }
-
-/* ── react-datepicker Theme Override ───────────────── */
-.react-datepicker-wrapper { width: 100%; }
-.react-datepicker-popper { z-index: 60 !important; }
-
-.react-datepicker {
-  background: var(--surface) !important;
-  border: 1px solid var(--border-hi) !important;
-  border-radius: 12px !important;
-  font-family: 'Inter', sans-serif !important;
-  font-size: 13px !important;
-  box-shadow: var(--shadow-lg) !important;
-  overflow: hidden;
-}
-
-.react-datepicker__header {
-  background: var(--surface-sub) !important;
-  border-bottom: 1px solid var(--border) !important;
-  padding-top: 12px !important;
-}
-
-.react-datepicker__current-month { color: var(--text) !important; font-weight: 600; }
-.react-datepicker__day-name      { color: var(--text-muted) !important; }
-
-.react-datepicker__day {
-  color: var(--text) !important;
-  border-radius: 8px !important;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.react-datepicker__day:hover {
-  background: var(--accent-bg) !important;
-  color: var(--accent-hi) !important;
-}
-
-.react-datepicker__day--selected,
-.react-datepicker__day--keyboard-selected {
-  background: var(--accent) !important;
-  color: #ffffff !important;
-  font-weight: 600;
-}
-
-.react-datepicker__day--today { font-weight: 700; color: var(--accent-hi) !important; }
-.react-datepicker__day--outside-month { color: var(--border-hi) !important; opacity: 0.5; }
-
-.react-datepicker__navigation-icon::before { border-color: var(--text-muted) !important; }
-.react-datepicker__triangle { display: none !important; }
-
-/* ── Animations ─────────────────────────────────────── */
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.animate-fade-in-up { animation: fade-in-up 0.25s ease both; }
-.animate-fade-in    { animation: fade-in 0.2s ease both; }
