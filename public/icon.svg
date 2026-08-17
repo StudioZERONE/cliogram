@@ -26,6 +26,6 @@
   <path d="M 140 330 L 210 270 L 280 300 L 370 170" fill="none" stroke="url(#glow)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
   <circle cx="370" cy="170" r="14" fill="#10b981" />
 
-  <!-- Center Symbol: Stylized C for CLIO -->
+  <!-- Center Symbol: Stylized K / C for KLIOGRAM -->
   <path d="M 290 190 C 230 190 180 220 180 270 C 180 320 230 350 290 350" fill="none" stroke="url(#accent)" stroke-width="22" stroke-linecap="round" />
 </svg>

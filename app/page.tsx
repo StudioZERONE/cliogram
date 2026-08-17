@@ -323,7 +323,7 @@ export default function HomePage() {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-                CLIO <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">자산 관리</span>
+                KLIOGRAM <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">자산 관리</span>
               </h1>
               <p className="text-xs text-slate-400 hidden sm:block">실시간 환율 연동 주식 매매 & 배당금 포트폴리오</p>
             </div>

@@ -13,13 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CLIO | 주식 매매 & 배당금 관리',
+  title: 'KLIOGRAM | 주식 매매 & 배당금 관리',
   description: '실시간 환율 연동 스마트 주식 매매 내역 및 배당금 관리 대시보드',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'CLIO',
+    title: 'KLIOGRAM',
   },
   icons: {
     icon: '/icon.svg',

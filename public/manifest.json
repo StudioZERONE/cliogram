@@ -1,6 +1,6 @@
 {
-  "name": "CLIO - 자산 & 배당 관리",
-  "short_name": "CLIO",
+  "name": "KLIOGRAM - 자산 & 배당 관리",
+  "short_name": "KLIOGRAM",
   "description": "실시간 환율 연동 주식 매매 및 배당금 자산 관리 플랫폼",
   "start_url": "/",
   "display": "standalone",
