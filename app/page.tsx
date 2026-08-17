@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Monitor, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Sun, Moon, Monitor, ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { signInWithGoogle } from '@/lib/auth';
 
@@ -112,19 +112,8 @@ export default function IndexPage() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-5 pt-2">
-              <div className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 text-xs">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded-md border-[var(--border)] text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                  />
-                  <span className="font-semibold">30일간 로그인 유지 (Remember Me)</span>
-                </label>
-              </div>
-
+            <div className="space-y-4 pt-2">
+              {/* Google 계정으로 로그인 (Requirement 3) */}
               <button
                 onClick={handleLogin}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-3.5 text-base font-bold text-[var(--fg)] transition-all hover:border-emerald-500 cursor-pointer shadow-xs"
@@ -135,10 +124,23 @@ export default function IndexPage() {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                <span>Google 계정으로 계속하기</span>
+                <span>Google 계정으로 로그인</span>
               </button>
 
-              <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--fg-muted)]">
+              {/* 30일간 로그인 유지 (Moved BELOW button, removed parentheses / Requirements 1 & 2) */}
+              <div className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded-md border-[var(--border)] text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span className="font-semibold text-sm">30일간 로그인 유지</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--fg-muted)] pt-1">
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
                 <span>Google OAuth 2.0 보안 인증이 적용됩니다</span>
               </div>

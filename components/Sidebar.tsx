@@ -11,15 +11,11 @@ import {
   Building2,
   Settings
 } from 'lucide-react';
+import { useCounts } from '@/components/CountsProvider';
 
-interface SidebarProps {
-  tradesCount?: number;
-  dividendsCount?: number;
-  stocksCount?: number;
-}
-
-export function Sidebar({ tradesCount = 0, dividendsCount = 0, stocksCount = 0 }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
+  const { tradesCount, dividendsCount, stocksCount } = useCounts();
 
   const isOverview = pathname === '/dashboard';
   const isTrades = pathname === '/trades';
@@ -66,9 +62,7 @@ export function Sidebar({ tradesCount = 0, dividendsCount = 0, stocksCount = 0 }
           {isTrades && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
           <TrendingUp className="h-5 w-5 shrink-0" />
           <span>매매 내역</span>
-          {tradesCount > 0 && (
-            <span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{tradesCount}</span>
-          )}
+          <span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{tradesCount}</span>
         </Link>
 
         <Link
@@ -82,13 +76,11 @@ export function Sidebar({ tradesCount = 0, dividendsCount = 0, stocksCount = 0 }
           {isDividends && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-500"></span>}
           <DollarSign className="h-5 w-5 shrink-0" />
           <span>배당 내역</span>
-          {dividendsCount > 0 && (
-            <span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{dividendsCount}</span>
-          )}
+          <span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{dividendsCount}</span>
         </Link>
       </nav>
 
-      {/* Bottom Settings Box (Requirement 4: Pale Emerald Background & No Layout Shift) */}
+      {/* Bottom Settings Box (Always cached counts) */}
       <div className="mt-auto">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3 space-y-2">
           <Link
@@ -103,9 +95,7 @@ export function Sidebar({ tradesCount = 0, dividendsCount = 0, stocksCount = 0 }
               <Building2 className="h-4.5 w-4.5" />
               종목 마스터
             </span>
-            {stocksCount > 0 && (
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{stocksCount}</span>
-            )}
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">{stocksCount}</span>
           </Link>
 
           <Link

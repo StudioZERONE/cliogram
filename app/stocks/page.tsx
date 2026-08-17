@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { CodeSelect } from '@/components/CodeSelect';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { useCounts } from '@/components/CountsProvider';
 
 interface StockRecord {
   ticker: string;
@@ -20,9 +21,8 @@ interface StockRecord {
 
 export default function StocksPage() {
   const router = useRouter();
+  const { refreshCounts } = useCounts();
   const [stocks, setStocks] = useState<StockRecord[]>([]);
-
-  // Delete modal state
   const [deleteTargetTicker, setDeleteTargetTicker] = useState<string | null>(null);
 
   const [stockForm, setStockForm] = useState<StockRecord>({
@@ -64,13 +64,17 @@ export default function StocksPage() {
     if (!error) {
       setStocks([...stocks, newStock]);
       setStockForm({ ticker: '', name: '', type: 'Growth', currency: 'USD', market: 'NASDAQ' });
+      refreshCounts();
     }
   };
 
   const executeDelete = async () => {
     if (!deleteTargetTicker) return;
     const { error } = await supabase.from('stocks').delete().eq('ticker', deleteTargetTicker);
-    if (!error) setStocks(stocks.filter((s) => s.ticker !== deleteTargetTicker));
+    if (!error) {
+      setStocks(stocks.filter((s) => s.ticker !== deleteTargetTicker));
+      refreshCounts();
+    }
     setDeleteTargetTicker(null);
   };
 
@@ -83,7 +87,7 @@ export default function StocksPage() {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      <Sidebar stocksCount={stocks.length} />
+      <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header title="종목 마스터" />
@@ -178,11 +182,10 @@ export default function StocksPage() {
         </main>
       </div>
 
-      {/* Confirm Delete Defense Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTargetTicker}
         title="종목 마스터 삭제 확인"
-        message={`선택하신 종목 (${deleteTargetTicker})을 정말 삭제하시겠습니까? 삭제 후에는 해당 종목 정보가 제거됩니다.`}
+        message={`선택하신 종목 (${deleteTargetTicker})을 정말 삭제하시겠습니까?\n삭제 후에는 등록된 종목 정보가 제거됩니다.`}
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetTicker(null)}
       />

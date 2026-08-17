@@ -14,7 +14,7 @@ interface ConfirmDeleteModalProps {
 export function ConfirmDeleteModal({
   isOpen,
   title = '데이터 삭제 확인',
-  message = '정말 이 항목을 삭제하시겠습니까? 삭제된 데이터는 다시 복구할 수 없습니다.',
+  message = '선택하신 항목을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.',
   onConfirm,
   onClose
 }: ConfirmDeleteModalProps) {
@@ -37,6 +37,8 @@ export function ConfirmDeleteModal({
       onClose();
     }
   };
+
+  const messageLines = message.split('\n');
 
   return (
     <div
@@ -61,8 +63,13 @@ export function ConfirmDeleteModal({
           </button>
         </div>
 
-        <div className="py-2 text-base text-[var(--fg-muted)] leading-relaxed">
-          {message}
+        {/* Clean Line-Broken Message Paragraphs (Requirement 4) */}
+        <div className="py-2 text-base text-[var(--fg)] space-y-1.5 leading-relaxed font-medium">
+          {messageLines.map((line, idx) => (
+            <p key={idx} className={idx > 0 ? 'text-sm text-[var(--fg-muted)]' : ''}>
+              {line}
+            </p>
+          ))}
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-2">

@@ -77,13 +77,13 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      <Sidebar tradesCount={trades.length} dividendsCount={dividends.length} stocksCount={stocks.length} />
+      <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header title="대시보드" />
 
         <main className="p-8 space-y-8 flex-1">
-          {/* Top Stat KPI Cards (Uplon Original RGB - NO HOVER border change) */}
+          {/* Top Stat KPI Cards */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
@@ -121,11 +121,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Exchange Rate KPI Card (Requirement 5: "원" unit text formatted like "개" or "건") */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-[var(--fg-muted)]">실시간 환율 (USD)</p>
-                  <h3 className="text-3xl font-bold mt-1.5">₩{exchangeRate.toLocaleString()}</h3>
+                  <h3 className="text-3xl font-bold mt-1.5">{exchangeRate.toLocaleString()}<span className="text-sm font-normal text-[var(--fg-muted)] ml-1">원</span></h3>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-500">
                   <Globe2 className="h-7 w-7" />

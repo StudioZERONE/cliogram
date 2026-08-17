@@ -12,6 +12,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { CodeSelect } from '@/components/CodeSelect';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { useCounts } from '@/components/CountsProvider';
 
 interface TradeRecord {
   id?: string;
@@ -28,9 +29,8 @@ interface TradeRecord {
 
 export default function TradesPage() {
   const router = useRouter();
+  const { refreshCounts } = useCounts();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
-
-  // Delete modal state
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const [tradeForm, setTradeForm] = useState<{
@@ -90,13 +90,17 @@ export default function TradesPage() {
     if (!error && data) {
       setTrades([data[0] as TradeRecord, ...trades]);
       setTradeForm({ ...tradeForm, stock_name: '', quantity: '', price: '', notes: '' });
+      refreshCounts();
     }
   };
 
   const executeDelete = async () => {
     if (!deleteTargetId) return;
     const { error } = await supabase.from('trades').delete().eq('id', deleteTargetId);
-    if (!error) setTrades(trades.filter((t) => t.id !== deleteTargetId));
+    if (!error) {
+      setTrades(trades.filter((t) => t.id !== deleteTargetId));
+      refreshCounts();
+    }
     setDeleteTargetId(null);
   };
 
@@ -109,7 +113,7 @@ export default function TradesPage() {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      <Sidebar tradesCount={trades.length} />
+      <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header title="매매 내역" />
@@ -237,11 +241,10 @@ export default function TradesPage() {
         </main>
       </div>
 
-      {/* Confirm Delete Defense Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTargetId}
         title="매매 내역 삭제 확인"
-        message="선택하신 매매 내역을 정말 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다."
+        message={`선택하신 매매 내역을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.`}
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetId(null)}
       />

@@ -12,6 +12,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { CodeSelect } from '@/components/CodeSelect';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { useCounts } from '@/components/CountsProvider';
 
 interface DividendRecord {
   id?: string;
@@ -24,9 +25,8 @@ interface DividendRecord {
 
 export default function DividendsPage() {
   const router = useRouter();
+  const { refreshCounts } = useCounts();
   const [dividends, setDividends] = useState<DividendRecord[]>([]);
-
-  // Delete modal state
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const [dividendForm, setDividendForm] = useState<{
@@ -74,13 +74,17 @@ export default function DividendsPage() {
     if (!error && data) {
       setDividends([data[0] as DividendRecord, ...dividends]);
       setDividendForm({ ...dividendForm, stock_name: '', amount: '', tax: '0' });
+      refreshCounts();
     }
   };
 
   const executeDelete = async () => {
     if (!deleteTargetId) return;
     const { error } = await supabase.from('dividends').delete().eq('id', deleteTargetId);
-    if (!error) setDividends(dividends.filter((d) => d.id !== deleteTargetId));
+    if (!error) {
+      setDividends(dividends.filter((d) => d.id !== deleteTargetId));
+      refreshCounts();
+    }
     setDeleteTargetId(null);
   };
 
@@ -93,7 +97,7 @@ export default function DividendsPage() {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      <Sidebar dividendsCount={dividends.length} />
+      <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header title="배당 내역" />
@@ -201,11 +205,10 @@ export default function DividendsPage() {
         </main>
       </div>
 
-      {/* Confirm Delete Defense Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTargetId}
         title="배당 내역 삭제 확인"
-        message="선택하신 배당 수령 내역을 정말 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다."
+        message={`선택하신 배당 수령 내역을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.`}
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetId(null)}
       />
