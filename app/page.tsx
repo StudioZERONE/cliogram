@@ -16,11 +16,16 @@ export default function IndexPage() {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check URL parameters for OAuth errors
-    const hash = window.location.hash;
+    // Check URL parameters for unauthorized or auth errors
     const search = window.location.search;
-    if (hash.includes('error') || search.includes('error')) {
-      setAuthError('구글 인증 처리 중 오류가 발생했거나 취소되었습니다. 다시 시도해주세요.');
+    const hash = window.location.hash;
+
+    if (search.includes('error') || hash.includes('error')) {
+      setAuthError('로그인 후 접근할 수 있습니다.');
+      // Clean up URL query parameters to display clean http://localhost:3000/
+      if (window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
 
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -36,17 +41,17 @@ export default function IndexPage() {
     try {
       await signInWithGoogle(rememberMe);
     } catch (err: any) {
-      setAuthError(err.message || '인증 로그인 중 오류가 발생했습니다.');
+      setAuthError('로그인 후 접근할 수 있습니다.');
     }
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      {/* Top Header Bar */}
+      {/* Top Header Bar (Original 40px Logo Size / Requirement 1) */}
       <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center overflow-hidden shrink-0">
-            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={56} height={56} className="h-14 w-14 object-contain" priority />
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden shrink-0">
+            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">KLIOGRAM</h1>
@@ -80,7 +85,7 @@ export default function IndexPage() {
         </div>
       </header>
 
-      {/* Main Hero & Auth Card Section (Enlarged Hero Logo Size / Requirement 1) */}
+      {/* Main Hero & Auth Card Section */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl space-y-6">
           <div className="text-center space-y-3">
@@ -91,8 +96,9 @@ export default function IndexPage() {
             <p className="text-sm font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
           </div>
 
+          {/* Warning Message Box per Requirement 2 ("로그인 후 접근할 수 있습니다") */}
           {authError && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs font-semibold text-red-600 dark:text-red-400">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-xs font-semibold text-red-600 dark:text-red-400">
               {authError}
             </div>
           )}
@@ -127,7 +133,7 @@ export default function IndexPage() {
                 <span>Google 계정으로 로그인</span>
               </button>
 
-              {/* 30일간 로그인 유지 (Centered under button) */}
+              {/* 30일간 로그인 유지 */}
               <div className="flex items-center justify-center text-xs py-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors">
                   <input

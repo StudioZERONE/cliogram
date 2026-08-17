@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { TrendingUp, DollarSign, Building2, Globe2, Coins } from 'lucide-react';
+import { TrendingUp, Globe2, Building2, Coins } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
 import { Sidebar } from '@/components/Sidebar';
@@ -42,7 +42,7 @@ export default function DashboardPage() {
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
       if (!valid) {
-        router.push('/');
+        router.replace('/?error=unauthorized');
         return;
       }
       fetchData();
@@ -121,7 +121,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Exchange Rate KPI Card (Requirement 5: "원" unit text formatted like "개" or "건") */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
