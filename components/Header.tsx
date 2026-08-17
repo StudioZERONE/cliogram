@@ -42,6 +42,11 @@ export function Header({ title }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleLogout = async () => {
+    setIsDropdownOpen(false);
+    await signOutUser();
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 shadow-xs select-none">
       {/* Page Title (No Icon per Requirement) */}
@@ -112,12 +117,12 @@ export function Header({ title }: HeaderProps) {
                   <span>계정 정보 관리</span>
                 </button>
 
-                {/* Soft Pastel Rose Coral in Dark Mode (#fda4af) for High Legibility & Zero Eye Strain */}
+                {/* Requirement 3: Explicit handleLogout Redirect to Index Page */}
                 <button
-                  onClick={() => signOutUser()}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-red-600 dark:text-[#fda4af] hover:bg-rose-500/10 cursor-pointer transition-colors"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--bg)] cursor-pointer transition-colors"
                 >
-                  <LogOut className="h-4 w-4 text-red-500 dark:text-[#fda4af]" />
+                  <LogOut className="h-4 w-4" />
                   <span>로그아웃</span>
                 </button>
               </div>

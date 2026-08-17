@@ -39,7 +39,7 @@ export async function checkSessionExpiry() {
   if (rememberMe === 'true' && expiryStr) {
     const expiry = parseInt(expiryStr, 10);
     if (Date.now() > expiry) {
-      // 30일 자동 로그인 만료 -> 로그아웃 처리
+      // 30일 자동 로그인 만료 -> 로그아웃 및 인덱스 이동
       await signOutUser();
       return false;
     }
@@ -66,5 +66,8 @@ export async function signOutUser() {
       localStorage.removeItem(EXPIRY_KEY);
     }
     await supabase.auth.signOut();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   }
 }
