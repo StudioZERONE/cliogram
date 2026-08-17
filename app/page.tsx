@@ -45,11 +45,11 @@ export default function IndexPage() {
       {/* Top Header Bar */}
       <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/40 border border-emerald-500/30 overflow-hidden shadow-xs shrink-0">
-            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={32} height={32} className="h-8 w-8 object-contain" priority />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/30 border border-emerald-500/20 overflow-hidden shadow-xs shrink-0">
+            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={34} height={34} className="h-9 w-9 object-contain" priority />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-emerald-500">KLIOGRAM</h1>
+            <h1 className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">KLIOGRAM</h1>
             <p className="text-xs font-medium text-[var(--fg-muted)]">개인자산 관리 서비스</p>
           </div>
         </div>
@@ -84,10 +84,10 @@ export default function IndexPage() {
       <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl space-y-6">
           <div className="text-center space-y-2">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-950/40 border border-emerald-500/30 mb-4">
-              <Image src="/icon.svg" alt="Logo" width={44} height={44} className="h-11 w-11 object-contain" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-950/30 border border-emerald-500/20 mb-4 overflow-hidden">
+              <Image src="/icon.svg" alt="Logo" width={48} height={48} className="h-12 w-12 object-contain" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight">KLIOGRAM</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-[var(--fg)]">KLIOGRAM</h2>
             <p className="text-sm font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
           </div>
 
@@ -113,7 +113,7 @@ export default function IndexPage() {
             </div>
           ) : (
             <div className="space-y-4 pt-2">
-              {/* Google 계정으로 로그인 (Requirement 3) */}
+              {/* Google 계정으로 로그인 */}
               <button
                 onClick={handleLogin}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-3.5 text-base font-bold text-[var(--fg)] transition-all hover:border-emerald-500 cursor-pointer shadow-xs"
@@ -127,9 +127,9 @@ export default function IndexPage() {
                 <span>Google 계정으로 로그인</span>
               </button>
 
-              {/* 30일간 로그인 유지 (Moved BELOW button, removed parentheses / Requirements 1 & 2) */}
-              <div className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 text-xs">
-                <label className="flex items-center gap-2 cursor-pointer">
+              {/* 30일간 로그인 유지 (Box removed, centered alignment under button / Requirement 2) */}
+              <div className="flex items-center justify-center text-xs py-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors">
                   <input
                     type="checkbox"
                     checked={rememberMe}
@@ -140,7 +140,7 @@ export default function IndexPage() {
                 </label>
               </div>
 
-              <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--fg-muted)] pt-1">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--fg-muted)] pt-2 border-t border-[var(--border)]/50">
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
                 <span>Google OAuth 2.0 보안 인증이 적용됩니다</span>
               </div>

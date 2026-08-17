@@ -27,11 +27,11 @@ export function Sidebar() {
     <aside className="sticky top-0 z-40 flex h-screen w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs shrink-0 select-none">
       {/* Brand Logo with /public/icon.svg Source of Truth */}
       <div className="flex items-center gap-3 pb-6 border-b border-[var(--border)]">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/40 border border-emerald-500/30 overflow-hidden shadow-xs shrink-0">
-          <Image src="/icon.svg" alt="KLIOGRAM Logo" width={32} height={32} className="h-8 w-8 object-contain" priority />
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/30 border border-emerald-500/20 overflow-hidden shadow-xs shrink-0">
+          <Image src="/icon.svg" alt="KLIOGRAM Logo" width={34} height={34} className="h-9 w-9 object-contain" priority />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-emerald-500">KLIOGRAM</h1>
+          <h1 className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">KLIOGRAM</h1>
           <p className="text-xs font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
         </div>
       </div>
@@ -80,7 +80,7 @@ export function Sidebar() {
         </Link>
       </nav>
 
-      {/* Bottom Settings Box (Always cached counts) */}
+      {/* Bottom Settings Box */}
       <div className="mt-auto">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3 space-y-2">
           <Link

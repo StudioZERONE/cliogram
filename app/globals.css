@@ -30,14 +30,42 @@
   }
 }
 
-/* Uplon Custom Datepicker Styling (form-elements.html) */
+/* Uplon Textual Inputs - Date Picker Styling (form-elements.html 9th Date Input) */
+.react-datepicker-wrapper {
+  width: 100% !important;
+  display: block !important;
+}
+
+.react-datepicker__input-container {
+  width: 100% !important;
+  display: block !important;
+}
+
+.react-datepicker__input-container input {
+  width: 100% !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--border) !important;
+  background-color: var(--bg) !important;
+  color: var(--fg) !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 1rem !important;
+  text-align: center !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.react-datepicker__input-container input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(27, 185, 154, 0.2) !important;
+}
+
 .react-datepicker {
   background-color: var(--surface) !important;
   color: var(--fg) !important;
   border: 1px solid var(--border) !important;
   border-radius: 1rem !important;
   font-family: inherit !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
   padding: 0.5rem !important;
 }
 
