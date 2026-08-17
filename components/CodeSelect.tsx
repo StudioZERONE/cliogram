@@ -1,0 +1,90 @@
+'use client';
+
+import React, { useEffect, useState, useRef } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
+import { getCommonCodes, CommonCode, FALLBACK_CODES } from '@/lib/codes';
+
+interface CodeSelectProps {
+  groupId: 'CURRENCY' | 'STOCK_TYPE' | 'MARKET_TYPE' | 'TRADE_TYPE';
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  disabled?: boolean;
+}
+
+export function CodeSelect({ groupId, value, onChange, className = '', disabled = false }: CodeSelectProps) {
+  const [codes, setCodes] = useState<CommonCode[]>(FALLBACK_CODES[groupId] || []);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCommonCodes(groupId).then((data) => {
+      if (isMounted && data.length > 0) {
+        setCodes(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [groupId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCodeObj = codes.find((c) => c.code === value) || codes[0];
+  const displayLabel = selectedCodeObj ? selectedCodeObj.code_name : value;
+
+  const handleSelect = (code: string) => {
+    onChange(code);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className={`relative inline-block w-full text-left ${className}`}>
+      {/* Custom Combobox Trigger Button */}
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2.5 text-xs md:text-sm font-medium text-[var(--fg)] shadow-xs transition-all hover:border-[var(--accent)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:cursor-not-allowed disabled:opacity-50 ${
+          isOpen ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20' : ''
+        }`}
+      >
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--accent)]' : ''}`} />
+      </button>
+
+      {/* Custom Dropdown Popover */}
+      {isOpen && (
+        <div className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95">
+          {codes.map((item) => {
+            const isSelected = item.code === value;
+            return (
+              <button
+                key={item.code}
+                type="button"
+                onClick={() => handleSelect(item.code)}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs md:text-sm font-medium transition-colors ${
+                  isSelected
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+                    : 'text-[var(--fg)] hover:bg-[var(--bg)]'
+                }`}
+              >
+                <span>{item.code_name}</span>
+                {isSelected && <Check className="h-4 w-4 text-emerald-500" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

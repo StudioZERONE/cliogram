@@ -1,1119 +1,1042 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Image from 'next/image';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
-import { supabase } from '@/lib/supabase';
-import { checkSessionExpiry, signOutUser } from '@/lib/auth';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
+import { useTheme } from 'next-themes';
 import {
-  TrendingUp,
-  DollarSign,
-  Coins,
-  RefreshCw,
-  Trash2,
-  CheckCircle2,
-  AlertCircle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Receipt,
-  Wallet,
-  CalendarDays,
   Sun,
   Moon,
   Monitor,
-  ChevronDown,
+  TrendingUp,
+  DollarSign,
   LogOut,
-  User as UserIcon,
+  Plus,
+  Trash2,
+  RefreshCw,
+  FolderTree,
+  Settings,
+  CheckCircle2,
+  XCircle,
+  LayoutDashboard,
+  Building2,
+  PieChart,
+  Globe2,
+  Coins
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { checkSessionExpiry, signOutUser } from '@/lib/auth';
+import { CodeSelect } from '@/components/CodeSelect';
+import { CommonCode, FALLBACK_CODES } from '@/lib/codes';
 
-/* ── Types ───────────────────────────────────────────── */
-interface Trade {
-  id: string;
+interface StockRecord {
+  ticker: string;
+  sort_code?: string;
+  name: string;
+  type: string;
+  currency: string;
+  market: string;
+}
+
+interface TradeRecord {
+  id?: string;
   trade_date: string;
   stock_name: string;
   trade_type: 'BUY' | 'SELL';
   quantity: number;
   price: number;
-  currency: 'KRW' | 'USD';
+  currency: 'KRW' | 'USD' | 'EUR';
   fee: number;
   tax: number;
-  created_at: string;
+  notes?: string;
 }
 
-interface Dividend {
-  id: string;
+interface DividendRecord {
+  id?: string;
   payment_date: string;
   stock_name: string;
   amount: number;
   tax: number;
-  currency: 'KRW' | 'USD';
-  created_at: string;
+  currency: 'KRW' | 'USD' | 'EUR';
 }
 
-/* ── Helpers ─────────────────────────────────────────── */
-function toDateStr(d: Date): string {
-  return format(d, 'yyyy-MM-dd');
-}
-function todayDate(): Date {
-  return new Date();
-}
-
-/* ── Reusable UI Components ─────────────────────────── */
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="block text-xs md:text-sm font-medium mb-1.5 md:mb-2" style={{ color: 'var(--text-sub)' }}>
-      {children}
-    </label>
-  );
-}
-
-function InputBase({ className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className={`w-full rounded-xl px-3.5 py-2.5 md:px-4 md:py-3 text-sm md:text-base outline-none transition-all duration-150
-        placeholder:text-zinc-400 dark:placeholder:text-zinc-600 ${className}`}
-      style={{
-        background: 'var(--bg)',
-        border: '1px solid var(--border)',
-        color: 'var(--text)',
-      }}
-      onFocus={(e) => {
-        e.currentTarget.style.borderColor = 'var(--accent)';
-        e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-bg)';
-      }}
-      onBlur={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-    />
-  );
-}
-
-function DateInput({
-  value,
-  onChange,
-}: {
-  value: Date;
-  onChange: (d: Date) => void;
-}) {
-  return (
-    <div className="relative w-full">
-      <CalendarDays
-        className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 pointer-events-none z-10"
-        style={{ color: 'var(--text-muted)' }}
-      />
-      <DatePicker
-        selected={value}
-        onChange={(d: Date | null) => d && onChange(d)}
-        dateFormat="yyyy-MM-dd"
-        maxDate={new Date()}
-        className="w-full rounded-xl pl-10 md:pl-11 pr-3.5 py-2.5 md:py-3 text-sm md:text-base outline-none cursor-pointer transition-all duration-150"
-        wrapperClassName="w-full"
-        popperPlacement="bottom-start"
-        customInput={
-          <input
-            style={{
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-            }}
-          />
-        }
-      />
-    </div>
-  );
-}
-
-function ToggleGroup<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: { value: T; label: string; activeClass: string }[];
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div
-      className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}
-    >
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={`py-2.5 md:py-3 rounded-xl text-sm md:text-base font-semibold border transition-all duration-150 ${
-            value === opt.value
-              ? opt.activeClass
-              : 'border-[var(--border)] text-[var(--text-sub)] bg-[var(--bg)] hover:border-[var(--border-hi)]'
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/* ── Theme Switcher Component ────────────────────────── */
-function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  if (!mounted) {
-    return <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />;
-  }
-
-  const iconMap = {
-    light: <Sun className="w-4 h-4 md:w-4.5 md:h-4.5 text-amber-500" />,
-    dark: <Moon className="w-4 h-4 md:w-4.5 md:h-4.5 text-blue-400" />,
-    system: <Monitor className="w-4 h-4 md:w-4.5 md:h-4.5 text-zinc-500 dark:text-zinc-400" />,
-  };
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 md:gap-1.5 p-2 md:px-3 md:py-2 rounded-xl text-xs md:text-sm font-medium transition-all duration-150"
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          color: 'var(--text)',
-        }}
-        title="테마 변경 (White / Dark / System)"
-      >
-        {iconMap[(theme as 'light' | 'dark' | 'system') || 'system']}
-        <span className="hidden sm:inline text-xs font-semibold capitalize">
-          {theme === 'light' ? 'White' : theme === 'dark' ? 'Dark' : 'System'}
-        </span>
-        <ChevronDown className="w-3 h-3 text-zinc-400" />
-      </button>
-
-      {open && (
-        <div
-          className="absolute right-0 mt-2 w-32 rounded-2xl p-1.5 shadow-xl border z-50 animate-fade-in"
-          style={{
-            background: 'var(--surface)',
-            borderColor: 'var(--border-hi)',
-          }}
-        >
-          {[
-            { key: 'light', label: 'White', icon: <Sun className="w-4 h-4 text-amber-500" /> },
-            { key: 'dark', label: 'Dark', icon: <Moon className="w-4 h-4 text-blue-400" /> },
-            { key: 'system', label: 'System', icon: <Monitor className="w-4 h-4 text-zinc-400" /> },
-          ].map((item) => (
-            <button
-              key={item.key}
-              onClick={() => {
-                setTheme(item.key);
-                setOpen(false);
-              }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs md:text-sm font-medium rounded-xl transition-colors duration-150 text-left"
-              style={{
-                background: theme === item.key ? 'var(--accent-bg)' : 'transparent',
-                color: theme === item.key ? 'var(--accent)' : 'var(--text)',
-              }}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Rate Badge ───────────────────────────────────────── */
-function RateBadge({
-  rate,
-  loading,
-  onRefresh,
-}: {
-  rate: { usd_krw: number; source: string } | null;
-  loading: boolean;
-  onRefresh: () => void;
-}) {
-  return (
-    <button
-      onClick={onRefresh}
-      disabled={loading}
-      className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-medium transition-all duration-150 border"
-      style={{
-        background: 'var(--surface)',
-        borderColor: 'var(--border)',
-        color: 'var(--text-sub)',
-      }}
-    >
-      <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500 shrink-0" />
-      <span className="hidden sm:inline">USD/KRW:</span>
-      <span className="font-bold text-[var(--text)]">
-        {loading ? '...' : rate ? `${rate.usd_krw.toLocaleString()}원` : '-'}
-      </span>
-      <RefreshCw className={`w-3 h-3 md:w-3.5 md:h-3.5 text-zinc-400 ${loading ? 'animate-spin' : ''}`} />
-    </button>
-  );
-}
-
-/* ── Stat Card ────────────────────────────────────────── */
-function StatCard({
-  label,
-  value,
-  unit,
-  icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-  icon: React.ReactNode;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      className="rounded-2xl p-4 md:p-6 flex flex-col justify-between transition-all duration-150"
-      style={{
-        background: accent ? 'var(--accent-bg)' : 'var(--surface)',
-        border: `1px solid ${accent ? 'var(--accent-border)' : 'var(--border)'}`,
-        boxShadow: 'var(--shadow)',
-      }}
-    >
-      <div className="flex items-center justify-between text-xs md:text-sm font-medium" style={{ color: 'var(--text-sub)' }}>
-        <span>{label}</span>
-        {icon}
-      </div>
-      <div className="mt-3 md:mt-4 text-xl sm:text-2xl md:text-3xl font-bold" style={{ color: accent ? 'var(--accent)' : 'var(--text)' }}>
-        {value} <span className="text-xs md:text-sm font-normal" style={{ color: 'var(--text-muted)' }}>{unit}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ── Dashboard Page ────────────────────────────────────── */
 export default function DashboardPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [authChecking, setAuthChecking] = useState(true);
+  const { theme, setTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'trade' | 'dividend'>('trade');
-  const [listFilter, setListFilter] = useState<'all' | 'trade' | 'dividend'>('all');
+  const [activeMenu, setActiveMenu] = useState<'overview' | 'trade' | 'dividend' | 'stocks' | 'codes'>('overview');
+  const [userNickname, setUserNickname] = useState<string>('회원');
+  const [exchangeRate, setExchangeRate] = useState<number>(1380);
 
-  const [exchangeRate, setExchangeRate] = useState<{
-    rate_date: string;
-    usd_krw: number;
-    source: string;
-  } | null>(null);
-  const [rateLoading, setRateLoading] = useState(false);
-
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  const [tradeForm, setTradeForm] = useState({
-    trade_date: todayDate(),
+  // Forms State
+  const [tradeForm, setTradeForm] = useState<{
+    trade_date: Date;
+    stock_name: string;
+    trade_type: 'BUY' | 'SELL';
+    quantity: string;
+    price: string;
+    currency: 'KRW' | 'USD' | 'EUR';
+    fee: string;
+    tax: string;
+    notes: string;
+  }>({
+    trade_date: new Date(),
     stock_name: '',
-    trade_type: 'BUY' as 'BUY' | 'SELL',
+    trade_type: 'BUY',
     quantity: '',
     price: '',
+    currency: 'USD',
     fee: '0',
     tax: '0',
-    currency: 'USD' as 'KRW' | 'USD',
+    notes: ''
   });
 
-  const [dividendForm, setDividendForm] = useState({
-    payment_date: todayDate(),
+  const [dividendForm, setDividendForm] = useState<{
+    payment_date: Date;
+    stock_name: string;
+    amount: string;
+    tax: string;
+    currency: 'KRW' | 'USD' | 'EUR';
+  }>({
+    payment_date: new Date(),
     stock_name: '',
     amount: '',
     tax: '0',
-    currency: 'USD' as 'KRW' | 'USD',
+    currency: 'USD'
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [dividends, setDividends] = useState<Dividend[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [stockForm, setStockForm] = useState<StockRecord>({
+    ticker: '',
+    name: '',
+    type: 'Growth',
+    currency: 'USD',
+    market: 'NASDAQ'
+  });
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3500);
-  };
+  // Common Code Management State
+  const [selectedGroupId, setSelectedGroupId] = useState<'CURRENCY' | 'STOCK_TYPE' | 'MARKET_TYPE' | 'TRADE_TYPE'>('CURRENCY');
+  const [codeForm, setCodeForm] = useState<{
+    code: string;
+    code_name: string;
+    sort_order: string;
+  }>({
+    code: '',
+    code_name: '',
+    sort_order: '1'
+  });
 
-  // Auth & Session Check
+  // Records List State
+  const [trades, setTrades] = useState<TradeRecord[]>([]);
+  const [dividends, setDividends] = useState<DividendRecord[]>([]);
+  const [stocks, setStocks] = useState<StockRecord[]>([]);
+  const [commonCodesList, setCommonCodesList] = useState<CommonCode[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Check auth & session
   useEffect(() => {
-    async function initAuth() {
-      const valid = await checkSessionExpiry();
+    checkSessionExpiry().then((valid) => {
       if (!valid) {
-        router.replace('/');
+        router.push('/');
         return;
       }
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) {
+          router.push('/');
+          return;
+        }
+        setUserNickname(user.user_metadata?.full_name || user.email?.split('@')[0] || '회원');
+        fetchDashboardData();
+      });
+    });
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace('/');
-        return;
-      }
-
-      setCurrentUser(user);
-      setAuthChecking(false);
-    }
-
-    initAuth();
+    // Fetch live rate
+    fetch('/api/exchange-rate')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.rate) setExchangeRate(data.rate);
+      })
+      .catch(() => {});
   }, [router]);
 
-  const handleLogout = async () => {
-    await signOutUser();
-    router.replace('/');
-  };
-
-  const fetchExchangeRate = useCallback(async (dateStr: string) => {
-    if (!dateStr) return;
-    setRateLoading(true);
-    try {
-      const res = await fetch(`/api/exchange-rate?date=${dateStr}`);
-      if (!res.ok) throw new Error('환율 정보를 불러올 수 없습니다.');
-      const data = await res.json();
-      setExchangeRate({ rate_date: data.rate_date, usd_krw: data.usd_krw, source: data.source });
-    } catch (err) {
-      console.error('환율 조회 오류:', err);
-    } finally {
-      setRateLoading(false);
+  useEffect(() => {
+    if (activeMenu === 'codes') {
+      fetchCommonCodesByGroup(selectedGroupId);
     }
-  }, []);
+  }, [activeMenu, selectedGroupId]);
 
-  const refreshData = useCallback(async () => {
-    setLoadingData(true);
+  const fetchDashboardData = async () => {
+    setLoading(true);
     try {
-      const [tradesRes, dividendsRes] = await Promise.all([
-        supabase.from('trades').select('*').order('trade_date', { ascending: false }).order('created_at', { ascending: false }),
-        supabase.from('dividends').select('*').order('payment_date', { ascending: false }).order('created_at', { ascending: false }),
+      const [tradesRes, divRes, stocksRes] = await Promise.all([
+        supabase.from('trades').select('*').order('trade_date', { ascending: false }).limit(50),
+        supabase.from('dividends').select('*').order('payment_date', { ascending: false }).limit(50),
+        supabase.from('stocks').select('*').order('ticker', { ascending: true })
       ]);
-      if (tradesRes.data) setTrades(tradesRes.data as Trade[]);
-      if (dividendsRes.data) setDividends(dividendsRes.data as Dividend[]);
-    } catch (err) {
-      console.error('데이터 조회 오류:', err);
+
+      if (tradesRes.data) setTrades(tradesRes.data as TradeRecord[]);
+      if (divRes.data) setDividends(divRes.data as DividendRecord[]);
+      if (stocksRes.data) setStocks(stocksRes.data as StockRecord[]);
+    } catch (e) {
+      console.error(e);
     } finally {
-      setLoadingData(false);
+      setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    if (!authChecking) {
-      fetchExchangeRate(toDateStr(todayDate()));
-      refreshData();
-    }
-  }, [authChecking, fetchExchangeRate, refreshData]);
-
-  useEffect(() => {
-    if (!authChecking) {
-      const d = activeTab === 'trade' ? tradeForm.trade_date : dividendForm.payment_date;
-      fetchExchangeRate(toDateStr(d));
-    }
-  }, [authChecking, activeTab, tradeForm.trade_date, dividendForm.payment_date, fetchExchangeRate]);
-
-  const handleTradeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tradeForm.stock_name.trim()) { showToast('종목명을 입력해 주세요.', 'error'); return; }
-    const qty = parseFloat(tradeForm.quantity);
-    const price = parseFloat(tradeForm.price);
-    if (!qty || qty <= 0) { showToast('올바른 수량을 입력해 주세요.', 'error'); return; }
-    if (isNaN(price) || price < 0) { showToast('올바른 단가를 입력해 주세요.', 'error'); return; }
-
-    setIsSubmitting(true);
+  const fetchCommonCodesByGroup = async (groupId: string) => {
     try {
-      const { error } = await supabase.from('trades').insert([{
-        user_id: currentUser?.id,
-        trade_date: toDateStr(tradeForm.trade_date),
-        stock_name: tradeForm.stock_name.trim().toUpperCase(),
-        trade_type: tradeForm.trade_type,
-        quantity: qty,
-        price,
-        currency: tradeForm.currency,
-        fee: parseFloat(tradeForm.fee) || 0,
-        tax: parseFloat(tradeForm.tax) || 0,
-      }]);
-      if (error) throw error;
-      showToast(`${tradeForm.stock_name.toUpperCase()} 매매 내역이 저장되었습니다.`);
-      setTradeForm((p) => ({ ...p, stock_name: '', quantity: '', price: '', fee: '0', tax: '0' }));
-      await refreshData();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '저장에 실패했습니다.';
-      showToast(msg, 'error');
-    } finally {
-      setIsSubmitting(false);
+      const { data, error } = await supabase
+        .from('common_codes')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('sort_order', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setCommonCodesList(data as CommonCode[]);
+      } else {
+        setCommonCodesList(FALLBACK_CODES[groupId] || []);
+      }
+    } catch {
+      setCommonCodesList(FALLBACK_CODES[groupId] || []);
     }
   };
 
-  const handleDividendSubmit = async (e: React.FormEvent) => {
+  const handleAddTrade = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dividendForm.stock_name.trim()) { showToast('종목명을 입력해 주세요.', 'error'); return; }
-    const amt = parseFloat(dividendForm.amount);
-    if (!amt || amt <= 0) { showToast('올바른 배당금액을 입력해 주세요.', 'error'); return; }
+    if (!tradeForm.stock_name || !tradeForm.quantity || !tradeForm.price) return;
 
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase.from('dividends').insert([{
-        user_id: currentUser?.id,
-        payment_date: toDateStr(dividendForm.payment_date),
-        stock_name: dividendForm.stock_name.trim().toUpperCase(),
-        amount: amt,
-        tax: parseFloat(dividendForm.tax) || 0,
-        currency: dividendForm.currency,
-      }]);
-      if (error) throw error;
-      showToast(`${dividendForm.stock_name.toUpperCase()} 배당 내역이 저장되었습니다.`);
-      setDividendForm((p) => ({ ...p, stock_name: '', amount: '', tax: '0' }));
-      await refreshData();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '저장에 실패했습니다.';
-      showToast(msg, 'error');
-    } finally {
-      setIsSubmitting(false);
+    const newRecord: Partial<TradeRecord> = {
+      trade_date: format(tradeForm.trade_date, 'yyyy-MM-dd'),
+      stock_name: tradeForm.stock_name.toUpperCase(),
+      trade_type: tradeForm.trade_type,
+      quantity: parseFloat(tradeForm.quantity),
+      price: parseFloat(tradeForm.price),
+      currency: tradeForm.currency,
+      fee: parseFloat(tradeForm.fee || '0'),
+      tax: parseFloat(tradeForm.tax || '0'),
+      notes: tradeForm.notes
+    };
+
+    const { data, error } = await supabase.from('trades').insert([newRecord]).select();
+    if (!error && data) {
+      setTrades([data[0] as TradeRecord, ...trades]);
+      setTradeForm({ ...tradeForm, stock_name: '', quantity: '', price: '', notes: '' });
     }
   };
 
-  const handleDeleteTrade = async (id: string, name: string) => {
-    if (!confirm(`"${name}" 매매 내역을 삭제하시겠습니까?`)) return;
-    const { error } = await supabase.from('trades').delete().eq('id', id);
-    if (error) showToast('삭제 중 오류가 발생했습니다.', 'error');
-    else { showToast('매매 내역이 삭제되었습니다.'); refreshData(); }
+  const handleAddDividend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dividendForm.stock_name || !dividendForm.amount) return;
+
+    const newRecord: Partial<DividendRecord> = {
+      payment_date: format(dividendForm.payment_date, 'yyyy-MM-dd'),
+      stock_name: dividendForm.stock_name.toUpperCase(),
+      amount: parseFloat(dividendForm.amount),
+      tax: parseFloat(dividendForm.tax || '0'),
+      currency: dividendForm.currency
+    };
+
+    const { data, error } = await supabase.from('dividends').insert([newRecord]).select();
+    if (!error && data) {
+      setDividends([data[0] as DividendRecord, ...dividends]);
+      setDividendForm({ ...dividendForm, stock_name: '', amount: '', tax: '0' });
+    }
   };
 
-  const handleDeleteDividend = async (id: string, name: string) => {
-    if (!confirm(`"${name}" 배당 내역을 삭제하시겠습니까?`)) return;
-    const { error } = await supabase.from('dividends').delete().eq('id', id);
-    if (error) showToast('삭제 중 오류가 발생했습니다.', 'error');
-    else { showToast('배당 내역이 삭제되었습니다.'); refreshData(); }
+  const handleAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stockForm.ticker || !stockForm.name) return;
+
+    const newStock: StockRecord = {
+      ticker: stockForm.ticker.toUpperCase(),
+      name: stockForm.name,
+      type: stockForm.type,
+      currency: stockForm.currency,
+      market: stockForm.market
+    };
+
+    const { error } = await supabase.from('stocks').insert([newStock]);
+    if (!error) {
+      setStocks([...stocks, newStock]);
+      setStockForm({ ticker: '', name: '', type: 'Growth', currency: 'USD', market: 'NASDAQ' });
+    }
   };
 
-  /* ── computed ── */
-  const tradeTotal =
-    (parseFloat(tradeForm.quantity) || 0) * (parseFloat(tradeForm.price) || 0) +
-    (parseFloat(tradeForm.fee) || 0) +
-    (parseFloat(tradeForm.tax) || 0);
+  const handleAddCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!codeForm.code || !codeForm.code_name) return;
 
-  const dividendNet = Math.max(
-    0,
-    (parseFloat(dividendForm.amount) || 0) - (parseFloat(dividendForm.tax) || 0)
-  );
+    const newCode: Partial<CommonCode> = {
+      group_id: selectedGroupId,
+      code: codeForm.code.trim(),
+      code_name: codeForm.code_name.trim(),
+      sort_order: parseInt(codeForm.sort_order || '1', 10),
+      is_active: true
+    };
 
-  const totalDividendKRW = dividends.reduce((acc, d) => {
-    const net = d.amount - d.tax;
-    return acc + (d.currency === 'USD' ? net * (exchangeRate?.usd_krw || 1400) : net);
-  }, 0);
+    const { data, error } = await supabase.from('common_codes').insert([newCode]).select();
+    if (!error && data) {
+      setCommonCodesList([...commonCodesList, data[0] as CommonCode]);
+      setCodeForm({ code: '', code_name: '', sort_order: '1' });
+    } else {
+      setCommonCodesList([...commonCodesList, newCode as CommonCode]);
+      setCodeForm({ code: '', code_name: '', sort_order: '1' });
+    }
+  };
 
-  const activeDate = activeTab === 'trade' ? tradeForm.trade_date : dividendForm.payment_date;
-
-  if (authChecking) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mb-3" />
-        <p className="text-sm font-medium" style={{ color: 'var(--text-sub)' }}>인증 확인 중...</p>
-      </div>
+  const handleToggleCodeActive = async (item: CommonCode) => {
+    const nextStatus = !item.is_active;
+    if (item.id) {
+      await supabase.from('common_codes').update({ is_active: nextStatus }).eq('id', item.id);
+    }
+    setCommonCodesList(
+      commonCodesList.map((c) => (c.code === item.code ? { ...c, is_active: nextStatus } : c))
     );
-  }
+  };
+
+  const handleDeleteCode = async (item: CommonCode) => {
+    if (item.id) {
+      await supabase.from('common_codes').delete().eq('id', item.id);
+    }
+    setCommonCodesList(commonCodesList.filter((c) => c.code !== item.code));
+  };
+
+  const handleDeleteTrade = async (id?: string) => {
+    if (!id) return;
+    const { error } = await supabase.from('trades').delete().eq('id', id);
+    if (!error) setTrades(trades.filter((t) => t.id !== id));
+  };
+
+  const handleDeleteDividend = async (id?: string) => {
+    if (!id) return;
+    const { error } = await supabase.from('dividends').delete().eq('id', id);
+    if (!error) setDividends(dividends.filter((d) => d.id !== id));
+  };
+
+  const handleDeleteStock = async (ticker: string) => {
+    const { error } = await supabase.from('stocks').delete().eq('ticker', ticker);
+    if (!error) setStocks(stocks.filter((s) => s.ticker !== ticker));
+  };
 
   return (
-    <div className="min-h-screen pb-24 transition-colors duration-200" style={{ background: 'var(--bg)' }}>
-
-      {/* Toast */}
-      {toast && (
-        <div
-          className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 md:px-5 md:py-3.5 rounded-2xl text-sm md:text-base font-medium shadow-2xl animate-fade-in"
-          style={{
-            background: 'var(--surface)',
-            border: `1px solid ${toast.type === 'success' ? 'var(--success)' : 'var(--danger)'}`,
-            color: 'var(--text)',
-            boxShadow: 'var(--shadow-lg)',
-          }}
-        >
-          {toast.type === 'success'
-            ? <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />
-            : <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />}
-          {toast.message}
-        </div>
-      )}
-
-      {/* Header */}
-      <header
-        className="sticky top-0 z-40 px-4 md:px-8 transition-colors duration-200"
-        style={{
-          background: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
-          boxShadow: 'var(--shadow)',
-        }}
-      >
-        <div className="max-w-screen-xl mx-auto flex items-center justify-between py-3.5 md:py-4">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5 md:gap-3">
-            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl overflow-hidden shadow-md shrink-0">
-              <Image src="/icon.svg" alt="KLIOGRAM Forest Logo" width={36} height={36} className="w-full h-full object-cover" priority />
-            </div>
-            <span className="font-bold tracking-tight text-base md:text-lg" style={{ color: 'var(--text)' }}>
-              KLIOGRAM
-            </span>
-            <span
-              className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold"
-              style={{
-                background: 'var(--accent-bg)',
-                color: 'var(--accent)',
-                border: '1px solid var(--accent-border)',
-              }}
-            >
-              대시보드
-            </span>
+    <div className="flex min-h-screen bg-[var(--bg)] text-[var(--fg)] transition-colors">
+      {/* Uplon Style Left Fixed Navigation Sidebar */}
+      <aside className="sticky top-0 z-40 flex h-screen w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+        {/* Brand Logo & Slogan */}
+        <div className="flex items-center gap-3 pb-6 border-b border-[var(--border)]">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950 text-emerald-400 border border-emerald-800/50 shadow-md">
+            <svg className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L4.5 13.5H9V22H15V13.5H19.5L12 2Z" />
+            </svg>
           </div>
-
-          {/* Right Header Bar: Theme Switcher + Rate Badge + Logout */}
-          <div className="flex items-center gap-2 md:gap-3">
-            <ThemeSwitcher />
-            <RateBadge
-              rate={exchangeRate}
-              loading={rateLoading}
-              onRefresh={() => fetchExchangeRate(toDateStr(activeDate))}
-            />
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 md:px-3.5 md:py-2 rounded-xl text-xs md:text-sm font-semibold border transition-all duration-150 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-500"
-              style={{
-                background: 'var(--surface)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-sub)',
-              }}
-              title="로그아웃"
-            >
-              <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
-              <span className="hidden sm:inline">로그아웃</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-10 space-y-6 md:space-y-10">
-
-        {/* User Greeting Bar */}
-        {currentUser && (
-          <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 rounded-2xl border" style={{ background: 'var(--surface-sub)', borderColor: 'var(--border)' }}>
-            <div className="flex items-center gap-2.5">
-              <UserIcon className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
-              <span className="text-xs md:text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                {currentUser.user_metadata?.full_name || currentUser.email} 님 환영합니다!
-              </span>
-            </div>
-            <span className="text-xs text-zinc-400 hidden sm:inline">
-              Google 계정 로그인 중
-            </span>
-          </div>
-        )}
-
-        {/* Stats Section */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          <StatCard
-            label="총 매매 기록"
-            value={String(trades.length)}
-            unit="건"
-            icon={<Receipt className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />}
-          />
-          <StatCard
-            label="총 배당 수령"
-            value={String(dividends.length)}
-            unit="건"
-            icon={<Coins className="w-4 h-4 md:w-5 md:h-5 text-amber-500" />}
-          />
-          <div className="col-span-2 lg:col-span-1">
-            <StatCard
-              label="누적 세후 배당금 (원화)"
-              value={`≈ ${Math.round(totalDividendKRW).toLocaleString()}`}
-              unit="원"
-              icon={<Wallet className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" />}
-              accent
-            />
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-emerald-500">KLIOGRAM</h1>
+            <p className="text-[11px] font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
           </div>
         </div>
 
-        {/* Main Grid: Form + List */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8 items-start">
-
-          {/* ── Form Panel ────────────────────────────── */}
-          <div
-            className="rounded-3xl overflow-hidden transition-all duration-200"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow)',
-            }}
+        {/* Sidebar Navigation Links */}
+        <nav className="mt-6 flex-1 space-y-1.5">
+          <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--fg-muted)]">Navigation</span>
+          <button
+            onClick={() => setActiveMenu('overview')}
+            className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-xs md:text-sm font-semibold transition-all ${
+              activeMenu === 'overview'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
+            }`}
           >
-            {/* Tab bar */}
-            <div
-              className="grid grid-cols-2"
-              style={{ borderBottom: '1px solid var(--border)' }}
-            >
-              {(['trade', 'dividend'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className="py-3.5 md:py-4 text-sm md:text-base font-bold flex items-center justify-center gap-2 transition-colors duration-150"
-                  style={{
-                    color: activeTab === tab ? 'var(--text)' : 'var(--text-muted)',
-                    background: activeTab === tab ? 'var(--surface-sub)' : 'transparent',
-                    borderBottom: activeTab === tab ? '3px solid var(--accent)' : '3px solid transparent',
-                  }}
-                >
-                  {tab === 'trade' ? (
-                    <><TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />매매 내역 입력</>
-                  ) : (
-                    <><Coins className="w-4 h-4 md:w-5 md:h-5 text-amber-500" />배당 내역 입력</>
-                  )}
-                </button>
-              ))}
+            <LayoutDashboard className="h-4 w-4 shrink-0" />
+            <span>대시보드 개요</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMenu('trade')}
+            className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-xs md:text-sm font-semibold transition-all ${
+              activeMenu === 'trade'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
+            }`}
+          >
+            <TrendingUp className="h-4 w-4 shrink-0" />
+            <span>매매 내역 관리</span>
+            <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{trades.length}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMenu('dividend')}
+            className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-xs md:text-sm font-semibold transition-all ${
+              activeMenu === 'dividend'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
+            }`}
+          >
+            <DollarSign className="h-4 w-4 shrink-0" />
+            <span>배당 내역 관리</span>
+            <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{dividends.length}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMenu('stocks')}
+            className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-xs md:text-sm font-semibold transition-all ${
+              activeMenu === 'stocks'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
+            }`}
+          >
+            <Building2 className="h-4 w-4 shrink-0" />
+            <span>종목 마스터 관리</span>
+            <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{stocks.length}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMenu('codes')}
+            className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-xs md:text-sm font-semibold transition-all ${
+              activeMenu === 'codes'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
+            }`}
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            <span>공통 코드 관리</span>
+          </button>
+        </nav>
+
+        {/* User Nickname & Logout Footer */}
+        <div className="pt-4 border-t border-[var(--border)] space-y-3">
+          <div className="flex items-center gap-3 px-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 font-bold text-emerald-600 dark:text-emerald-400">
+              {userNickname.substring(0, 1)}
             </div>
-
-            {/* Exchange rate info bar */}
-            {exchangeRate && (
-              <div
-                className="px-5 py-3 flex items-center justify-between text-xs md:text-sm font-medium"
-                style={{
-                  background: 'var(--accent-bg)',
-                  borderBottom: '1px solid var(--accent-border)',
-                }}
-              >
-                <span style={{ color: 'var(--text-sub)' }}>적용 환율 ({toDateStr(activeDate)})</span>
-                <span className="font-bold" style={{ color: 'var(--accent)' }}>
-                  {rateLoading ? '조회중...' : `1 USD = ${exchangeRate.usd_krw.toLocaleString()}원`}
-                </span>
-              </div>
-            )}
-
-            {/* Form body */}
-            <div className="p-5 md:p-8">
-              {activeTab === 'trade' ? (
-                <form onSubmit={handleTradeSubmit} className="space-y-4 md:space-y-6">
-                  {/* Row 1: date + currency */}
-                  <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div>
-                      <Label>거래일자 *</Label>
-                      <DateInput
-                        value={tradeForm.trade_date}
-                        onChange={(d) => setTradeForm({ ...tradeForm, trade_date: d })}
-                      />
-                    </div>
-                    <div>
-                      <Label>통화</Label>
-                      <ToggleGroup
-                        value={tradeForm.currency}
-                        onChange={(v) => setTradeForm({ ...tradeForm, currency: v })}
-                        options={[
-                          { value: 'USD', label: 'USD ($)', activeClass: 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-bg)] font-bold' },
-                          { value: 'KRW', label: 'KRW (₩)', activeClass: 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-bg)] font-bold' },
-                        ]}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 2: stock + buy/sell */}
-                  <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div>
-                      <Label>종목명 / 티커 *</Label>
-                      <InputBase
-                        type="text"
-                        placeholder="AAPL, TSLA, 삼성전자"
-                        value={tradeForm.stock_name}
-                        onChange={(e) => setTradeForm({ ...tradeForm, stock_name: e.target.value })}
-                        className="uppercase font-semibold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>매매 구분 *</Label>
-                      <ToggleGroup
-                        value={tradeForm.trade_type}
-                        onChange={(v) => setTradeForm({ ...tradeForm, trade_type: v })}
-                        options={[
-                          { value: 'BUY',  label: '매수', activeClass: 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-bold' },
-                          { value: 'SELL', label: '매도', activeClass: 'border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-500/10 font-bold' },
-                        ]}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 3: qty + price */}
-                  <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div>
-                      <Label>수량 *</Label>
-                      <InputBase
-                        type="number"
-                        step="any"
-                        min="0.000001"
-                        placeholder="10"
-                        value={tradeForm.quantity}
-                        onChange={(e) => setTradeForm({ ...tradeForm, quantity: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>단가 ({tradeForm.currency === 'USD' ? '$' : '₩'}) *</Label>
-                      <InputBase
-                        type="number"
-                        step="any"
-                        min="0"
-                        placeholder={tradeForm.currency === 'USD' ? '185.50' : '75000'}
-                        value={tradeForm.price}
-                        onChange={(e) => setTradeForm({ ...tradeForm, price: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 4: fee + tax */}
-                  <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div>
-                      <Label>수수료</Label>
-                      <InputBase
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={tradeForm.fee}
-                        onChange={(e) => setTradeForm({ ...tradeForm, fee: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>세금</Label>
-                      <InputBase
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={tradeForm.tax}
-                        onChange={(e) => setTradeForm({ ...tradeForm, tax: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Total preview */}
-                  {tradeTotal > 0 && (
-                    <div
-                      className="flex items-center justify-between px-4 py-3.5 md:px-5 md:py-4 rounded-2xl text-sm md:text-base"
-                      style={{
-                        background: 'var(--accent-bg)',
-                        border: '1px solid var(--accent-border)',
-                      }}
-                    >
-                      <span style={{ color: 'var(--text-sub)' }}>예상 총액</span>
-                      <span className="font-bold text-base md:text-lg" style={{ color: 'var(--text)' }}>
-                        {tradeForm.currency === 'USD'
-                          ? `$${tradeTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : `₩${Math.round(tradeTotal).toLocaleString()}`}
-                      </span>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3 md:py-3.5 rounded-xl text-sm md:text-base font-bold shadow-md transition-all duration-150 disabled:opacity-50 hover:opacity-95"
-                    style={{ background: 'var(--accent)', color: '#ffffff' }}
-                  >
-                    {isSubmitting ? '저장 중...' : '매매 내역 저장'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleDividendSubmit} className="space-y-4 md:space-y-6">
-                  {/* Row 1: date + currency */}
-                  <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div>
-                      <Label>지급일자 *</Label>
-                      <DateInput
-                        value={dividendForm.payment_date}
-                        onChange={(d) => setDividendForm({ ...dividendForm, payment_date: d })}
-                      />
-                    </div>
-                    <div>
-                      <Label>통화</Label>
-                      <ToggleGroup
-                        value={dividendForm.currency}
-                        onChange={(v) => setDividendForm({ ...dividendForm, currency: v })}
-                        options={[
-                          { value: 'USD', label: 'USD ($)', activeClass: 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-bg)] font-bold' },
-                          { value: 'KRW', label: 'KRW (₩)', activeClass: 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-bg)] font-bold' },
-                        ]}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 2: stock */}
-                  <div>
-                    <Label>종목명 / 티커 *</Label>
-                    <InputBase
-                      type="text"
-                      placeholder="AAPL, TSLA, 삼성전자"
-                      value={dividendForm.stock_name}
-                      onChange={(e) => setDividendForm({ ...dividendForm, stock_name: e.target.value })}
-                      className="uppercase font-semibold"
-                      required
-                    />
-                  </div>
-
-                  {/* Row 3: amount + tax */}
-                  <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div>
-                      <Label>배당금액 ({dividendForm.currency === 'USD' ? '$' : '₩'}) *</Label>
-                      <InputBase
-                        type="number"
-                        step="any"
-                        min="0"
-                        placeholder={dividendForm.currency === 'USD' ? '12.50' : '15000'}
-                        value={dividendForm.amount}
-                        onChange={(e) => setDividendForm({ ...dividendForm, amount: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>세금 ({dividendForm.currency})</Label>
-                      <InputBase
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={dividendForm.tax}
-                        onChange={(e) => setDividendForm({ ...dividendForm, tax: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Net preview */}
-                  {dividendNet > 0 && (
-                    <div
-                      className="flex items-center justify-between px-4 py-3.5 md:px-5 md:py-4 rounded-2xl text-sm md:text-base"
-                      style={{
-                        background: 'var(--warning-bg)',
-                        border: '1px solid rgba(245, 158, 11, 0.25)',
-                      }}
-                    >
-                      <span style={{ color: 'var(--text-sub)' }}>세후 실수령액</span>
-                      <span className="font-bold text-base md:text-lg" style={{ color: 'var(--warning)' }}>
-                        {dividendForm.currency === 'USD'
-                          ? `$${dividendNet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : `₩${Math.round(dividendNet).toLocaleString()}`}
-                      </span>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3 md:py-3.5 rounded-xl text-sm md:text-base font-bold shadow-md transition-all duration-150 disabled:opacity-50 hover:opacity-95"
-                    style={{ background: 'var(--accent)', color: '#ffffff' }}
-                  >
-                    {isSubmitting ? '저장 중...' : '배당 내역 저장'}
-                  </button>
-                </form>
-              )}
+            <div className="overflow-hidden">
+              <p className="text-xs font-bold truncate">{userNickname}</p>
+              <p className="text-[10px] text-[var(--fg-muted)] truncate">Google Auth Verified</p>
             </div>
           </div>
+          <button
+            onClick={() => signOutUser().then(() => router.push('/'))}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 py-2.5 text-xs font-semibold text-red-600 transition-all hover:bg-red-500 hover:text-white dark:text-red-400"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>로그아웃</span>
+          </button>
+        </div>
+      </aside>
 
-          {/* ── List Panel ───────────────────────────── */}
-          <div className="space-y-4 md:space-y-6">
-            {/* List header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 md:gap-2">
-                {(['all', 'trade', 'dividend'] as const).map((f) => {
-                  const labels = { all: '전체', trade: `매매 (${trades.length})`, dividend: `배당 (${dividends.length})` };
-                  return (
-                    <button
-                      key={f}
-                      onClick={() => setListFilter(f)}
-                      className="px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-bold transition-all duration-150"
-                      style={{
-                        background: listFilter === f ? 'var(--accent-bg)' : 'transparent',
-                        color: listFilter === f ? 'var(--accent)' : 'var(--text-sub)',
-                        border: `1px solid ${listFilter === f ? 'var(--accent-border)' : 'transparent'}`,
-                      }}
-                    >
-                      {labels[f]}
-                    </button>
-                  );
-                })}
-              </div>
+      {/* Main Canvas & Content Area (Wide Screen Layout) */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header Bar */}
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/90 px-6 py-4 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg md:text-xl font-bold">
+              {activeMenu === 'overview' && '📊 대시보드 개요'}
+              {activeMenu === 'trade' && '📈 주식 매매 내역 관리'}
+              {activeMenu === 'dividend' && '💰 주식 배당 내역 관리'}
+              {activeMenu === 'stocks' && '🏢 주식 종목 마스터 관리'}
+              {activeMenu === 'codes' && '⚙️ 공통 코드 설정'}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Live Exchange Rate Indicator */}
+            <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg)] px-3.5 py-1.5 text-xs font-medium">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-[var(--fg-muted)]">USD/KRW:</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">{exchangeRate.toLocaleString()}원</span>
+            </div>
+
+            {/* Theme Switcher Toggle */}
+            <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
               <button
-                onClick={refreshData}
-                className="p-2 rounded-xl transition-colors duration-150 hover:bg-[var(--surface-hover)]"
-                style={{ color: 'var(--text-muted)' }}
-                title="새로고침"
+                onClick={() => setTheme('light')}
+                className={`rounded-lg p-1.5 transition-colors ${theme === 'light' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+                title="White Mode"
               >
-                <RefreshCw className={`w-4 h-4 md:w-4.5 md:h-4.5 ${loadingData ? 'animate-spin' : ''}`} />
+                <Sun className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`rounded-lg p-1.5 transition-colors ${theme === 'dark' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+                title="Dark Mode"
+              >
+                <Moon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setTheme('system')}
+                className={`rounded-lg p-1.5 transition-colors ${theme === 'system' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+                title="System Mode"
+              >
+                <Monitor className="h-4 w-4" />
               </button>
             </div>
 
-            {/* List items */}
-            {loadingData ? (
-              <div className="py-20 text-center" style={{ color: 'var(--text-muted)' }}>
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[var(--accent)]" />
-                <p className="text-xs md:text-sm">데이터를 불러오는 중입니다...</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Trades */}
-                {(listFilter === 'all' || listFilter === 'trade') &&
-                  trades.map((trade) => {
-                    const isBuy = trade.trade_type === 'BUY';
-                    const total = trade.quantity * trade.price + (trade.fee || 0) + (trade.tax || 0);
-                    return (
-                      <div
-                        key={trade.id}
-                        className="flex items-center justify-between gap-3 px-4 py-3.5 md:px-5 md:py-4 rounded-2xl transition-all duration-150 animate-fade-in"
-                        style={{
-                          background: 'var(--surface)',
-                          border: '1px solid var(--border)',
-                          boxShadow: 'var(--shadow)',
-                        }}
-                      >
-                        <div className="flex items-center gap-3 md:gap-4">
-                          <div
-                            className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 font-bold"
-                            style={{
-                              background: isBuy ? 'var(--success-bg)' : 'var(--danger-bg)',
-                              color: isBuy ? 'var(--success)' : 'var(--danger)',
-                            }}
-                          >
-                            {isBuy ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm md:text-base" style={{ color: 'var(--text)' }}>
-                                {trade.stock_name}
-                              </span>
-                              <span
-                                className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-bold"
-                                style={{
-                                  background: isBuy ? 'var(--success-bg)' : 'var(--danger-bg)',
-                                  color: isBuy ? 'var(--success)' : 'var(--danger)',
-                                }}
-                              >
-                                {isBuy ? '매수' : '매도'}
-                              </span>
-                              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{trade.trade_date}</span>
-                            </div>
-                            <div className="text-xs md:text-sm mt-0.5" style={{ color: 'var(--text-sub)' }}>
-                              {trade.quantity.toLocaleString()}주 ×{' '}
-                              {trade.currency === 'USD' ? `$${trade.price}` : `₩${trade.price.toLocaleString()}`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="font-bold text-sm md:text-base" style={{ color: 'var(--text)' }}>
-                              {trade.currency === 'USD'
-                                ? `$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                : `₩${Math.round(total).toLocaleString()}`}
-                            </div>
-                            <div className="text-[10px] md:text-xs uppercase font-medium" style={{ color: 'var(--text-muted)' }}>{trade.currency}</div>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteTrade(trade.id, trade.stock_name)}
-                            className="p-2 rounded-xl transition-colors duration-150 hover:bg-rose-500/10 hover:text-rose-500"
-                            style={{ color: 'var(--text-muted)' }}
-                            title="삭제"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                {/* Dividends */}
-                {(listFilter === 'all' || listFilter === 'dividend') &&
-                  dividends.map((div) => {
-                    const net = div.amount - (div.tax || 0);
-                    return (
-                      <div
-                        key={div.id}
-                        className="flex items-center justify-between gap-3 px-4 py-3.5 md:px-5 md:py-4 rounded-2xl transition-all duration-150 animate-fade-in"
-                        style={{
-                          background: 'var(--surface)',
-                          border: '1px solid var(--border)',
-                          boxShadow: 'var(--shadow)',
-                        }}
-                      >
-                        <div className="flex items-center gap-3 md:gap-4">
-                          <div
-                            className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
-                          >
-                            <Coins className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm md:text-base" style={{ color: 'var(--text)' }}>{div.stock_name}</span>
-                              <span
-                                className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-bold"
-                                style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
-                              >
-                                배당금
-                              </span>
-                              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{div.payment_date}</span>
-                            </div>
-                            <div className="text-xs md:text-sm mt-0.5" style={{ color: 'var(--text-sub)' }}>
-                              세전: {div.currency === 'USD' ? `$${div.amount}` : `₩${div.amount.toLocaleString()}`}
-                              {div.tax > 0 && ` | 세금: ${div.currency === 'USD' ? `$${div.tax}` : `₩${div.tax.toLocaleString()}`}`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="font-bold text-sm md:text-base" style={{ color: 'var(--warning)' }}>
-                              +{div.currency === 'USD'
-                                ? `$${net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                : `₩${Math.round(net).toLocaleString()}`}
-                            </div>
-                            <div className="text-[10px] md:text-xs font-medium" style={{ color: 'var(--text-muted)' }}>세후 ({div.currency})</div>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteDividend(div.id, div.stock_name)}
-                            className="p-2 rounded-xl transition-colors duration-150 hover:bg-rose-500/10 hover:text-rose-500"
-                            style={{ color: 'var(--text-muted)' }}
-                            title="삭제"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                {trades.length === 0 && dividends.length === 0 && (
-                  <div
-                    className="py-16 md:py-20 text-center rounded-2xl"
-                    style={{ border: '1px dashed var(--border-hi)', color: 'var(--text-muted)' }}
-                  >
-                    <p className="text-sm md:text-base font-medium">아직 등록된 내역이 없습니다.</p>
-                    <p className="text-xs md:text-sm mt-1" style={{ color: 'var(--text-sub)' }}>
-                      좌측 폼에서 첫 거래 또는 배당 내역을 입력해 보세요.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+            <button
+              onClick={fetchDashboardData}
+              className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold hover:border-[var(--accent)] transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">새로고침</span>
+            </button>
           </div>
-        </div>
-      </main>
+        </header>
+
+        {/* Uplon Style Main Content Body */}
+        <main className="p-6 md:p-8 space-y-6 flex-1">
+          {/* Top Stat KPI Cards (Uplon Admin Style) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs transition-all hover:border-[var(--accent)]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--fg-muted)]">보유 종목 마스터</p>
+                  <h3 className="text-2xl font-bold mt-1">{stocks.length}<span className="text-xs font-normal text-[var(--fg-muted)] ml-1">개</span></h3>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500">
+                  <Building2 className="h-6 w-6" />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs transition-all hover:border-[var(--accent)]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--fg-muted)]">총 매매 내역 기록</p>
+                  <h3 className="text-2xl font-bold mt-1">{trades.length}<span className="text-xs font-normal text-[var(--fg-muted)] ml-1">건</span></h3>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs transition-all hover:border-[var(--accent)]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--fg-muted)]">총 배당 수령 기록</p>
+                  <h3 className="text-2xl font-bold mt-1">{dividends.length}<span className="text-xs font-normal text-[var(--fg-muted)] ml-1">건</span></h3>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+                  <Coins className="h-6 w-6" />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs transition-all hover:border-[var(--accent)]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--fg-muted)]">실시간 환율 (USD)</p>
+                  <h3 className="text-2xl font-bold mt-1">₩{exchangeRate.toLocaleString()}</h3>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-500">
+                  <Globe2 className="h-6 w-6" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Overview Mode */}
+          {activeMenu === 'overview' && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Recent Trades Table */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                    최근 매매 내역 (최신 5건)
+                  </h3>
+                  <button onClick={() => setActiveMenu('trade')} className="text-xs font-semibold text-emerald-500 hover:underline">전체보기 →</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs md:text-sm">
+                    <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
+                      <tr>
+                        <th className="py-2.5 px-3">날짜</th>
+                        <th className="py-2.5 px-3">구분</th>
+                        <th className="py-2.5 px-3">종목명</th>
+                        <th className="py-2.5 px-3 font-semibold">단가</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {trades.slice(0, 5).map((item) => (
+                        <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
+                          <td className="py-3 px-3 font-mono">{item.trade_date}</td>
+                          <td className="py-3 px-3">
+                            <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{item.trade_type}</span>
+                          </td>
+                          <td className="py-3 px-3 font-medium">{item.stock_name}</td>
+                          <td className="py-3 px-3 font-mono">{item.currency === 'USD' ? '$' : '₩'}{item.price.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Recent Dividends Table */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-500" />
+                    최근 배당 내역 (최신 5건)
+                  </h3>
+                  <button onClick={() => setActiveMenu('dividend')} className="text-xs font-semibold text-emerald-500 hover:underline">전체보기 →</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs md:text-sm">
+                    <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
+                      <tr>
+                        <th className="py-2.5 px-3">지급일</th>
+                        <th className="py-2.5 px-3">종목</th>
+                        <th className="py-2.5 px-3">세전 배당금</th>
+                        <th className="py-2.5 px-3 font-bold">세후 실수령액</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {dividends.slice(0, 5).map((item) => (
+                        <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
+                          <td className="py-3 px-3 font-mono">{item.payment_date}</td>
+                          <td className="py-3 px-3 font-semibold text-emerald-500">{item.stock_name}</td>
+                          <td className="py-3 px-3 font-mono">{item.currency === 'USD' ? '$' : '₩'}{item.amount.toLocaleString()}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-emerald-500">{item.currency === 'USD' ? '$' : '₩'}{(item.amount - item.tax).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Trade CRUD Mode */}
+          {activeMenu === 'trade' && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs h-fit">
+                <h3 className="text-base font-bold mb-4 flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-emerald-500" />
+                  매매 내역 신규 등록
+                </h3>
+                <form onSubmit={handleAddTrade} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">거래 일자</label>
+                    <DatePicker
+                      selected={tradeForm.trade_date}
+                      onChange={(date: Date | null) => date && setTradeForm({ ...tradeForm, trade_date: date })}
+                      dateFormat="yyyy-MM-dd"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">거래 유형 (TRADE_TYPE)</label>
+                      <CodeSelect groupId="TRADE_TYPE" value={tradeForm.trade_type} onChange={(val) => setTradeForm({ ...tradeForm, trade_type: val as any })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">통화 (CURRENCY)</label>
+                      <CodeSelect groupId="CURRENCY" value={tradeForm.currency} onChange={(val) => setTradeForm({ ...tradeForm, currency: val as any })} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">종목명 / 티커</label>
+                    <input
+                      type="text"
+                      placeholder="예: AAPL (Apple)"
+                      value={tradeForm.stock_name}
+                      onChange={(e) => setTradeForm({ ...tradeForm, stock_name: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">거래 수량</label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="10"
+                        value={tradeForm.quantity}
+                        onChange={(e) => setTradeForm({ ...tradeForm, quantity: e.target.value })}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">거래 단가</label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="180.5"
+                        value={tradeForm.price}
+                        onChange={(e) => setTradeForm({ ...tradeForm, price: e.target.value })}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">비고 (선택)</label>
+                    <input
+                      type="text"
+                      placeholder="손절, 해외대체입고 등"
+                      value={tradeForm.notes}
+                      onChange={(e) => setTradeForm({ ...tradeForm, notes: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3 text-xs md:text-sm font-semibold text-white hover:bg-emerald-500 transition-colors shadow-sm">
+                    매매 내역 추가하기
+                  </button>
+                </form>
+              </div>
+              <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
+                <h3 className="text-base font-bold mb-4 flex items-center justify-between">
+                  <span>매매 내역 목록</span>
+                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {trades.length}건</span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs md:text-sm">
+                    <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
+                      <tr>
+                        <th className="py-3 px-3">날짜</th>
+                        <th className="py-3 px-3">구분</th>
+                        <th className="py-3 px-3">종목명</th>
+                        <th className="py-3 px-3">수량</th>
+                        <th className="py-3 px-3">단가</th>
+                        <th className="py-3 px-3 font-semibold">총 금액</th>
+                        <th className="py-3 px-3 text-right">삭제</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {trades.map((item) => (
+                        <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
+                          <td className="py-3 px-3 font-mono">{item.trade_date}</td>
+                          <td className="py-3 px-3">
+                            <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{item.trade_type}</span>
+                          </td>
+                          <td className="py-3 px-3 font-medium">{item.stock_name}</td>
+                          <td className="py-3 px-3">{item.quantity.toLocaleString()}</td>
+                          <td className="py-3 px-3 font-mono">{item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '₩'}{item.price.toLocaleString()}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '₩'}{(item.quantity * item.price).toLocaleString()}</td>
+                          <td className="py-3 px-3 text-right">
+                            <button onClick={() => handleDeleteTrade(item.id)} className="text-red-500 hover:text-red-700 p-1" title="삭제"><Trash2 className="h-4 w-4" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Dividend CRUD Mode */}
+          {activeMenu === 'dividend' && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs h-fit">
+                <h3 className="text-base font-bold mb-4 flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-emerald-500" />
+                  배당 내역 신규 등록
+                </h3>
+                <form onSubmit={handleAddDividend} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">지급 일자</label>
+                    <DatePicker
+                      selected={dividendForm.payment_date}
+                      onChange={(date: Date | null) => date && setDividendForm({ ...dividendForm, payment_date: date })}
+                      dateFormat="yyyy-MM-dd"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">통화 (CURRENCY)</label>
+                    <CodeSelect groupId="CURRENCY" value={dividendForm.currency} onChange={(val) => setDividendForm({ ...dividendForm, currency: val as any })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">종목 티커 / 명칭</label>
+                    <input
+                      type="text"
+                      placeholder="예: AAPL"
+                      value={dividendForm.stock_name}
+                      onChange={(e) => setDividendForm({ ...dividendForm, stock_name: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">세전 배당금액</label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="25.5"
+                        value={dividendForm.amount}
+                        onChange={(e) => setDividendForm({ ...dividendForm, amount: e.target.value })}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">세금</label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="3.8"
+                        value={dividendForm.tax}
+                        onChange={(e) => setDividendForm({ ...dividendForm, tax: e.target.value })}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3 text-xs md:text-sm font-semibold text-white hover:bg-emerald-500 transition-colors shadow-sm">
+                    배당 내역 추가하기
+                  </button>
+                </form>
+              </div>
+              <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
+                <h3 className="text-base font-bold mb-4 flex items-center justify-between">
+                  <span>배당 내역 목록</span>
+                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {dividends.length}건</span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs md:text-sm">
+                    <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
+                      <tr>
+                        <th className="py-3 px-3">지급일</th>
+                        <th className="py-3 px-3">종목</th>
+                        <th className="py-3 px-3">세전 배당금</th>
+                        <th className="py-3 px-3">세금</th>
+                        <th className="py-3 px-3 font-bold">세후 실수령액</th>
+                        <th className="py-3 px-3 text-right">삭제</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {dividends.map((item) => (
+                        <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
+                          <td className="py-3 px-3 font-mono">{item.payment_date}</td>
+                          <td className="py-3 px-3 font-semibold text-emerald-500">{item.stock_name}</td>
+                          <td className="py-3 px-3 font-mono">{item.currency === 'USD' ? '$' : '₩'}{item.amount.toLocaleString()}</td>
+                          <td className="py-3 px-3 font-mono text-red-500">{item.currency === 'USD' ? '$' : '₩'}{item.tax.toLocaleString()}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{item.currency === 'USD' ? '$' : '₩'}{(item.amount - item.tax).toLocaleString()}</td>
+                          <td className="py-3 px-3 text-right">
+                            <button onClick={() => handleDeleteDividend(item.id)} className="text-red-500 hover:text-red-700 p-1" title="삭제"><Trash2 className="h-4 w-4" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Stocks Master CRUD Mode */}
+          {activeMenu === 'stocks' && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs h-fit">
+                <h3 className="text-base font-bold mb-4 flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-emerald-500" />
+                  주식 종목 마스터 신규 등록
+                </h3>
+                <form onSubmit={handleAddStock} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">티커 코드 (Ticker)</label>
+                    <input
+                      type="text"
+                      placeholder="예: AAPL, 005930"
+                      value={stockForm.ticker}
+                      onChange={(e) => setStockForm({ ...stockForm, ticker: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">종목명 (Stock Name)</label>
+                    <input
+                      type="text"
+                      placeholder="예: Apple, 삼성전자"
+                      value={stockForm.name}
+                      onChange={(e) => setStockForm({ ...stockForm, name: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">종목 유형 (STOCK_TYPE)</label>
+                    <CodeSelect groupId="STOCK_TYPE" value={stockForm.type} onChange={(val) => setStockForm({ ...stockForm, type: val })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">통화 (CURRENCY)</label>
+                      <CodeSelect groupId="CURRENCY" value={stockForm.currency} onChange={(val) => setStockForm({ ...stockForm, currency: val })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">상장 시장 (MARKET_TYPE)</label>
+                      <CodeSelect groupId="MARKET_TYPE" value={stockForm.market} onChange={(val) => setStockForm({ ...stockForm, market: val })} />
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3 text-xs md:text-sm font-semibold text-white hover:bg-emerald-500 transition-colors shadow-sm">
+                    종목 추가하기
+                  </button>
+                </form>
+              </div>
+              <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
+                <h3 className="text-base font-bold mb-4 flex items-center justify-between">
+                  <span>종목 마스터 목록</span>
+                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {stocks.length}개</span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs md:text-sm">
+                    <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
+                      <tr>
+                        <th className="py-3 px-3">티커</th>
+                        <th className="py-3 px-3">종목명</th>
+                        <th className="py-3 px-3">유형</th>
+                        <th className="py-3 px-3">통화</th>
+                        <th className="py-3 px-3">상장 시장</th>
+                        <th className="py-3 px-3 text-right">삭제</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {stocks.map((item) => (
+                        <tr key={item.ticker} className="hover:bg-[var(--bg)]/50 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-emerald-500">{item.ticker}</td>
+                          <td className="py-3 px-3 font-medium">{item.name}</td>
+                          <td className="py-3 px-3">
+                            <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">{item.type}</span>
+                          </td>
+                          <td className="py-3 px-3 font-mono">{item.currency}</td>
+                          <td className="py-3 px-3 font-mono text-[var(--fg-muted)]">{item.market}</td>
+                          <td className="py-3 px-3 text-right">
+                            <button onClick={() => handleDeleteStock(item.ticker)} className="text-red-500 hover:text-red-700 p-1" title="삭제"><Trash2 className="h-4 w-4" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Common Code Manager Mode */}
+          {activeMenu === 'codes' && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-5 h-fit">
+                <div>
+                  <h3 className="text-base font-bold mb-3 flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-emerald-500" />
+                    코드 그룹 선택
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'CURRENCY', label: '통화 (CURRENCY)' },
+                      { id: 'STOCK_TYPE', label: '종목유형 (STOCK_TYPE)' },
+                      { id: 'MARKET_TYPE', label: '상장시장 (MARKET_TYPE)' },
+                      { id: 'TRADE_TYPE', label: '거래유형 (TRADE_TYPE)' }
+                    ].map((g) => (
+                      <button
+                        key={g.id}
+                        onClick={() => setSelectedGroupId(g.id as any)}
+                        className={`rounded-xl border p-3 text-left text-xs font-semibold transition-colors ${
+                          selectedGroupId === g.id
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            : 'border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] hover:text-[var(--fg)]'
+                        }`}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-[var(--border)] pt-4">
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
+                    <Plus className="h-4 w-4 text-emerald-500" />
+                    신규 공통 코드 등록 ({selectedGroupId})
+                  </h4>
+                  <form onSubmit={handleAddCode} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">코드 (Code)</label>
+                      <input
+                        type="text"
+                        placeholder="예: GBP, Crypto"
+                        value={codeForm.code}
+                        onChange={(e) => setCodeForm({ ...codeForm, code: e.target.value })}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">코드명 (Code Name)</label>
+                      <input
+                        type="text"
+                        placeholder="예: 영국 파운드 (£)"
+                        value={codeForm.code_name}
+                        onChange={(e) => setCodeForm({ ...codeForm, code_name: e.target.value })}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--fg-muted)] mb-1">정렬 순서 (Sort Order)</label>
+                      <input
+                        type="number"
+                        value={codeForm.sort_order}
+                        onChange={(e) => setCodeForm({ ...codeForm, sort_order: e.target.value })}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      />
+                    </div>
+                    <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3 text-xs md:text-sm font-semibold text-white hover:bg-emerald-500 transition-colors shadow-sm">
+                      공통 코드 추가하기
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
+                <h3 className="text-base font-bold mb-4 flex items-center justify-between">
+                  <span>[{selectedGroupId}] 그룹 코드 목록</span>
+                  <span className="text-xs text-[var(--fg-muted)] font-normal">총 {commonCodesList.length}개</span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs md:text-sm">
+                    <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
+                      <tr>
+                        <th className="py-3 px-3">코드 (Code)</th>
+                        <th className="py-3 px-3">코드명 (Code Name)</th>
+                        <th className="py-3 px-3">정렬 순서</th>
+                        <th className="py-3 px-3">상태</th>
+                        <th className="py-3 px-3 text-right">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {commonCodesList.map((item) => (
+                        <tr key={item.code} className="hover:bg-[var(--bg)]/50 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-emerald-500">{item.code}</td>
+                          <td className="py-3 px-3 font-medium">{item.code_name}</td>
+                          <td className="py-3 px-3 font-mono text-[var(--fg-muted)]">{item.sort_order}</td>
+                          <td className="py-3 px-3">
+                            <button
+                              onClick={() => handleToggleCodeActive(item)}
+                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-bold transition-colors ${
+                                item.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-500/10 text-gray-500'
+                              }`}
+                            >
+                              {item.is_active ? (
+                                <>
+                                  <CheckCircle2 className="h-3 w-3" /> 사용중
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="h-3 w-3" /> 중지됨
+                                </>
+                              )}
+                            </button>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button onClick={() => handleDeleteCode(item)} className="text-red-500 hover:text-red-700 p-1" title="삭제"><Trash2 className="h-4 w-4" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

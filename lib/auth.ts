@@ -16,10 +16,14 @@ export async function signInWithGoogle(rememberMe: boolean) {
     }
   }
 
+  const redirectUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/dashboard`
+    : 'https://kliogram.vercel.app/dashboard';
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/dashboard`,
+      redirectTo: redirectUrl,
     },
   });
 

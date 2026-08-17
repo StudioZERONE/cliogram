@@ -30,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
 
 # vercel
@@ -40,8 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Sensitive investment & data files
-migration_data.sql
+# Sensitive SQL files and sql folder
+sql/
+sql/*
+*.sql
 *.csv
 scratch/
 .env.local
