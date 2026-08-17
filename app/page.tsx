@@ -4,7 +4,27 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { signInWithGoogle, checkSessionExpiry } from '@/lib/auth';
-import { AlertCircle, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertCircle, ShieldCheck } from 'lucide-react';
+
+function parseErrorMessage(rawError: string): string {
+  if (!rawError) return '로그인 처리 중 오류가 발생했습니다.';
+  const lower = rawError.toLowerCase();
+
+  if (lower.includes('unsupported provider') || lower.includes('provider_not_enabled') || lower.includes('not enabled')) {
+    return 'Supabase 프로젝트에서 Google 로그인(Provider)이 활성화되어 있지 않거나 OAuth Key 설정이 완료되지 않았습니다.';
+  }
+  if (lower.includes('access_denied') || lower.includes('cancelled')) {
+    return 'Google 로그인 요청이 취소되었거나 거부되었습니다.';
+  }
+  if (lower.includes('network') || lower.includes('failed to fetch')) {
+    return '네트워크 연결이 일시적으로 원활하지 않습니다. 인터넷 연결을 확인해 주세요.';
+  }
+  if (lower.includes('invalid_client') || lower.includes('client_id')) {
+    return 'Google OAuth Client ID 설정이 올바르지 않습니다.';
+  }
+
+  return rawError;
+}
 
 export default function IndexPage() {
   const router = useRouter();
@@ -15,12 +35,21 @@ export default function IndexPage() {
 
   useEffect(() => {
     async function checkAuth() {
-      // URL Query params error check
       if (typeof window !== 'undefined') {
+        // 1. Search Query String 에러 파싱
         const urlParams = new URLSearchParams(window.location.search);
-        const errParam = urlParams.get('error') || urlParams.get('error_description');
-        if (errParam) {
-          setErrorMessage(`로그인에 실패했습니다: ${errParam}`);
+        const errQuery = urlParams.get('error_description') || urlParams.get('error') || urlParams.get('msg');
+
+        // 2. Hash Parameter 에러 파싱 (#error_description=...)
+        let errHash = '';
+        if (window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          errHash = hashParams.get('error_description') || hashParams.get('error') || hashParams.get('msg') || '';
+        }
+
+        const rawErr = errQuery || errHash;
+        if (rawErr) {
+          setErrorMessage(parseErrorMessage(decodeURIComponent(rawErr)));
         }
       }
 
@@ -55,8 +84,8 @@ export default function IndexPage() {
       }
     } catch (err: unknown) {
       console.error('Google 로그인 에러:', err);
-      const msg = err instanceof Error ? err.message : '로그인 처리 중 오류가 발생했습니다. 다시 시도해 주세요.';
-      setErrorMessage(msg);
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      setErrorMessage(parseErrorMessage(rawMsg));
       setLoading(false);
     }
   };
@@ -155,8 +184,8 @@ export default function IndexPage() {
             >
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="font-bold">로그인 오류가 발생했습니다</p>
-                <p className="opacity-90">{errorMessage}</p>
+                <p className="font-bold">로그인 안내 및 오류</p>
+                <p className="opacity-90 leading-relaxed">{errorMessage}</p>
               </div>
             </div>
           )}
