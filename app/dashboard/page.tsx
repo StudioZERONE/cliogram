@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { supabase } from '@/lib/supabase';
@@ -563,11 +564,8 @@ export default function DashboardPage() {
         <div className="max-w-screen-xl mx-auto flex items-center justify-between py-3.5 md:py-4">
           {/* Logo */}
           <div className="flex items-center gap-2.5 md:gap-3">
-            <div
-              className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center font-bold text-sm md:text-base shadow-sm"
-              style={{ background: 'var(--accent)', color: '#ffffff' }}
-            >
-              K
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl overflow-hidden shadow-md shrink-0">
+              <Image src="/icon.svg" alt="KLIOGRAM Forest Logo" width={36} height={36} className="w-full h-full object-cover" priority />
             </div>
             <span className="font-bold tracking-tight text-base md:text-lg" style={{ color: 'var(--text)' }}>
               KLIOGRAM

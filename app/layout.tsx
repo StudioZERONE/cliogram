@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'KLIOGRAM | 주식 매매 & 배당금 관리',
-  description: '실시간 환율 연동 스마트 주식 매매 내역 및 배당금 관리 대시보드',
+  title: 'KLIOGRAM | 고요히 흘러 마침내 숲이 될 하루',
+  description: '고요히 흘러 마침내 숲이 될 하루 - 실시간 환율 연동 자산, 매매, 배당금 및 자금 흐름 관리 대시보드',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -24,12 +24,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/icon.svg',
+    shortcut: '/icon.svg',
     apple: '/icon.svg',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#ffffff',
+  themeColor: '#052e16',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -45,6 +46,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon.svg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
