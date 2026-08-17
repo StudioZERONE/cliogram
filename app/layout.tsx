@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import { Providers } from './providers';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'KLIOGRAM',
   },
   icons: {
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -42,16 +43,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full">
+    <html lang="ko" className="h-full" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icon.svg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-full bg-slate-950 text-slate-100 antialiased selection:bg-blue-500 selection:text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-full font-sans antialiased`}
+        style={{ background: 'var(--bg)', color: 'var(--text)' }}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
