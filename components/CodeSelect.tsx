@@ -49,17 +49,17 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
 
   return (
     <div ref={containerRef} className={`relative inline-block w-full text-left ${className}`}>
-      {/* Custom Combobox Trigger Button */}
+      {/* Custom Combobox Trigger Button with text-left (Requirement 3) */}
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm font-medium text-[var(--fg)] shadow-xs transition-all cursor-pointer hover:border-[var(--accent)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-base font-medium text-[var(--fg)] shadow-xs transition-colors cursor-pointer hover:border-[var(--accent)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:cursor-not-allowed disabled:opacity-50 ${
           isOpen ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20' : ''
         }`}
       >
-        <span className="truncate text-center w-full">{displayLabel}</span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--accent)]' : ''}`} />
+        <span className="truncate text-left w-full">{displayLabel}</span>
+        <ChevronDown className={`h-4.5 w-4.5 shrink-0 text-[var(--fg-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--accent)]' : ''}`} />
       </button>
 
       {/* Custom Dropdown Popover */}
@@ -72,14 +72,14 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
                 key={item.code}
                 type="button"
                 onClick={() => handleSelect(item.code)}
-                className={`flex w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors cursor-pointer ${
+                className={`flex w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-base font-medium transition-colors cursor-pointer ${
                   isSelected
                     ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
                     : 'text-[var(--fg)] hover:bg-[var(--bg)]'
                 }`}
               >
-                <span className="text-center w-full">{item.code_name}</span>
-                {isSelected && <Check className="h-4 w-4 text-emerald-500 shrink-0" />}
+                <span className="text-left w-full">{item.code_name}</span>
+                {isSelected && <Check className="h-4.5 w-4.5 text-emerald-500 shrink-0" />}
               </button>
             );
           })}

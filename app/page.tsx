@@ -1,268 +1,149 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useTheme } from 'next-themes';
+import { Sun, Moon, Monitor, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { signInWithGoogle, checkSessionExpiry, signOutUser } from '@/lib/auth';
-import { AlertCircle, ShieldCheck, ArrowRight, LogOut, Trees } from 'lucide-react';
-
-function parseErrorMessage(rawError: string): string {
-  if (!rawError) return '로그인 처리 중 오류가 발생했습니다.';
-  const lower = rawError.toLowerCase();
-
-  if (lower.includes('unsupported provider') || lower.includes('provider_not_enabled') || lower.includes('not enabled')) {
-    return 'Supabase 프로젝트에서 Google 로그인(Provider)이 활성화되어 있지 않거나 OAuth Key 설정이 완료되지 않았습니다.';
-  }
-  if (lower.includes('access_denied') || lower.includes('cancelled')) {
-    return 'Google 로그인 요청이 취소되었거나 거부되었습니다.';
-  }
-  if (lower.includes('network') || lower.includes('failed to fetch')) {
-    return '네트워크 연결이 일시적으로 원활하지 않습니다. 인터넷 연결을 확인해 주세요.';
-  }
-  if (lower.includes('invalid_client') || lower.includes('client_id')) {
-    return 'Google OAuth Client ID 설정이 올바르지 않습니다.';
-  }
-
-  return rawError;
-}
+import { signInWithGoogle } from '@/lib/auth';
 
 export default function IndexPage() {
-  const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [rememberMe, setRememberMe] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const { theme, setTheme } = useTheme();
+  const [userNickname, setUserNickname] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState<boolean>(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    async function checkAuth() {
-      if (typeof window !== 'undefined') {
-        // 1. Search Query String 에러 파싱
-        const urlParams = new URLSearchParams(window.location.search);
-        const errQuery = urlParams.get('error_description') || urlParams.get('error') || urlParams.get('msg');
-
-        // 2. Hash Parameter 에러 파싱 (#error_description=...)
-        let errHash = '';
-        if (window.location.hash) {
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          errHash = hashParams.get('error_description') || hashParams.get('error') || hashParams.get('msg') || '';
-        }
-
-        const rawErr = errQuery || errHash;
-        if (rawErr) {
-          setErrorMessage(parseErrorMessage(decodeURIComponent(rawErr)));
-        }
-      }
-
-      // Check session expiry (30 days logic)
-      const valid = await checkSessionExpiry();
-      if (valid) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setCurrentUser(user);
-        }
-      }
-
-      setCheckingAuth(false);
+    // Check URL parameters for OAuth errors
+    const hash = window.location.hash;
+    const search = window.location.search;
+    if (hash.includes('error') || search.includes('error')) {
+      setAuthError('구글 인증 처리 중 오류가 발생했거나 취소되었습니다. 다시 시도해주세요.');
     }
 
-    checkAuth();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserNickname(user.user_metadata?.full_name || user.email?.split('@')[0] || '회원');
+      }
+      setLoading(false);
+    });
   }, []);
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setErrorMessage(null);
-
+  const handleLogin = async () => {
+    setAuthError(null);
     try {
-      if (!navigator.onLine) {
-        throw new Error('네트워크 연결이 되어있지 않습니다. 인터넷 연결을 확인해 주세요.');
-      }
-
-      const { error } = await signInWithGoogle(rememberMe);
-      if (error) {
-        throw error;
-      }
-    } catch (err: unknown) {
-      console.error('Google 로그인 에러:', err);
-      const rawMsg = err instanceof Error ? err.message : String(err);
-      setErrorMessage(parseErrorMessage(rawMsg));
-      setLoading(false);
+      await signInWithGoogle(rememberMe);
+    } catch (err: any) {
+      setAuthError(err.message || '인증 로그인 중 오류가 발생했습니다.');
     }
   };
 
-  const handleLogout = async () => {
-    setLoading(true);
-    await signOutUser();
-    setCurrentUser(null);
-    setLoading(false);
-  };
-
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 transition-colors duration-200"
-      style={{ background: 'var(--bg)' }}
-    >
-      <main className="w-full max-w-md space-y-8 animate-fade-in-up">
-        {/* Header Logo & Title */}
-        <div className="text-center space-y-3">
-          <div className="relative w-16 h-16 md:w-20 md:h-20 mx-auto rounded-3xl overflow-hidden shadow-xl transition-transform duration-300 hover:scale-105">
-            <Image
-              src="/icon.svg"
-              alt="KLIOGRAM Forest Logo"
-              width={80}
-              height={80}
-              className="w-full h-full object-cover"
-              priority
-            />
+    <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
+      {/* Top Header Bar */}
+      <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/40 border border-emerald-500/30 overflow-hidden shadow-xs shrink-0">
+            <Image src="/icon.svg" alt="KLIOGRAM Logo" width={32} height={32} className="h-8 w-8 object-contain" priority />
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight" style={{ color: 'var(--text)' }}>
-            KLIOGRAM
-          </h1>
-          <p className="text-sm md:text-base font-semibold max-w-xs sm:max-w-sm mx-auto" style={{ color: 'var(--text-sub)' }}>
-            “고요히 흘러 마침내 숲이 될 하루”
-          </p>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-emerald-500">KLIOGRAM</h1>
+            <p className="text-xs font-medium text-[var(--fg-muted)]">개인자산 관리 서비스</p>
+          </div>
         </div>
 
-        {/* Login Box Container */}
-        <div
-          className="rounded-3xl p-6 sm:p-8 space-y-6 transition-all duration-200"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-lg)',
-          }}
-        >
-          {currentUser ? (
-            /* ── 로그인 상태일 때 ───────────────────────────── */
-            <div className="space-y-6 animate-fade-in">
-              <div className="p-4 rounded-2xl border text-center space-y-2" style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-border)' }}>
-                <Trees className="w-6 h-6 mx-auto text-emerald-500" />
-                <div>
-                  <p className="text-base font-bold" style={{ color: 'var(--text)' }}>
-                    {currentUser.user_metadata?.full_name || currentUser.email} 님
-                  </p>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-sub)' }}>
-                    현재 로그인되어 있습니다.
-                  </p>
-                </div>
-              </div>
+        {/* Theme Switcher Toggle */}
+        <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
+          <button
+            onClick={() => setTheme('light')}
+            className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'light' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+            title="White Mode"
+          >
+            <Sun className="h-4.5 w-4.5" />
+          </button>
+          <button
+            onClick={() => setTheme('dark')}
+            className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'dark' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+            title="Dark Mode"
+          >
+            <Moon className="h-4.5 w-4.5" />
+          </button>
+          <button
+            onClick={() => setTheme('system')}
+            className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'system' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+            title="System Mode"
+          >
+            <Monitor className="h-4.5 w-4.5" />
+          </button>
+        </div>
+      </header>
 
-              {/* 대시보드 이동 버튼 */}
-              <button
-                type="button"
-                onClick={() => router.push('/dashboard')}
-                className="w-full py-3.5 px-4 rounded-2xl text-sm md:text-base font-bold flex items-center justify-center gap-2 text-white shadow-md transition-all duration-150 active:scale-[0.99] hover:opacity-95"
-                style={{ background: 'var(--accent)' }}
+      {/* Main Hero & Auth Card Section */}
+      <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-950/40 border border-emerald-500/30 mb-4">
+              <Image src="/icon.svg" alt="Logo" width={44} height={44} className="h-11 w-11 object-contain" />
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight">KLIOGRAM</h2>
+            <p className="text-sm font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
+          </div>
+
+          {authError && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs font-semibold text-red-600 dark:text-red-400">
+              {authError}
+            </div>
+          )}
+
+          {!loading && userNickname ? (
+            <div className="space-y-4 pt-2">
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">인증된 회원</p>
+                <p className="text-base font-bold text-[var(--fg)] mt-1">{userNickname}님, 환영합니다!</p>
+              </div>
+              <Link
+                href="/dashboard"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white transition-colors shadow-xs hover:bg-emerald-500 cursor-pointer"
               >
                 <span>대시보드로 이동</span>
-                <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-
-              {/* 다른 계정으로 로그인 (로그아웃) */}
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl text-xs md:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-150 text-zinc-500 hover:text-rose-500"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>로그아웃 후 다른 계정으로 로그인</span>
-              </button>
+                <ArrowRight className="h-5 w-5" />
+              </Link>
             </div>
           ) : (
-            /* ── 비로그인 상태일 때 ─────────────────────────── */
-            <div className="space-y-6 animate-fade-in">
-              <div className="space-y-1 text-center">
-                <h2 className="text-lg md:text-xl font-bold" style={{ color: 'var(--text)' }}>
-                  시작하기
-                </h2>
-                <p className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Google 계정으로 안전하게 로그인하세요.
-                </p>
-              </div>
-
-              {/* Google SSO Login Button */}
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full py-3.5 px-4 rounded-2xl text-sm md:text-base font-bold flex items-center justify-center gap-3 transition-all duration-150 shadow-sm border hover:shadow-md active:scale-[0.99] disabled:opacity-50"
-                style={{
-                  background: 'var(--surface-sub)',
-                  borderColor: 'var(--border-hi)',
-                  color: 'var(--text)',
-                }}
-              >
-                {/* Google Icon SVG */}
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span>{loading ? '로그인 처리 중...' : 'Google 계정으로 로그인'}</span>
-              </button>
-
-              {/* Error Message Box (Under Login Button) */}
-              {errorMessage && (
-                <div
-                  className="p-4 rounded-2xl border flex items-start gap-3 text-xs md:text-sm animate-fade-in"
-                  style={{
-                    background: 'var(--danger-bg)',
-                    borderColor: 'rgba(239, 68, 68, 0.3)',
-                    color: 'var(--danger)',
-                  }}
-                >
-                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-bold">로그인 안내 및 오류</p>
-                    <p className="opacity-90 leading-relaxed">{errorMessage}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Remember Me Checkbox */}
-              <div className="flex items-center justify-between pt-1 text-xs md:text-sm">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none" style={{ color: 'var(--text-sub)' }}>
+            <div className="space-y-5 pt-2">
+              <div className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                    className="h-4 w-4 rounded-md border-[var(--border)] text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                   />
-                  <span className="font-semibold">30일간 자동 로그인 유지</span>
+                  <span className="font-semibold">30일간 로그인 유지 (Remember Me)</span>
                 </label>
-                <span className="text-[11px] text-zinc-400">보안 세션 적용</span>
+              </div>
+
+              <button
+                onClick={handleLogin}
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-3.5 text-base font-bold text-[var(--fg)] transition-all hover:border-emerald-500 cursor-pointer shadow-xs"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>Google 계정으로 계속하기</span>
+              </button>
+
+              <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--fg-muted)]">
+                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                <span>Google OAuth 2.0 보안 인증이 적용됩니다</span>
               </div>
             </div>
           )}
-        </div>
-
-        {/* Security Footer Notice */}
-        <div className="flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <ShieldCheck className="w-4 h-4 text-emerald-500" />
-          <span>보안 인증 및 SSL 암호화 적용</span>
         </div>
       </main>
     </div>
