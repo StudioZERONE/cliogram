@@ -69,7 +69,11 @@ export default function TradesPage() {
   }, [router]);
 
   const fetchTrades = async () => {
-    const { data } = await supabase.from('trades').select('*').order('trade_date', { ascending: false });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Explicitly filter by user_id to prevent unassigned (user_id IS NULL) data leak
+    const { data } = await supabase.from('trades').select('*').eq('user_id', user.id).order('trade_date', { ascending: false });
     if (data) setTrades(data as TradeRecord[]);
   };
 

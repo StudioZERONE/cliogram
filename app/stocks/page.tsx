@@ -48,7 +48,11 @@ export default function StocksPage() {
   }, [router]);
 
   const fetchStocks = async () => {
-    const { data } = await supabase.from('stocks').select('*').order('name', { ascending: true });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Explicitly filter by user_id
+    const { data } = await supabase.from('stocks').select('*').eq('user_id', user.id).order('name', { ascending: true });
     if (data) setStocks(data as StockRecord[]);
   };
 

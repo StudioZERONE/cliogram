@@ -36,16 +36,23 @@ export function CountsProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCounts = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCounts({ tradesCount: 0, dividendsCount: 0, stocksCount: 0 });
+        return;
+      }
+
+      // Explicitly filter counts by user_id
       const [tRes, dRes, sRes] = await Promise.all([
-        supabase.from('trades').select('*', { count: 'exact', head: true }),
-        supabase.from('dividends').select('*', { count: 'exact', head: true }),
-        supabase.from('stocks').select('*', { count: 'exact', head: true })
+        supabase.from('trades').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('dividends').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('stocks').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
       ]);
 
       const newCounts = {
-        tradesCount: tRes.count ?? counts.tradesCount,
-        dividendsCount: dRes.count ?? counts.dividendsCount,
-        stocksCount: sRes.count ?? counts.stocksCount
+        tradesCount: tRes.count ?? 0,
+        dividendsCount: dRes.count ?? 0,
+        stocksCount: sRes.count ?? 0
       };
 
       setCounts(newCounts);

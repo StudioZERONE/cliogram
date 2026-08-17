@@ -59,10 +59,14 @@ export default function DashboardPage() {
   }, [router]);
 
   const fetchData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Explicitly filter by current user's user_id to isolate data
     const [tradesRes, divRes, stocksRes] = await Promise.all([
-      supabase.from('trades').select('*').order('trade_date', { ascending: false }),
-      supabase.from('dividends').select('*').order('payment_date', { ascending: false }),
-      supabase.from('stocks').select('*').order('name', { ascending: true })
+      supabase.from('trades').select('*').eq('user_id', user.id).order('trade_date', { ascending: false }),
+      supabase.from('dividends').select('*').eq('user_id', user.id).order('payment_date', { ascending: false }),
+      supabase.from('stocks').select('*').eq('user_id', user.id).order('name', { ascending: true })
     ]);
 
     if (tradesRes.data) setTrades(tradesRes.data as TradeRecord[]);
@@ -70,7 +74,6 @@ export default function DashboardPage() {
     if (stocksRes.data) setStocks(stocksRes.data as StockRecord[]);
   };
 
-  // Prevent flash of unauthenticated content completely
   if (isAuthChecking) {
     return <div className="min-h-screen bg-[var(--bg)]" />;
   }
