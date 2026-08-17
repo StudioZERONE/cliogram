@@ -1,6 +1,25 @@
--- KLIOGRAM PostgreSQL DDL Script for Supabase
+-- =========================================================
+-- KLIOGRAM DATABASE RESET & MIGRATION SCRIPT
+-- =========================================================
 
--- 1. profiles (회원 프로필 확장 테이블)
+-- 1. DROP EXISTING TABLES (RESET)
+DROP TABLE IF EXISTS public.trades CASCADE;
+DROP TABLE IF EXISTS public.dividends CASCADE;
+DROP TABLE IF EXISTS public.stocks CASCADE;
+DROP TABLE IF EXISTS public.exchange_rates CASCADE;
+
+-- 2. CREATE TABLES WITH FULL SCHEMA
+CREATE TABLE public.stocks (
+  ticker TEXT PRIMARY KEY,
+  sort_code TEXT,
+  name TEXT NOT NULL,
+  sort_name TEXT,
+  type TEXT,
+  currency TEXT DEFAULT 'USD',
+  market TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
@@ -10,79 +29,720 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   user_level INTEGER DEFAULT NULL
 );
 
--- 2. trades (매매 내역 테이블)
-CREATE TABLE IF NOT EXISTS public.trades (
+CREATE TABLE public.trades (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   trade_date DATE NOT NULL,
+  ticker TEXT REFERENCES public.stocks(ticker) ON DELETE SET NULL,
   stock_name TEXT NOT NULL,
   trade_type TEXT NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
   quantity NUMERIC NOT NULL CHECK (quantity > 0),
   price NUMERIC NOT NULL CHECK (price >= 0),
-  currency TEXT NOT NULL CHECK (currency IN ('KRW', 'USD')),
+  currency TEXT NOT NULL CHECK (currency IN ('KRW', 'USD', 'EUR')),
+  exchange_rate NUMERIC DEFAULT 1,
+  total_amount NUMERIC,
+  total_amount_krw NUMERIC,
   fee NUMERIC DEFAULT 0,
   tax NUMERIC DEFAULT 0,
+  foreign_fee NUMERIC DEFAULT 0,
+  notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. dividends (배당 내역 테이블)
-CREATE TABLE IF NOT EXISTS public.dividends (
+CREATE TABLE public.dividends (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   payment_date DATE NOT NULL,
+  ticker TEXT REFERENCES public.stocks(ticker) ON DELETE SET NULL,
   stock_name TEXT NOT NULL,
-  amount NUMERIC NOT NULL CHECK (amount > 0),
+  amount NUMERIC NOT NULL CHECK (amount >= 0),
   tax NUMERIC DEFAULT 0,
-  currency TEXT NOT NULL CHECK (currency IN ('KRW', 'USD')),
+  net_amount_krw NUMERIC DEFAULT 0,
+  currency TEXT NOT NULL CHECK (currency IN ('KRW', 'USD', 'EUR')),
+  exchange_rate NUMERIC DEFAULT 1,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 4. exchange_rates (환율 정보 캐싱 테이블)
-CREATE TABLE IF NOT EXISTS public.exchange_rates (
+CREATE TABLE public.exchange_rates (
   rate_date DATE PRIMARY KEY,
   usd_krw NUMERIC NOT NULL,
+  eur_krw NUMERIC DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 5. Google SSO 로그인 시 profiles 자동 생성 트리거
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, nickname, created_at, last_logout_at, user_level)
-  VALUES (
-    new.id,
-    new.email,
-    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', new.email),
-    now(),
-    NULL,
-    NULL
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    nickname = COALESCE(EXCLUDED.nickname, profiles.nickname);
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- 6. Row Level Security (RLS) 활성화
+ALTER TABLE public.stocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dividends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exchange_rates ENABLE ROW LEVEL SECURITY;
 
--- RLS 정책 설정
-CREATE POLICY "Public profiles are viewable by owner" ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Public stocks policy" ON public.stocks FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public profiles policy" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public trades policy" ON public.trades FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public dividends policy" ON public.dividends FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public exchange_rates policy" ON public.exchange_rates FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Users can update own profile" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Users can manage own trades" ON public.trades
-  FOR ALL USING (auth.uid() = user_id);
+-- 3. INSERT STOCKS DATA
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('AAPL', 'A01', 'Apple', 'A01.Apple', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('MSFT', 'A02', 'Microsoft', 'A02.Microsoft', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('NVDA', 'A03', 'NVIDIA', 'A03.NVIDIA', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('GOOG', 'A04', 'Google', 'A04.Google', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('AVGO', 'A09', 'Broadcom', 'A09.Broadcom', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('QQQ', 'A10', 'QQQ', 'A10.QQQ', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('AMD', 'A12', 'AMD', 'A12.AMD', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('005930', 'A14', '삼성전자', 'A14.삼성전자', 'Growth', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('385720', 'A15', 'Time코스피액티브', 'A15.Time코스피액티브', 'Growth', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('O', 'B01', 'RealtyIncome', 'B01.RealtyIncome', 'Dividend', 'USD', 'NYSE') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('SCHD', 'B02', 'SCHD', 'B02.SCHD', 'Dividend', 'USD', 'NYSEARCA') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('JEPI', 'B03', 'JEPI', 'B03.JEPI', 'Dividend', 'USD', 'NYSEARCA') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('MAIN', 'B06', 'Main', 'B06.Main', 'Dividend', 'USD', 'NYSE') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('480020', 'B07', 'Ace미국빅테크7', 'B07.Ace미국빅테크7', 'Dividend', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('AIPI', 'Y09', 'REX AI 커버드콜', 'Y09.REX AI 커버드콜', 'Dividend', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('490590', 'D01', 'Rise미국AI밸류체인', 'D01.Rise미국AI밸류체인', 'ISA', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('491620', 'D02', 'Rise미국테크100', 'D02.Rise미국테크100', 'ISA', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('441640', 'D03', 'Kodex미국배당커버드콜', 'D03.Kodex미국배당커버드콜', 'ISA', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('478150', 'D04', 'Time글로벌우주방산IMEFOLIO', 'D04.Time글로벌우주방산IMEFOLIO', 'ISA', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('455890', 'T01', 'Rise머니마켓', 'T01.Rise머니마켓', 'Save', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('DHER', 'X05', 'DeliveryHero', 'X05.DeliveryHero', 'Old.Growth', 'EUR', 'ETR') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('NFLX', 'X06', 'Netflix', 'X06.Netflix', 'Old.Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('DIS', 'X07', 'Disney', 'X07.Disney', 'Old.Growth', 'USD', 'NYSE') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('035720', 'X08', 'Kakao', 'X08.Kakao', 'Old.Growth', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('PLTR', 'X11', 'Palantir', 'X11.Palantir', 'Growth', 'USD', 'NASDAQ') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('035420', 'X13', '네이버', 'X13.네이버', 'Growth', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('TSLY', 'Y04', 'TSLY', 'Y04.TSLY', 'Old.Dividend', 'USD', 'NYSEARCA') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('DOW', 'Y05', 'Dow', 'Y05.Dow', 'Old.Dividend', 'USD', 'NYSE') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('CONY', 'Y06', 'CONY', 'Y06.CONY', 'Dividend', 'USD', 'NYSEARCA') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('0131V0', 'Y07', '1Q미국우주항공', 'Y07.1Q미국우주항공', 'ISA', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('292150', 'E01', 'Tiger코리아Top10', 'E01.Tiger코리아Top10', 'RIA', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
+INSERT INTO public.stocks (ticker, sort_code, name, sort_name, type, currency, market) VALUES ('495050', 'E02', 'Rise코리아밸류업', 'E02.Rise코리아밸류업', 'RIA', 'KRW', 'KRX') ON CONFLICT (ticker) DO NOTHING;
 
-CREATE POLICY "Users can manage own dividends" ON public.dividends
-  FOR ALL USING (auth.uid() = user_id);
+-- 4. INSERT TRADES DATA
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-03-10', 'DHER', 'DHER (DeliveryHero)', 'BUY', 3218.0, 103.85, 'EUR', 1354.49, 334189.3, 452656064.957, 0.0, 0.0, 0.0, '해외대체입고. 거래단가는 추정임');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-03-05', 'AAPL', 'AAPL (Apple)', 'BUY', 1148.0, 119.1929, 'USD', 1127.49, 136833.4492, 154278345.6385, 0.0, 0.0, 342.08, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-03-08', 'NFLX', 'NFLX (Netflix)', 'BUY', 50.0, 513.45, 'USD', 1140.23, 25672.5, 29272554.675, 0.0, 0.0, 38.5, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-03-09', 'DIS', 'DIS (Disney)', 'BUY', 143.0, 199.0, 'USD', 1134.91, 28457.0, 32296133.87, 0.0, 0.0, 42.68, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-08-04', 'NFLX', 'NFLX (Netflix)', 'SELL', 50.0, 513.0, 'USD', 1144.06, 25650.0, 29345139.0, 0.0, 0.0, 38.6, '손절');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-08-04', 'AAPL', 'AAPL (Apple)', 'BUY', 2.0, 147.13, 'USD', 1144.06, 294.26, 336651.0956, 0.0, 0.0, 0.44, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-08-04', 'DIS', 'DIS (Disney)', 'SELL', 143.0, 172.6, 'USD', 1144.06, 24681.8, 28237460.108, 0.0, 0.0, 37.15, '손절');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-08-04', 'DHER', 'DHER (DeliveryHero)', 'SELL', 218.0, 131.2, 'EUR', 1352.97, 28601.6, 38697106.752, 0.0, 0.0, 85.8, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-08-24', '035720', '035720 (Kakao)', 'BUY', 250.0, 147000.0, 'KRW', 1, 36750000.0, 36750000.0, 49751.0, 0.0, 0.0, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-09-01', 'DHER', 'DHER (DeliveryHero)', 'SELL', 500.0, 127.45, 'EUR', 1368.09, 63725.0, 87181535.25, 0.0, 0.0, 191.17, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-09-01', 'DHER', 'DHER (DeliveryHero)', 'SELL', 500.0, 127.5, 'EUR', 1368.09, 63750.0, 87215737.5, 0.0, 0.0, 191.25, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-09-01', 'DHER', 'DHER (DeliveryHero)', 'SELL', 500.0, 127.3, 'EUR', 1368.09, 63650.0, 87078928.5, 0.0, 0.0, 190.95, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-09-01', 'DHER', 'DHER (DeliveryHero)', 'SELL', 500.0, 127.4, 'EUR', 1368.09, 63700.0, 87147333.0, 0.0, 0.0, 191.1, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-09-07', 'GOOG', 'GOOG (Google)', 'BUY', 50.0, 2879.5374, 'USD', 1161.0, 143976.87, 167157146.07, 0.0, 0.0, 215.96, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-09-07', 'MSFT', 'MSFT (Microsoft)', 'BUY', 500.0, 301.5, 'USD', 1161.0, 150750.0, 175020750.0, 0.0, 0.0, 226.12, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2021-09-14', '035720', '035720 (Kakao)', 'BUY', 300.0, 130000.0, 'KRW', 1, 39000000.0, 39000000.0, 52614.0, 0.0, 0.0, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2022-08-08', 'GOOG', 'GOOG (Google)', 'BUY', 950.0, 0.0, 'USD', 1299.03, 0.0, 0.0, 0.0, 0.0, 0.0, '1:20 액면분할');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2022-08-08', '035720', '035720 (Kakao)', 'SELL', 50.0, 79000.0, 'KRW', 1, 3950000.0, 3950000.0, 7315.0, 9085.0, 0.0, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-06-30', 'DHER', 'DHER (DeliveryHero)', 'SELL', 200.0, 39.08, 'EUR', 1435.08, 7816.0, 11216585.28, 0.0, 0.0, 23.44, '손절');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-06-30', 'DHER', 'DHER (DeliveryHero)', 'SELL', 300.0, 39.015, 'EUR', 1435.08, 11704.5, 16796893.86, 0.0, 0.0, 35.11, '손절');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-06-30', 'DHER', 'DHER (DeliveryHero)', 'SELL', 200.0, 39.03, 'EUR', 1435.08, 7806.0, 11202234.48, 0.0, 0.0, 23.42, '손절');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-06-30', 'DHER', 'DHER (DeliveryHero)', 'SELL', 300.0, 38.9717, 'EUR', 1435.08, 11691.51, 16778252.1708, 0.0, 0.0, 35.08, '손절');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-07-26', 'GOOG', 'GOOG (Google)', 'SELL', 1000.0, 130.3, 'USD', 1275.17, 130300.0, 166154651.0, 0.0, 0.0, 131.35, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-08-31', 'MSFT', 'MSFT (Microsoft)', 'SELL', 500.0, 329.8, 'USD', 1324.64, 164900.0, 218433136.0, 0.0, 0.0, 166.22, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-09-13', 'AAPL', 'AAPL (Apple)', 'SELL', 450.0, 174.44, 'USD', 1329.77, 78498.0, 104384285.46, 0.0, 0.0, 79.12, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-09-15', 'AAPL', 'AAPL (Apple)', 'BUY', 300.0, 174.8, 'USD', 1328.41, 52440.0, 69661820.4, 0.0, 0.0, 52.44, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-09-21', 'O', 'O (RealtyIncome)', 'BUY', 150.0, 53.25, 'USD', 1341.17, 7987.5, 10712595.375, 0.0, 0.0, 7.98, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-09-21', 'SCHD', 'SCHD (SCHD)', 'BUY', 100.0, 71.92, 'USD', 1341.17, 7192.0, 9645694.64, 0.0, 0.0, 7.19, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-09-21', 'JEPI', 'JEPI (JEPI)', 'BUY', 150.0, 54.59, 'USD', 1341.17, 8188.5, 10982170.545, 0.0, 0.0, 8.18, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-09-21', 'TSLY', 'TSLY (TSLY)', 'BUY', 500.0, 13.89, 'USD', 1341.17, 6945.0, 9314425.65, 0.0, 0.0, 6.94, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-12-07', '035720', '035720 (Kakao)', 'SELL', 500.0, 50000.0, 'KRW', 1, 25000000.0, 25000000.0, 34804.0, 50000.0, 0.0, '손절');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-12-04', 'MSFT', 'MSFT (Microsoft)', 'BUY', 400.0, 368.55, 'USD', 1307.8, 147420.0, 192795876.0, 0.0, 0.0, 147.42, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-12-21', 'NVDA', 'NVDA (NVIDIA)', 'BUY', 200.0, 486.0, 'USD', 1291.71, 97200.0, 125554212.0, 0.0, 0.0, 97.2, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2023-12-21', 'TSLY', 'TSLY (TSLY)', 'BUY', 500.0, 12.02, 'USD', 1291.71, 6010.0, 7763177.1, 0.0, 0.0, 6.01, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-02-26', 'TSLY', 'TSLY (TSLY)', 'SELL', 500.0, 0.0, 'USD', 1331.72, 0.0, 0.0, 0.0, 0.0, 0.0, '2:1 액면병합');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-05-30', 'JEPI', 'JEPI (JEPI)', 'BUY', 150.0, 56.26, 'USD', 1375.62, 8439.0, 11608857.18, 0.0, 0.0, 8.43, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-05-30', 'SCHD', 'SCHD (SCHD)', 'BUY', 200.0, 77.105, 'USD', 1375.62, 15421.0, 21213436.02, 0.0, 0.0, 15.42, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-05-30', 'DOW', 'DOW (Dow)', 'BUY', 150.0, 57.445, 'USD', 1375.62, 8616.75, 11853373.635, 0.0, 0.0, 8.61, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-06-03', 'MAIN', 'MAIN (Main)', 'BUY', 150.0, 49.4, 'USD', 1370.79, 7410.0, 10157553.9, 0.0, 0.0, 7.41, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-06-10', 'NVDA', 'NVDA (NVIDIA)', 'BUY', 1800.0, 0.0, 'USD', 1373.96, 0.0, 0.0, 0.0, 0.0, 0.0, '1:10 액면분할');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-06-23', '480020', '480020 (Ace미국빅테크7)', 'BUY', 1500.0, 12025.0, 'KRW', 1, 18037500.0, 18037500.0, 25946.0, 0.0, 0.0, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2024-10-11', 'SCHD', 'SCHD (SCHD)', 'BUY', 600.0, 0.0, 'USD', 1348.34, 0.0, 0.0, 0.0, 0.0, 0.0, '1:3 액면분할');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-01-29', 'AVGO', 'AVGO (Broadcom)', 'BUY', 40.0, 208.99, 'USD', 1443.32, 8359.6, 12065577.872, 0.0, 0.0, 8.35, '');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-02-19', 'NVDA', 'NVDA (NVIDIA)', 'SELL', 200.0, 140.0, 'USD', 1439.98, 28000.0, 40319440.0, 0.0, 0.0, 28.78, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-02-19', 'DOW', 'DOW (Dow)', 'SELL', 150.0, 39.115, 'USD', 1439.98, 5867.25, 8448722.655, 0.0, 0.0, 6.03, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-02-28', 'QQQ', 'QQQ (QQQ)', 'BUY', 30.0, 508.0, 'USD', 1461.18, 15240.0, 22268383.2, 0.0, 0.0, 15.24, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-02-28', 'TSLY', 'TSLY (TSLY)', 'SELL', 500.0, 9.68, 'USD', 1461.18, 4840.0, 7072111.2, 0.0, 0.0, 4.98, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-02-28', 'CONY', 'CONY (CONY)', 'BUY', 2000.0, 9.97, 'USD', 1461.18, 19940.0, 29135929.2, 0.0, 0.0, 19.94, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-07-09', 'NVDA', 'NVDA (NVIDIA)', 'SELL', 800.0, 163.25, 'USD', 1373.0, 130600.0, 179313800.0, 0.0, 0.0, 130.6, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-07-17', '490590', '490590 (Rise미국AI밸류체인)', 'BUY', 853.0, 11585.0, 'KRW', 1, 9882005.0, 9882005.0, 415.0, 0.0, 0.0, 'ISA 2025');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-07-17', '491620', '491620 (Rise미국테크100)', 'BUY', 1000.0, 10110.0, 'KRW', 1, 10110000.0, 10110000.0, 424.0, 0.0, 0.0, 'ISA 2025');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-07-17', '455890', '455890 (Rise머니마켓)', 'BUY', 600.0, 54430.0, 'KRW', 1, 32658000.0, 32658000.0, 44546.0, 0.0, 0.0, '내년 양도소득세 납부용');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-07-22', 'PLTR', 'PLTR (Palantir)', 'BUY', 400.0, 148.8996, 'USD', 1379.78, 59559.84, 82179476.0352, 0.0, 0.0, 29.77, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-07-22', 'AMD', 'AMD (AMD)', 'BUY', 280.0, 154.25, 'USD', 1379.78, 43190.0, 59592698.2, 0.0, 0.0, 21.59, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-08-12', 'AAPL', 'AAPL (Apple)', 'SELL', 500.0, 223.2, 'USD', 1383.09, 111600.0, 154352844.0, 0.0, 0.0, 55.8, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-09-08', '455890', '455890 (Rise머니마켓)', 'BUY', 256.0, 54645.0, 'KRW', 1, 13989120.0, 13989120.0, 20796.0, 0.0, 0.0, '내년 종합소득세 납부용');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-09-24', 'GOOG', 'GOOG (Google)', 'BUY', 200.0, 251.5, 'USD', 1403.65, 50300.0, 70603595.0, 0.0, 0.0, 215.96, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-11-06', '035420', '035420 (네이버)', 'BUY', 250.0, 279000.0, 'KRW', 1, 69750000.0, 69750000.0, 81758.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-12-02', 'CONY', 'CONY (CONY)', 'SELL', 1800.0, 0.0, 'USD', 1467.36, 0.0, 0.0, 0.0, 0.0, 0.0, '10:1 액면병합');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-12-17', '455890', '455890 (Rise머니마켓)', 'BUY', 9.0, 54225.0, 'KRW', 1, 488025.0, 488025.0, 2426.0, 0.0, 0.0, '배당 후 재투자');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-12-22', 'CONY', 'CONY (CONY)', 'SELL', 200.0, 43.4, 'USD', 1476.84, 8680.0, 12818971.2, 0.0, 0.0, 4.33, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2025-12-22', 'AIPI', 'AIPI (REX AI 커버드콜)', 'BUY', 250.0, 41.65, 'USD', 1476.84, 10412.5, 15377596.5, 0.0, 0.0, 5.2, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-01-06', 'NVDA', 'NVDA (NVIDIA)', 'SELL', 50.0, 188.39, 'USD', 1444.96, 9419.5, 13610800.72, 0.0, 0.0, 4.7, 'ISA 준비용');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-01-09', '441640', '441640 (Kodex미국배당커버드콜)', 'BUY', 800.0, 12860.0, 'KRW', 1, 10288000.0, 10288000.0, 16087.0, 0.0, 0.0, 'ISA 2026');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-01-16', '478150', '478150 (Time글로벌우주방산IMEFOLIO)', 'BUY', 269.0, 23560.0, 'KRW', 1, 6337640.0, 6337640.0, 10830.0, 0.0, 0.0, 'ISA 2026');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-01-16', '0131V0', '0131V0 (1Q미국우주항공)', 'BUY', 350.0, 15175.0, 'KRW', 1, 5311250.0, 5311250.0, 9319.0, 0.0, 0.0, 'ISA 2026');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-01-21', '478150', '478150 (Time글로벌우주방산IMEFOLIO)', 'BUY', 1.0, 23330.0, 'KRW', 1, 23330.0, 23330.0, 10830.0, 0.0, 0.0, 'ISA 2026');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-03-05', 'PLTR', 'PLTR (Palantir)', 'SELL', 400.0, 149.8, 'USD', 1479.51, 59920.0, 88652239.2, 0.0, 0.0, 29.96, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-03-09', '035420', '035420 (네이버)', 'SELL', 250.0, 225000.0, 'KRW', 1, 56250000.0, 56250000.0, 65408.0, 112482.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-03-09', '005930', '005930 (삼성전자)', 'BUY', 320.0, 191200.0, 'KRW', 1, 61184000.0, 61184000.0, 71438.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-03-11', '385720', '385720 (Time코스피액티브)', 'BUY', 3000.0, 18800.0, 'KRW', 1, 56400000.0, 56400000.0, 66109.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-03-11', '005930', '005930 (삼성전자)', 'BUY', 180.0, 170000.0, 'KRW', 1, 30600000.0, 30600000.0, 41642.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-01', '0131V0', '0131V0 (1Q미국우주항공)', 'SELL', 350.0, 11855.0, 'KRW', 1, 4149250.0, 4149250.0, 0.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-01', '478150', '478150 (Time글로벌우주방산IMEFOLIO)', 'BUY', 130.0, 21690.0, 'KRW', 1, 2819700.0, 2819700.0, 0.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-01', '490590', '490590 (Rise미국AI밸류체인)', 'BUY', 47.0, 12410.0, 'KRW', 1, 583270.0, 583270.0, 0.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-07', '478150', '478150 (Time글로벌우주방산IMEFOLIO)', 'BUY', 80.0, 22660.0, 'KRW', 1, 1812800.0, 1812800.0, 0.0, 0.0, 0.0, 'Revalancing');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-14', 'NVDA', 'NVDA (NVIDIA)', 'SELL', 179.0, 188.2, 'USD', 1470.41, 33687.8, 49534877.998, 0.0, 0.0, 84.91, 'RIA 적용 대상');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-17', '292150', '292150 (Tiger코리아Top10)', 'BUY', 1000.0, 33000.0, 'KRW', 1, 33000000.0, 33000000.0, 1388.0, 0.0, 0.0, 'RIA 적용 대상');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-17', '495050', '495050 (Rise코리아밸류업)', 'BUY', 590.0, 27730.0, 'KRW', 1, 16360700.0, 16360700.0, 688.0, 0.0, 0.0, 'RIA 적용 대상');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-04-29', 'AIPI', 'AIPI (REX AI 커버드콜)', 'SELL', 250.0, 35.7, 'USD', 1487.38, 8925.0, 13274866.5, 0.0, 0.0, 4.65, '생활비');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-05-19', '455890', '455890 (Rise머니마켓)', 'SELL', 865.0, 54970.0, 'KRW', 1, 47549050.0, 47549050.0, 0.0, 0.0, 0.0, '양도소득세 납부');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-06-04', '478150', '478150 (Time글로벌우주방산IMEFOLIO)', 'BUY', 20.0, 25050.0, 'KRW', 1, 501000.0, 501000.0, 0.0, 0.0, 0.0, '보유수량 끝전 맞추기');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-06-26', 'MSFT', 'MSFT (Microsoft)', 'SELL', 10.0, 366.2, 'USD', 1533.56, 3662.0, 5615896.72, 0.0, 0.0, 1.0, '생활비');
+INSERT INTO public.trades (trade_date, ticker, stock_name, trade_type, quantity, price, currency, exchange_rate, total_amount, total_amount_krw, fee, tax, foreign_fee, notes) VALUES ('2026-07-23', 'MSFT', 'MSFT (Microsoft)', 'SELL', 5.0, 399.39, 'USD', 1475.15, 1996.95, 2945800.7925, 0.0, 0.0, 1.0, '생활비');
+
+-- 5. INSERT DIVIDENDS DATA
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2021-05-14', 'AAPL', 'AAPL', 252.56, 37.89, 241388.0, 'USD', 1124.46);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2021-08-13', 'AAPL', 'AAPL', 253.0, 37.95, 249690.0, 'USD', 1161.08);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2021-11-15', 'AAPL', 'AAPL', 253.0, 37.95, 254514.0, 'USD', 1183.51);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2021-12-10', 'MSFT', 'MSFT', 310.0, 46.5, 310851.0, 'USD', 1179.7);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-02-10', 'AAPL', 'AAPL', 253.0, 37.96, 257908.0, 'USD', 1199.35);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-04-27', '035720', '035720', 29150.0, 0.0, 24670.0, 'KRW', 1266.28);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-05-13', 'AAPL', 'AAPL', 264.5, 39.68, 287401.0, 'USD', 1278.36);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-06-10', 'MSFT', 'MSFT', 310.0, 46.5, 336848.0, 'USD', 1278.36);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-08-12', 'AAPL', 'AAPL', 264.5, 39.68, 292554.0, 'USD', 1301.28);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-09-13', 'MSFT', 'MSFT', 310.0, 46.51, 367165.0, 'USD', 1393.47);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-11-11', 'AAPL', 'AAPL', 264.5, 39.68, 295324.0, 'USD', 1313.6);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2022-12-09', 'MSFT', 'MSFT', 340.0, 51.0, 376616.0, 'USD', 1303.17);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-02-17', 'AAPL', 'AAPL', 264.5, 39.68, 291119.0, 'USD', 1294.9);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-03-10', 'MSFT', 'MSFT', 340.0, 51.0, 381535.0, 'USD', 1320.19);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-04-25', '035720', '035720', 30000.0, 0.0, 25380.0, 'KRW', 1341.0);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-05-19', 'AAPL', 'AAPL', 276.0, 41.4, 310892.0, 'USD', 1325.2);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-06-09', 'MSFT', 'MSFT', 340.0, 51.01, 372005.0, 'USD', 1287.26);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-08-18', 'AAPL', 'AAPL', 276.0, 41.4, 314167.0, 'USD', 1339.16);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-09-15', 'MSFT', 'MSFT', 340.0, 51.0, 383910.0, 'USD', 1328.41);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-10-06', 'JEPI', 'JEPI', 54.5, 8.18, 62219.0, 'USD', 1343.24);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-10-13', 'O', 'O', 38.41, 5.76, 44146.0, 'USD', 1352.09);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-10-16', 'TSLY', 'TSLY', 288.46, 43.27, 330457.0, 'USD', 1347.76);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-11-06', 'JEPI', 'JEPI', 53.84, 8.08, 59356.0, 'USD', 1297.11);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-11-15', 'O', 'O', 38.41, 5.77, 42493.0, 'USD', 1301.86);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-11-16', 'TSLY', 'TSLY', 292.31, 43.85, 321122.0, 'USD', 1292.45);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-11-17', 'AAPL', 'AAPL', 240.0, 36.0, 264078.0, 'USD', 1294.5);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-12-06', 'JEPI', 'JEPI', 58.54, 8.79, 65358.0, 'USD', 1313.72);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-12-12', 'SCHD', 'SCHD', 74.24, 11.14, 82670.0, 'USD', 1310.14);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-12-14', 'TSLY', 'TSLY', 301.96, 45.3, 331584.0, 'USD', 1291.92);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2023-12-15', 'O', 'O', 38.41, 5.76, 41677.0, 'USD', 1276.47);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-01-03', 'JEPI', 'JEPI', 64.18, 9.63, 71435.0, 'USD', 1309.53);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-01-12', 'O', 'O', 38.48, 5.78, 42930.0, 'USD', 1312.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-01-12', 'TSLY', 'TSLY', 556.51, 83.48, 621017.0, 'USD', 1312.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-02-06', 'JEPI', 'JEPI', 45.1, 6.77, 50856.0, 'USD', 1326.79);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-02-16', 'O', 'O', 38.48, 5.78, 43543.0, 'USD', 1331.58);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-02-16', 'TSLY', 'TSLY', 404.61, 60.7, 457944.0, 'USD', 1331.58);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-02-16', 'AAPL', 'AAPL', 240.0, 36.01, 271629.0, 'USD', 1331.58);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-03-06', 'JEPI', 'JEPI', 45.13, 6.77, 50907.0, 'USD', 1327.09);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-03-11', 'TSLY', 'TSLY', 405.46, 60.82, 451665.0, 'USD', 1310.54);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-03-15', 'MSFT', 'MSFT', 300.0, 45.01, 338968.0, 'USD', 1329.34);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-03-18', 'O', 'O', 38.48, 5.78, 43690.0, 'USD', 1336.09);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-03-25', 'SCHD', 'SCHD', 61.11, 9.17, 69554.0, 'USD', 1339.13);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-03-27', 'NVDA', 'NVDA', 8.0, 1.21, 9165.0, 'USD', 1349.8);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-04-04', 'JEPI', 'JEPI', 51.78, 7.77, 59473.0, 'USD', 1351.36);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-04-09', 'TSLY', 'TSLY', 342.06, 51.31, 392088.0, 'USD', 1348.54);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-04-15', 'O', 'O', 38.56, 5.79, 45474.0, 'USD', 1387.67);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-05-07', 'JEPI', 'JEPI', 48.92, 7.34, 56454.0, 'USD', 1357.73);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-05-09', 'TSLY', 'TSLY', 347.11, 52.07, 402848.0, 'USD', 1365.4);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-05-16', 'O', 'O', 38.55, 5.78, 44110.0, 'USD', 1346.04);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-05-16', 'AAPL', 'AAPL', 250.0, 37.5, 286034.0, 'USD', 1346.04);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-05', 'JEPI', 'JEPI', 108.09, 16.22, 125746.0, 'USD', 1368.74);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-07', 'TSLY', 'TSLY', 322.41, 48.36, 377926.0, 'USD', 1379.04);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-13', 'MSFT', 'MSFT', 300.0, 45.01, 350290.0, 'USD', 1373.74);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-14', 'O', 'O', 39.38, 5.91, 46265.0, 'USD', 1382.27);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-14', 'DOW', 'DOW', 105.0, 15.76, 123354.0, 'USD', 1382.27);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-17', 'MAIN', 'MAIN', 36.0, 5.4, 42199.0, 'USD', 1379.06);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-28', 'MAIN', 'MAIN', 45.0, 6.76, 52782.0, 'USD', 1380.28);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-06-28', 'NVDA', 'NVDA', 20.0, 3.0, 23465.0, 'USD', 1380.28);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-07-01', 'SCHD', 'SCHD', 247.24, 37.09, 290726.0, 'USD', 1383.42);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-07-08', 'JEPI', 'JEPI', 99.04, 14.86, 116400.0, 'USD', 1382.75);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-07-09', 'TSLY', 'TSLY', 501.76, 75.27, 589588.0, 'USD', 1382.42);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-07-15', 'O', 'O', 39.46, 5.92, 46409.0, 'USD', 1383.69);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-07-16', 'MAIN', 'MAIN', 36.76, 5.52, 43194.0, 'USD', 1382.64);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-07-17', '480020', '480020', 234000.0, 0.0, 197970.0, 'KRW', 1378.65);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-08-05', 'JEPI', 'JEPI', 86.85, 13.03, 100941.0, 'USD', 1367.4);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-08-09', 'TSLY', 'TSLY', 483.06, 72.46, 559837.0, 'USD', 1363.46);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-08-16', 'O', 'O', 39.46, 5.92, 45244.0, 'USD', 1348.97);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-08-16', 'AAPL', 'AAPL', 250.0, 37.5, 286656.0, 'USD', 1348.97);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-08-16', 'MAIN', 'MAIN', 36.76, 5.52, 42142.0, 'USD', 1348.97);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-08-19', '480020', '480020', 198000.0, 0.0, 198000.0, 'KRW', 1330.88);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-05', 'JEPI', 'JEPI', 119.96, 18.0, 135891.0, 'USD', 1332.79);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-10', 'TSLY', 'TSLY', 409.31, 61.4, 467361.0, 'USD', 1343.34);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-12', 'MSFT', 'MSFT', 300.0, 45.01, 340588.0, 'USD', 1335.69);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-13', 'O', 'O', 39.46, 5.92, 44557.0, 'USD', 1328.46);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-13', 'DOW', 'DOW', 105.0, 15.76, 118552.0, 'USD', 1328.46);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-19', 'MAIN', 'MAIN', 36.76, 5.52, 41475.0, 'USD', 1327.61);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-20', '480020', '480020', 193500.0, 0.0, 193500.0, 'KRW', 1331.49);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-27', 'MAIN', 'MAIN', 45.0, 6.76, 50028.0, 'USD', 1308.26);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-09-30', 'SCHD', 'SCHD', 226.36, 33.96, 253069.0, 'USD', 1315.33);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-10-04', 'NVDA', 'NVDA', 20.0, 3.0, 22887.0, 'USD', 1346.31);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-10-04', 'JEPI', 'JEPI', 117.66, 17.65, 134644.0, 'USD', 1346.31);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-10-08', 'TSLY', 'TSLY', 547.46, 82.12, 624165.0, 'USD', 1341.31);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-10-15', 'O', 'O', 39.53, 5.93, 45803.0, 'USD', 1363.18);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-10-15', 'MAIN', 'MAIN', 36.76, 5.52, 42586.0, 'USD', 1363.18);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-10-17', '480020', '480020', 208500.0, 0.0, 208500.0, 'KRW', 1370.05);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-11-04', 'TSLY', 'TSLY', 299.31, 44.9, 349269.0, 'USD', 1372.86);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-11-05', 'JEPI', 'JEPI', 112.57, 16.89, 131847.0, 'USD', 1378.0);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-11-14', 'AAPL', 'AAPL', 250.0, 37.5, 297676.0, 'USD', 1400.83);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-11-15', 'O', 'O', 39.53, 5.93, 46850.0, 'USD', 1394.35);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-11-18', 'MAIN', 'MAIN', 36.76, 5.52, 43408.0, 'USD', 1389.5);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-11-19', '480020', '480020', 250500.0, 0.0, 232410.0, 'KRW', 1392.16);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-04', 'TSLY', 'TSLY', 610.41, 91.56, 731994.0, 'USD', 1410.8);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-04', 'JEPI', 'JEPI', 120.54, 18.08, 144551.0, 'USD', 1410.8);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-13', 'MSFT', 'MSFT', 332.0, 49.81, 404787.0, 'USD', 1434.45);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-13', 'DOW', 'DOW', 105.0, 15.76, 128010.0, 'USD', 1434.45);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-16', 'O', 'O', 39.53, 5.93, 48093.0, 'USD', 1431.35);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-16', 'MAIN', 'MAIN', 36.76, 5.52, 44715.0, 'USD', 1431.35);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-17', 'SCHD', 'SCHD', 238.06, 35.71, 290660.0, 'USD', 1436.42);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-17', '480020', '480020', 279000.0, 0.0, 236040.0, 'KRW', 1436.42);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-30', 'MAIN', 'MAIN', 45.0, 6.76, 56113.0, 'USD', 1467.39);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2024-12-31', 'NVDA', 'NVDA', 20.0, 3.01, 25089.0, 'USD', 1476.69);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-01-02', 'TSLY', 'TSLY', 643.01, 96.45, 804345.0, 'USD', 1471.65);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-01-06', 'JEPI', 'JEPI', 118.44, 17.77, 146923.0, 'USD', 1459.45);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-01-16', 'O', 'O', 39.61, 5.94, 48933.0, 'USD', 1453.32);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-01-16', 'MAIN', 'MAIN', 37.5, 5.63, 46317.0, 'USD', 1453.32);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-01-17', '480020', '480020', 232500.0, 0.0, 196700.0, 'KRW', 1457.38);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-01-30', 'TSLY', 'TSLY', 358.51, 53.78, 439317.0, 'USD', 1441.66);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-02-06', 'JEPI', 'JEPI', 97.76, 14.67, 119828.0, 'USD', 1442.15);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-02-17', 'AAPL', 'AAPL', 250.0, 37.51, 306260.0, 'USD', 1441.29);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-02-17', 'MAIN', 'MAIN', 37.5, 5.63, 45934.0, 'USD', 1441.29);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-02-17', '480020', '480020', 232500.0, 0.0, 213710.0, 'KRW', 1441.29);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-02-19', 'O', 'O', 39.61, 5.95, 48470.0, 'USD', 1439.98);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-02-24', 'TSLY', 'TSLY', 289.66, 43.45, 351748.0, 'USD', 1428.65);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-03-05', 'JEPI', 'JEPI', 98.3, 14.75, 120565.0, 'USD', 1443.03);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-03-11', 'CONY', 'CONY', 1197.81, 179.67, 1477342.0, 'USD', 1451.02);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-03-14', 'O', 'O', 40.21, 6.03, 49564.0, 'USD', 1450.09);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-03-17', 'MSFT', 'MSFT', 332.0, 49.8, 407071.0, 'USD', 1442.49);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-03-17', 'MAIN', 'MAIN', 37.5, 5.63, 45972.0, 'USD', 1442.49);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-03-18', '480020', '480020', 195000.0, 0.0, 195000.0, 'KRW', 1448.94);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-03-28', 'MAIN', 'MAIN', 45.0, 6.76, 56190.0, 'USD', 1469.4);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-01', 'AVGO', 'AVGO', 23.6, 3.54, 29488.0, 'USD', 1469.97);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-02', 'SCHD', 'SCHD', 223.93, 33.59, 279046.0, 'USD', 1466.04);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-03', 'JEPI', 'JEPI', 122.39, 18.36, 150914.0, 'USD', 1450.68);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-04', 'NVDA', 'NVDA', 18.0, 2.7, 22315.0, 'USD', 1458.51);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-08', 'CONY', 'CONY', 876.21, 131.44, 1106825.0, 'USD', 1486.13);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-15', 'O', 'O', 40.28, 6.05, 48847.0, 'USD', 1427.02);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-15', 'MAIN', 'MAIN', 37.5, 5.63, 45479.0, 'USD', 1427.02);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-04-17', '480020', '480020', 174000.0, 0.0, 174000.0, 'KRW', 1417.41);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-05-02', 'QQQ', 'QQQ', 21.48, 3.23, 25520.0, 'USD', 1398.38);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-05-08', 'JEPI', 'JEPI', 146.38, 21.96, 174667.0, 'USD', 1403.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-05-08', 'CONY', 'CONY', 1302.01, 195.3, 1553655.0, 'USD', 1403.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-05-15', 'O', 'O', 40.28, 6.05, 47820.0, 'USD', 1397.02);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-05-16', 'MAIN', 'MAIN', 37.5, 5.63, 44542.0, 'USD', 1397.62);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-05-19', 'AAPL', 'AAPL', 260.0, 39.01, 306856.0, 'USD', 1388.55);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-05-19', '480020', '480020', 187500.0, 0.0, 187500.0, 'KRW', 1388.55);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-06-04', 'CONY', 'CONY', 1470.21, 220.54, 1700913.0, 'USD', 1361.09);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-06-04', 'JEPI', 'JEPI', 162.01, 24.31, 187422.0, 'USD', 1361.09);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-06-13', 'MSFT', 'MSFT', 332.0, 49.81, 385229.0, 'USD', 1365.14);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-06-13', 'O', 'O', 40.28, 6.05, 46729.0, 'USD', 1365.14);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-06-13', 'MAIN', 'MAIN', 37.5, 5.63, 43507.0, 'USD', 1365.14);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-06-17', '480020', '480020', 193500.0, 0.0, 193500.0, 'KRW', 1380.5);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-01', 'AVGO', 'AVGO', 23.6, 3.54, 27193.0, 'USD', 1355.59);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-01', 'CONY', 'CONY', 1070.81, 160.63, 1233831.0, 'USD', 1355.59);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-01', 'SCHD', 'SCHD', 234.19, 35.13, 269844.0, 'USD', 1355.59);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-02', 'MAIN', 'MAIN', 45.0, 6.76, 51806.0, 'USD', 1354.75);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-03', 'NVDA', 'NVDA', 18.0, 2.71, 20750.0, 'USD', 1357.1);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-03', 'JEPI', 'JEPI', 119.86, 17.98, 138261.0, 'USD', 1357.1);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-17', 'MAIN', 'MAIN', 38.26, 5.74, 45254.0, 'USD', 1391.58);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-16', 'O', 'O', 40.36, 6.06, 47503.0, 'USD', 1384.92);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-17', '480020', '480020', 202500.0, 0.0, 202500.0, 'KRW', 1391.58);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-29', 'CONY', 'CONY', 1590.21, 238.53, 1877294.0, 'USD', 1388.86);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-07-31', 'QQQ', 'QQQ', 17.34, 2.66, 20427.0, 'USD', 1391.51);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-04', '490590', '490590', 123685.0, 0.0, 123685.0, 'KRW', 1383.59);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-04', '491620', '491620', 122000.0, 0.0, 122000.0, 'KRW', 1383.59);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-05', 'JEPI', 'JEPI', 107.32, 16.1, 126484.0, 'USD', 1386.58);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-14', 'AAPL', 'AAPL', 130.0, 19.5, 153360.0, 'USD', 1387.87);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-18', 'O', 'O', 40.36, 6.06, 47571.0, 'USD', 1386.91);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-18', 'MAIN', 'MAIN', 38.26, 5.74, 45102.0, 'USD', 1386.91);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-19', '480020', '480020', 217500.0, 0.0, 217500.0, 'KRW', 1391.34);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-08-24', 'CONY', 'CONY', 687.61, 103.15, 812429.0, 'USD', 1390.05);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-02', '490590', '490590', 132215.0, 0.0, 132215.0, 'KRW', 1395.67);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-02', '491620', '491620', 138000.0, 0.0, 138000.0, 'KRW', 1395.67);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-04', 'JEPI', 'JEPI', 110.48, 16.58, 130808.0, 'USD', 1393.06);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-11', 'MSFT', 'MSFT', 332.0, 49.8, 392399.0, 'USD', 1390.5);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-15', 'O', 'O', 40.36, 6.06, 47540.0, 'USD', 1386.01);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-15', 'MAIN', 'MAIN', 38.26, 5.74, 45073.0, 'USD', 1386.01);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-17', '480020', '480020', 222000.0, 0.0, 187820.0, 'KRW', 1379.69);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-22', 'CONY', 'CONY', 904.41, 135.66, 1068862.0, 'USD', 1390.39);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-26', 'MAIN', 'MAIN', 45.0, 6.76, 53888.0, 'USD', 1409.2);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-30', 'SCHD', 'SCHD', 234.37, 35.16, 279721.0, 'USD', 1404.15);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-09-30', 'AVGO', 'AVGO', 23.6, 3.54, 28167.0, 'USD', 1404.15);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-02', '490590', '490590', 157805.0, 0.0, 157805.0, 'KRW', 1405.63);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-02', '491620', '491620', 150000.0, 0.0, 150000.0, 'KRW', 1405.63);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-11', 'NVDA', 'NVDA', 10.0, 1.5, 12138.0, 'USD', 1428.04);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-11', 'JEPI', 'JEPI', 108.31, 16.25, 131465.0, 'USD', 1428.04);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-16', 'O', 'O', 40.43, 6.07, 48678.0, 'USD', 1416.72);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-17', '480020', '480020', 225000.0, 0.0, 190350.0, 'KRW', 1421.74);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-17', 'CONY', 'CONY', 692.41, 103.87, 836751.0, 'USD', 1421.74);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-24', 'CONY', 'CONY', 186.41, 27.97, 227992.0, 'USD', 1438.98);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-24', 'MAIN', 'MAIN', 38.26, 5.74, 46796.0, 'USD', 1438.98);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-31', 'CONY', 'CONY', 269.01, 40.36, 326711.0, 'USD', 1428.87);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-10-31', 'QQQ', 'QQQ', 20.82, 3.13, 25277.0, 'USD', 1428.87);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-04', '490590', '490590', 201000.0, 0.0, 201000.0, 'KRW', 1440.81);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-04', '491620', '491620', 220074.0, 0.0, 220074.0, 'KRW', 1440.81);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-06', 'JEPI', 'JEPI', 103.91, 15.59, 127967.0, 'USD', 1448.9);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-07', 'CONY', 'CONY', 177.41, 26.62, 219549.0, 'USD', 1455.99);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-14', 'AAPL', 'AAPL', 130.0, 19.51, 160155.0, 'USD', 1449.5);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-14', 'MAIN', 'MAIN', 38.26, 5.74, 47138.0, 'USD', 1449.5);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-14', 'CONY', 'CONY', 166.41, 24.97, 205017.0, 'USD', 1449.5);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-17', 'O', 'O', 40.43, 6.07, 50261.0, 'USD', 1462.79);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-17', '480020', '480020', 246000.0, 0.0, 208120.0, 'KRW', 1462.79);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-11-21', 'CONY', 'CONY', 127.01, 19.06, 158657.0, 'USD', 1469.73);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-01', 'CONY', 'CONY', 131.21, 19.68, 164091.0, 'USD', 1471.27);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-02', '490590', '490590', 193631.0, 0.0, 193631.0, 'KRW', 1468.46);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-02', '491620', '491620', 193000.0, 0.0, 193000.0, 'KRW', 1468.46);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-04', 'JEPI', 'JEPI', 111.19, 16.68, 139249.0, 'USD', 1473.38);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-08', 'CONY', 'CONY', 226.23, 33.94, 282572.0, 'USD', 1469.51);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-11', 'MSFT', 'MSFT', 364.0, 54.61, 455376.0, 'USD', 1471.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-15', 'MAIN', 'MAIN', 38.26, 5.74, 47755.0, 'USD', 1468.48);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-15', 'CONY', 'CONY', 78.03, 11.71, 97390.0, 'USD', 1468.48);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-15', 'GOOG', 'GOOG', 42.0, 6.31, 52410.0, 'USD', 1468.48);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-15', 'O', 'O', 40.43, 6.07, 50457.0, 'USD', 1468.48);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-16', 'SCHD', 'SCHD', 250.39, 37.56, 313443.0, 'USD', 1472.74);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-16', '455890', '455890', 654840.0, 0.0, 592060.0, 'KRW', 1480.78);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-17', '480020', '480020', 249000.0, 0.0, 210660.0, 'KRW', 1475.0);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-19', 'CONY', 'CONY', 102.11, 15.32, 128081.0, 'USD', 1475.76);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-26', 'NVDA', 'NVDA', 10.0, 1.51, 12245.0, 'USD', 1442.33);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-29', 'MAIN', 'MAIN', 45.0, 6.76, 54905.0, 'USD', 1435.81);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-30', 'AIPI', 'AIPI', 302.04, 45.31, 369437.0, 'USD', 1439.01);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2025-12-31', 'AVGO', 'AVGO', 26.0, 3.91, 31912.0, 'USD', 1444.64);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-02', 'QQQ', 'QQQ', 23.83, 3.58, 29212.0, 'USD', 1442.57);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-05', 'JEPI', 'JEPI', 128.13, 19.22, 157436.0, 'USD', 1445.56);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-05', '490590', '490590', 158658.0, 0.0, 158658.0, 'KRW', 1445.56);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-05', '491620', '491620', 158000.0, 0.0, 158000.0, 'KRW', 1445.56);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-15', 'MAIN', 'MAIN', 39.0, 5.85, 48692.0, 'USD', 1468.84);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-16', 'O', 'O', 40.5, 6.08, 50682.0, 'USD', 1472.47);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-19', '480020', '480020', 244500.0, 0.0, 206850.0, 'KRW', 1471.52);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-19', '441640', '441640', 78400.0, 0.0, 78400.0, 'KRW', 1471.52);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-01-30', 'AIPI', 'AIPI', 290.51, 43.58, 358244.0, 'USD', 1450.79);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-03', '490590', '490590', 143304.0, 0.0, 143304.0, 'KRW', 1447.68);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-03', '491620', '491620', 137000.0, 0.0, 137000.0, 'KRW', 1447.68);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-05', 'JEPI', 'JEPI', 103.33, 15.5, 127150.0, 'USD', 1447.68);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-12', 'AAPL', 'AAPL', 130.0, 19.51, 159316.0, 'USD', 1441.9);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-19', 'O', 'O', 40.5, 6.08, 49866.0, 'USD', 1448.75);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-19', 'MAIN', 'MAIN', 39.0, 5.85, 48026.0, 'USD', 1448.75);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-20', '480020', '480020', 231000.0, 0.0, 195430.0, 'KRW', 1445.4);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-20', '441640', '441640', 79200.0, 0.0, 79200.0, 'KRW', 1444.04);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-02-27', 'AIPI', 'AIPI', 259.63, 38.95, 317536.0, 'USD', 1438.9);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-04', '490590', '490590', 129656.0, 0.0, 129656.0, 'KRW', 1461.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-04', '491620', '491620', 126000.0, 0.0, 126000.0, 'KRW', 1461.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-05', 'JEPI', 'JEPI', 105.41, 15.82, 132648.0, 'USD', 1480.61);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-13', 'MSFT', 'MSFT', 364.0, 54.61, 464967.0, 'USD', 1502.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-13', 'MAIN', 'MAIN', 39.0, 5.85, 49819.0, 'USD', 1502.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-16', 'O', 'O', 40.5, 6.08, 51300.0, 'USD', 1490.41);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-17', '480020', '480020', 226500.0, 0.0, 191620.0, 'KRW', 1485.97);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-17', '441640', '441640', 79200.0, 0.0, 79200.0, 'KRW', 1485.97);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-17', 'GOOG', 'GOOG', 42.0, 6.3, 53049.0, 'USD', 1485.97);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-27', 'MAIN', 'MAIN', 45.0, 6.76, 57666.0, 'USD', 1508.0);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-27', 'AIPI', 'AIPI', 255.86, 38.38, 327960.0, 'USD', 1508.0);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-27', 'QQQ', 'QQQ', 21.99, 3.3, 28185.0, 'USD', 1508.0);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-31', 'SCHD', 'SCHD', 231.22, 34.69, 295646.0, 'USD', 1504.33);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-03-31', 'AVGO', 'AVGO', 26.0, 3.9, 33246.0, 'USD', 1504.33);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-02', 'NVDA', 'NVDA', 9.5, 1.43, 12187.0, 'USD', 1510.22);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-02', '490590', '490590', 169747.0, 0.0, 169747.0, 'KRW', 1510.22);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-02', '491620', '491620', 160000.0, 0.0, 160000.0, 'KRW', 1510.22);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-06', 'JEPI', 'JEPI', 126.16, 18.93, 161794.0, 'USD', 1508.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-14', '035420', '035420', 657500.0, 0.0, 556250.0, 'KRW', 1478.92);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-15', 'O', 'O', 40.58, 6.09, 50875.0, 'USD', 1475.06);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-16', 'MAIN', 'MAIN', 39.0, 5.85, 48898.0, 'USD', 1475.06);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-17', '480020', '480020', 225000.0, 0.0, 190350.0, 'KRW', 1478.92);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-17', '441640', '441640', 79200.0, 0.0, 79200.0, 'KRW', 1478.92);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-04-24', 'AIPI', 'AIPI', 262.96, 39.45, 329820.0, 'USD', 1475.64);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-06', '490590', '490590', 336600.0, 0.0, 336600.0, 'KRW', 1445.45);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-06', '491620', '491620', 276000.0, 0.0, 276000.0, 'KRW', 1445.45);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-06', '292150', '292150', 130000.0, 20020.0, 109980.0, 'KRW', 1445.45);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-07', 'JEPI', 'JEPI', 134.29, 20.15, 166164.0, 'USD', 1455.79);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-14', 'AAPL', 'AAPL', 135.0, 20.26, 171381.0, 'USD', 1493.65);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-15', 'MAIN', 'MAIN', 39.0, 5.85, 49646.0, 'USD', 1497.63);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-18', 'O', 'O', 40.58, 6.09, 51477.0, 'USD', 1492.52);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-19', '480020', '480020', 252000.0, 0.0, 213200.0, 'KRW', 1508.16);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-19', '441640', '441640', 80000.0, 0.0, 80000.0, 'KRW', 1508.16);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-05-29', '005930', '005930', 186000.0, 0.0, 157360.0, 'KRW', 1507.46);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-02', '490590', '490590', 290700.0, 0.0, 290700.0, 'KRW', 1517.6);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-02', '491620', '491620', 240000.0, 0.0, 240000.0, 'KRW', 1517.6);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-04', 'JEPI', 'JEPI', 116.77, 17.52, 152182.0, 'USD', 1533.32);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-11', 'MSFT', 'MSFT', 364.0, 54.6, 469685.0, 'USD', 1518.05);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-15', 'O', 'O', 40.58, 6.09, 52213.0, 'USD', 1513.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-15', 'MAIN', 'MAIN', 39.0, 5.86, 50169.0, 'USD', 1513.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-16', 'GOOG', 'GOOG', 44.0, 6.6, 56510.0, 'USD', 1510.96);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-17', '480020', '480020', 583500.0, 0.0, 493650.0, 'KRW', 1525.42);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-17', '441640', '441640', 80800.0, 0.0, 80800.0, 'KRW', 1525.42);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-17', '495050', '495050', 41300.0, 6350.0, 34950.0, 'KRW', 1525.42);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-26', 'NVDA', 'NVDA', 192.75, 28.92, 251571.0, 'USD', 1535.56);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-29', 'MAIN', 'MAIN', 45.0, 6.76, 58981.0, 'USD', 1542.4);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-30', 'SCHD', 'SCHD', 227.26, 34.09, 299325.0, 'USD', 1549.54);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-06-30', 'AVGO', 'AVGO', 26.0, 3.9, 34245.0, 'USD', 1549.54);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-02', '490590', '490590', 339300.0, 0.0, 339300.0, 'KRW', 1544.07);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-02', '491620', '491620', 271000.0, 0.0, 271000.0, 'KRW', 1544.07);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-06', 'JEPI', 'JEPI', 116.15, 17.43, 150949.0, 'USD', 1529.06);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-10', 'QQQ', 'QQQ', 24.41, 3.67, 31091.0, 'USD', 1499.07);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-15', 'O', 'O', 40.66, 6.1, 51397.0, 'USD', 1487.19);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-16', 'MAIN', 'MAIN', 39.76, 5.97, 50004.0, 'USD', 1479.85);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-20', '480020', '480020', 538500.0, 0.0, 459130.0, 'KRW', 1476.01);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-20', '441640', '441640', 82400.0, 0.0, 82400.0, 'KRW', 1476.01);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-07-20', '495050', '495050', 21830.0, 3350.0, 18480.0, 'KRW', 1476.01);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-08-04', '490590', '490590', 196200.0, 0.0, 196200.0, 'KRW', 1429.44);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-08-04', '491620', '491620', 161000.0, 0.0, 161000.0, 'KRW', 1429.44);
+INSERT INTO public.dividends (payment_date, ticker, stock_name, amount, tax, net_amount_krw, currency, exchange_rate) VALUES ('2026-08-04', '292150', '292150', 85000.0, 13090.0, 71910.0, 'KRW', 1429.44);
+
+-- 6. INSERT EXCHANGE RATES DATA
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-03-05', 1127.49, 1343.55) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-03-08', 1140.23, 1351.46) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-03-09', 1134.91, 1350.56) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-03-10', 1136.01, 1354.49) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-05-14', 1124.46, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-08-04', 1144.06, 1352.97) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-08-13', 1161.08, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-08-24', 1163.47, 1367.2) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-09-01', 1155.28, 1368.09) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-09-07', 1161.0, 1374.78) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-09-14', 1170.8, 1381.87) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-11-15', 1183.51, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2021-12-10', 1179.7, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-02-10', 1199.35, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-04-27', 1266.28, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-05-13', 1278.36, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-06-10', 1278.36, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-08-08', 1299.03, 1323.98) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-08-12', 1301.28, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-09-13', 1393.47, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-11-11', 1313.6, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2022-12-09', 1303.17, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-02-17', 1294.9, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-03-10', 1320.19, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-04-25', 1341.0, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-05-19', 1325.2, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-06-09', 1287.26, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-06-30', 1315.3, 1435.08) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-07-26', 1275.17, 1408.74) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-08-18', 1339.16, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-08-31', 1324.64, 1441.26) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-09-13', 1329.77, 1424.05) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-09-15', 1328.41, 1415.0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-09-21', 1341.17, 1426.9) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-10-06', 1343.24, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-10-13', 1352.09, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-10-16', 1347.76, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-11-06', 1297.11, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-11-15', 1301.86, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-11-16', 1292.45, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-11-17', 1294.5, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-12-04', 1307.8, 1416.89) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-12-06', 1313.72, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-12-07', 1312.76, 1416.38) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-12-12', 1310.14, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-12-14', 1291.92, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-12-15', 1276.47, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2023-12-21', 1291.71, 1429.5) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-01-03', 1309.53, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-01-12', 1312.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-02-06', 1326.79, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-02-16', 1331.58, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-02-26', 1331.72, 1443.72) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-03-06', 1327.09, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-03-11', 1310.54, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-03-15', 1329.34, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-03-18', 1336.09, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-03-25', 1339.13, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-03-27', 1349.8, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-04-04', 1351.36, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-04-09', 1348.54, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-04-15', 1387.67, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-05-07', 1357.73, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-05-09', 1365.4, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-05-16', 1346.04, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-05-30', 1375.62, 1489.31) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-03', 1370.79, 1494.4) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-05', 1368.74, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-07', 1379.04, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-10', 1373.96, 1478.3) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-13', 1373.74, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-14', 1382.27, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-17', 1379.06, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-23', 1388.39, 1453.31) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-06-28', 1380.28, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-07-01', 1383.42, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-07-08', 1382.75, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-07-09', 1382.42, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-07-15', 1383.69, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-07-16', 1382.64, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-07-17', 1378.65, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-08-05', 1367.4, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-08-09', 1363.46, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-08-16', 1348.97, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-08-19', 1330.88, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-05', 1332.79, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-10', 1343.34, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-12', 1335.69, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-13', 1328.46, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-19', 1327.61, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-20', 1331.49, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-27', 1308.26, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-09-30', 1315.33, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-10-04', 1346.31, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-10-08', 1341.31, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-10-11', 1348.34, 1474.73) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-10-15', 1363.18, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-10-17', 1370.05, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-11-04', 1372.86, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-11-05', 1378.0, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-11-14', 1400.83, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-11-15', 1394.35, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-11-18', 1389.5, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-11-19', 1392.16, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-12-04', 1410.8, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-12-13', 1434.45, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-12-16', 1431.35, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-12-17', 1436.42, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-12-30', 1467.39, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2024-12-31', 1476.69, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-01-02', 1471.65, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-01-06', 1459.45, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-01-16', 1453.32, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-01-17', 1457.38, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-01-29', 1443.32, 1504.02) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-01-30', 1441.66, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-02-06', 1442.15, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-02-17', 1441.29, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-02-19', 1439.98, 1500.7) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-02-24', 1428.65, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-02-28', 1461.18, 1514.46) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-03-05', 1443.03, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-03-11', 1451.02, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-03-14', 1450.09, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-03-17', 1442.49, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-03-18', 1448.94, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-03-28', 1469.4, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-04-01', 1469.97, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-04-02', 1466.04, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-04-03', 1450.68, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-04-04', 1458.51, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-04-08', 1486.13, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-04-15', 1427.02, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-04-17', 1417.41, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-05-02', 1398.38, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-05-08', 1403.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-05-15', 1397.02, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-05-16', 1397.62, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-05-19', 1388.55, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-06-04', 1361.09, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-06-13', 1365.14, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-06-17', 1380.5, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-01', 1355.59, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-02', 1354.75, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-03', 1357.1, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-09', 1373.0, 1609.41) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-16', 1384.92, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-17', 1391.58, 1616.42) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-22', 1379.78, 1620.39) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-29', 1388.86, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-07-31', 1391.51, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-08-04', 1383.59, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-08-05', 1386.58, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-08-12', 1383.09, 1615.0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-08-14', 1387.87, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-08-18', 1386.91, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-08-19', 1391.34, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-08-24', 1390.05, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-02', 1395.67, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-04', 1393.06, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-08', 1385.72, 1630.71) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-11', 1390.5, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-15', 1386.01, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-17', 1379.69, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-22', 1390.39, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-24', 1403.65, 1647.6) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-26', 1409.2, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-09-30', 1404.15, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-10-02', 1405.63, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-10-11', 1428.04, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-10-16', 1416.72, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-10-17', 1421.74, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-10-24', 1438.98, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-10-31', 1428.87, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-11-04', 1440.81, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-11-06', 1447.9, 1671.69) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-11-07', 1455.99, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-11-14', 1449.5, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-11-17', 1462.79, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-11-21', 1469.73, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-01', 1471.27, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-02', 1467.36, 1705.43) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-04', 1473.38, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-08', 1469.51, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-11', 1471.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-15', 1468.48, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-16', 1472.74, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-17', 1474.0, 1730.16) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-19', 1475.76, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-22', 1476.84, 1736.46) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-26', 1442.33, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-29', 1435.81, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-30', 1439.01, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2025-12-31', 1444.64, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-02', 1442.57, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-05', 1445.56, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-06', 1444.96, 1688.71) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-09', 1456.33, 1694.44) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-15', 1468.84, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-16', 1472.47, 1707.74) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-19', 1471.52, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-21', 1464.83, 1710.76) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-01-30', 1450.79, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-02-03', 1447.68, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-02-05', 1447.68, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-02-12', 1441.9, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-02-19', 1448.75, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-02-20', 1445.4, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-02-27', 1438.9, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-04', 1461.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-05', 1479.51, 1717.59) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-09', 1464.47, 1702.2) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-11', 1475.34, 1703.57) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-13', 1502.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-16', 1490.41, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-17', 1485.97, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-27', 1508.0, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-03-31', 1504.33, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-01', 1512.09, 1752.59) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-02', 1510.22, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-06', 1508.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-07', 1500.16, 1752.92) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-14', 1470.41, 1734.84) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-15', 1475.06, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-16', 1475.06, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-17', 1466.04, 1724.46) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-24', 1475.64, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-04-29', 1487.38, 1736.6) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-05-06', 1445.45, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-05-07', 1455.79, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-05-14', 1493.65, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-05-15', 1497.63, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-05-18', 1492.52, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-05-19', 1507.85, 1748.02) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-05-29', 1507.46, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-02', 1517.6, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-04', 1533.07, 1778.12) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-11', 1518.05, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-15', 1513.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-16', 1510.96, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-17', 1525.42, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-26', 1533.56, 1746.43) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-29', 1542.4, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-06-30', 1549.54, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-07-02', 1544.07, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-07-06', 1529.06, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-07-10', 1499.07, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-07-15', 1487.19, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-07-16', 1479.85, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-07-20', 1476.01, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-07-23', 1475.15, 1677.99) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;
+INSERT INTO public.exchange_rates (rate_date, usd_krw, eur_krw) VALUES ('2026-08-04', 1429.44, 0) ON CONFLICT (rate_date) DO UPDATE SET usd_krw = EXCLUDED.usd_krw, eur_krw = EXCLUDED.eur_krw;

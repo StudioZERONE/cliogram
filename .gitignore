@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Sensitive investment & data files
+migration_data.sql
+*.csv
+scratch/
+.env.local
+.env*.local
