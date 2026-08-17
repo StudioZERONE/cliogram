@@ -1,26 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* ── Design Tokens ─────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg:       #0a0a0a;
+  --surface:  #111111;
+  --border:   #1f1f1f;
+  --border-hi:#2e2e2e;
+  --text:     #ededed;
+  --muted:    #888888;
+  --accent:   #0070f3;
+  --accent-hi:#338ef7;
+  --success:  #17c964;
+  --danger:   #f31260;
+  --warning:  #f5a623;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ── Base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
 }
+
+/* ── Number input – hide arrows ─────────────────────── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+/* ── react-datepicker dark override ─────────────────── */
+.react-datepicker-wrapper { width: 100%; }
+.react-datepicker-popper { z-index: 60 !important; }
+
+.react-datepicker {
+  background: #111 !important;
+  border: 1px solid #2e2e2e !important;
+  border-radius: 12px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,.6) !important;
+  overflow: hidden;
+}
+
+.react-datepicker__header {
+  background: #111 !important;
+  border-bottom: 1px solid #1f1f1f !important;
+  padding-top: 12px !important;
+}
+
+.react-datepicker__current-month { color: #ededed !important; }
+.react-datepicker__day-name      { color: #888 !important; }
+
+.react-datepicker__day {
+  color: #ededed !important;
+  border-radius: 8px !important;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.react-datepicker__day:hover {
+  background: rgba(0,112,243,.2) !important;
+  color: #338ef7 !important;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: #0070f3 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.react-datepicker__day--today { font-weight: 700; color: #338ef7 !important; }
+.react-datepicker__day--outside-month { color: #2e2e2e !important; }
+
+.react-datepicker__navigation-icon::before { border-color: #888 !important; }
+.react-datepicker__triangle { display: none !important; }
+
+/* ── Animations ─────────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-fade-in-up { animation: fade-in-up 0.25s ease both; }
+.animate-fade-in    { animation: fade-in 0.2s ease both; }
