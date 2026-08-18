@@ -25,8 +25,8 @@ export function Sidebar() {
   const isCodes = pathname === '/codes';
 
   return (
-    /* Outer Fixed Spacer (Main page layout never compresses or shifts) */
-    <div className="relative shrink-0 w-16 sm:w-20 h-[100dvh] select-none z-40">
+    /* Outer Fixed Spacer (Slim original width: w-14 sm:w-16) */
+    <div className="relative shrink-0 w-14 sm:w-16 h-[100dvh] select-none z-40">
       {/* Floating Overlay Sidebar */}
       <aside
         onMouseEnter={() => setIsHovered(true)}
@@ -34,44 +34,49 @@ export function Sidebar() {
         className={`absolute top-0 left-0 flex h-[100dvh] flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300 ease-in-out overflow-hidden ${
           isHovered
             ? 'w-64 shadow-2xl z-50'
-            : 'w-16 sm:w-20 shadow-xs z-40'
+            : 'w-14 sm:w-16 shadow-xs z-40'
         }`}
       >
-        {/* 1. Brand Logo Section (Exact 80px h-20: Pixel-perfect aligned with Header h-20 bottom line) */}
-        <div className="flex items-center h-20 px-3 border-b border-[var(--border)] shrink-0 overflow-hidden">
-          {/* Logo Container (Scales naturally: 32px when closed -> 40px when hovered) */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-            <Image
-              src="/icon.svg"
-              alt="KLIOGRAM Logo"
-              width={40}
-              height={40}
-              className={`object-contain transition-all duration-300 ${
-                isHovered ? 'h-10 w-10' : 'h-8 w-8'
+        {/* 1. Brand Logo Section (Height 80px h-20, Separated Line: mx-1 border-b) */}
+        <div className="flex flex-col justify-between h-20 px-2 sm:px-3 shrink-0 overflow-hidden">
+          <div className="flex items-center h-[79px] overflow-hidden">
+            {/* Logo Container (Closed 32px -> Open 36px) */}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+              <Image
+                src="/icon.svg"
+                alt="KLIOGRAM Logo"
+                width={36}
+                height={36}
+                className={`object-contain transition-all duration-300 ${
+                  isHovered ? 'h-9 w-9' : 'h-8 w-8'
+                }`}
+                priority
+              />
+            </div>
+            
+            {/* Brand Text */}
+            <div
+              className={`ml-3 flex flex-col whitespace-nowrap transition-all duration-300 ${
+                isHovered
+                  ? 'opacity-100 max-w-xs'
+                  : 'opacity-0 max-w-0 pointer-events-none overflow-hidden'
               }`}
-              priority
-            />
+            >
+              <h1 className="text-lg font-bold tracking-tight text-[#057a5d] dark:text-[#10b981] leading-none">
+                KLIOGRAM
+              </h1>
+              <p className="text-[10px] font-medium text-[var(--fg-muted)] mt-1">
+                고요히 흘러 마침내 숲이 될 하루
+              </p>
+            </div>
           </div>
-          
-          {/* Brand Text - Pure Horizontal Fade In */}
-          <div
-            className={`ml-3 flex flex-col whitespace-nowrap transition-all duration-300 ${
-              isHovered
-                ? 'opacity-100 max-w-xs'
-                : 'opacity-0 max-w-0 pointer-events-none overflow-hidden'
-            }`}
-          >
-            <h1 className="text-lg font-bold tracking-tight text-[#057a5d] dark:text-[#10b981] leading-none">
-              KLIOGRAM
-            </h1>
-            <p className="text-[10px] font-medium text-[var(--fg-muted)] mt-1">
-              고요히 흘러 마침내 숲이 될 하루
-            </p>
-          </div>
+
+          {/* Separated Bottom Line (Does not touch side walls) */}
+          <div className="border-b border-[var(--border)] mx-1" />
         </div>
 
-        {/* 2. Main Navigation Links (Compact Spacing: space-y-1.5, Padding px-3) */}
-        <nav className="mt-4 flex-1 space-y-1.5 px-3 overflow-hidden">
+        {/* 2. Main Navigation Links (Slim closed alignment, Padding px-2 sm:px-3) */}
+        <nav className="mt-4 flex-1 space-y-1.5 px-2 sm:px-3 overflow-hidden">
           {/* Dashboard Link */}
           <Link
             href="/dashboard"
@@ -172,8 +177,10 @@ export function Sidebar() {
           </Link>
         </nav>
 
-        {/* 3. Bottom Settings Section (Unified Padding px-3, Top Divider) */}
-        <div className="mt-auto pt-3 pb-8 sm:pb-3 border-t border-[var(--border)] px-3 space-y-1.5 shrink-0 overflow-hidden">
+        {/* 3. Bottom Settings Section (Separated Top Line, Slim Padding px-2 sm:px-3) */}
+        <div className="mt-auto pt-2 pb-8 sm:pb-3 px-2 sm:px-3 space-y-1.5 shrink-0 overflow-hidden">
+          <div className="border-t border-[var(--border)] mx-1 mb-2.5" />
+
           {/* Stocks Link */}
           <Link
             href="/stocks"
