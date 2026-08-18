@@ -40,11 +40,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Sensitive SQL files and sql folder
-sql/
-sql/*
-*.sql
-*.csv
+# Temporary Scratch Files
 scratch/
 .env.local
 .env*.local
+
+# Private User Migration Data (Exclude from GitHub)
+sql/c_data_migration*.sql
+sql/migration_data.sql
+*.csv
+
+# Allow System Schema & Master Seed SQL files in GitHub
+!sql/a_schema.sql
+!sql/b_data_system.sql
