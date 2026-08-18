@@ -122,7 +122,7 @@ export function Header({ title }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 shadow-xs select-none">
+    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md px-8 shadow-md transition-shadow select-none">
       {/* Page Title */}
       <div className="flex items-center gap-3">
         <h2 className="text-2xl font-bold tracking-tight text-[var(--fg)]">{title}</h2>

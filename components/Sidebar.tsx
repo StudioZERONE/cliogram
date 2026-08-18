@@ -25,13 +25,13 @@ export function Sidebar() {
   const isCodes = pathname === '/codes';
 
   return (
-    /* Outer Fixed Spacer (Slim original width: w-14 sm:w-16) */
-    <div className="relative shrink-0 w-14 sm:w-16 h-[100dvh] select-none z-40">
-      {/* Floating Overlay Sidebar */}
+    /* Outer Fixed Container: Fixed to viewport, never scrolls with page */
+    <div className="shrink-0 w-14 sm:w-16 h-screen select-none z-40">
+      {/* Floating Fixed Overlay Sidebar */}
       <aside
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`absolute top-0 left-0 flex h-[100dvh] flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`fixed top-0 left-0 flex h-screen flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300 ease-in-out overflow-hidden ${
           isHovered
             ? 'w-64 shadow-2xl z-50'
             : 'w-14 sm:w-16 shadow-xs z-40'
