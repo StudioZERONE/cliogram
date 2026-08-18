@@ -1,49 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <!-- 10시 방향(top-left: 0%, 0%)은 짙고, 4시 방향(bottom-right: 100%, 100%)은 조금 옅은 깊고 세련된 숲 그라데이션 -->
-    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- 10시(0%, 0%) -> 4시(100%, 100%) 단순 2색 스무스 그라데이션 (격차를 줄여 은은하고 점잖은 숲 녹색) -->
+    <linearGradient id="bg-smooth-forest" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#04382c" />
-      <stop offset="40%" stop-color="#064e3b" />
-      <stop offset="80%" stop-color="#059669" />
-      <stop offset="100%" stop-color="#0f766e" />
+      <stop offset="100%" stop-color="#095a45" />
     </linearGradient>
 
-    <!-- 중앙 숲 심볼 메인 (소프트한 웜 화이트) -->
-    <linearGradient id="symbol-main" x1="0%" y1="0%" x2="0%" y2="100%">
+    <!-- 숲 심볼 메인 (소프트 웜 화이트) -->
+    <linearGradient id="tree-main" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98" />
-      <stop offset="100%" stop-color="#e2f5f0" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#e6f7f3" stop-opacity="0.9" />
     </linearGradient>
 
-    <!-- 중앙 숲 부심볼 (은은한 숲 민트 앰비언트) -->
-    <linearGradient id="symbol-ambient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#34d399" stop-opacity="0.6" />
-      <stop offset="100%" stop-color="#10b981" stop-opacity="0.8" />
+    <!-- 뒤쪽 숲 앰비언트 (은은한 숲 민트) -->
+    <linearGradient id="tree-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.7" />
     </linearGradient>
 
-    <!-- 그림자 효과 -->
-    <filter id="soft-shadow" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#022c22" flood-opacity="0.4"/>
+    <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#021c16" flood-opacity="0.35"/>
     </filter>
   </defs>
 
-  <!-- 1. 배경 둥근 사각형 (10시 -> 4시 짙고 세련된 녹색 그라데이션) -->
-  <rect width="512" height="512" rx="112" fill="url(#bg-gradient)"/>
+  <!-- 1. 배경 둥근 사각형 (단순 2색 스무스 그라데이션) -->
+  <rect width="512" height="512" rx="112" fill="url(#bg-smooth-forest)"/>
 
-  <!-- 2. 심볼: 모던 미니멀리즘 숲/나무 실루엣 (크리스마스트리 느낌 X, 물결 X, 가볍고 깔끔한 형태) -->
+  <!-- 2. 직관적인 숲(Forest) 실루엣: 뒤쪽 은은한 숲 레이어 + 중앙 메인 숲 나무 -->
   <g filter="url(#soft-shadow)">
-    <!-- 뒤쪽 숲 레이어 (좌우 앰비언트) -->
-    <path d="M 145 350 C 145 255, 195 200, 230 200 C 265 200, 315 255, 315 350 Z" fill="url(#symbol-ambient)" opacity="0.65" />
-    <path d="M 197 350 C 197 265, 247 210, 282 210 C 317 210, 367 265, 367 350 Z" fill="url(#symbol-ambient)" opacity="0.45" />
+    <!-- 뒤쪽 좌측 숲 나무 (Background Left Forest Tree) -->
+    <path d="M 140 340 L 175 220 L 210 340 Z" fill="url(#tree-bg)" />
+    <circle cx="175" cy="220" r="45" fill="url(#tree-bg)" />
 
-    <!-- 나무 줄기 (깔끔한 사각 둥근 기둥) -->
-    <rect x="242" y="325" width="28" height="60" rx="8" fill="#ffffff" opacity="0.9" />
+    <!-- 뒤쪽 우측 숲 나무 (Background Right Forest Tree) -->
+    <path d="M 302 340 L 337 200 L 372 340 Z" fill="url(#tree-bg)" opacity="0.8" />
+    <circle cx="337" cy="200" r="48" fill="url(#tree-bg)" opacity="0.8" />
 
-    <!-- 중앙 메인 숲 캐노피 (부드럽고 품격 있는 포근한 곡선 숲) -->
-    <path d="M 256 120 C 185 120, 138 180, 138 252 C 138 312, 185 348, 256 348 C 327 348, 374 312, 374 252 C 374 180, 327 120, 256 120 Z" fill="url(#symbol-main)" />
+    <!-- 메인 숲 나무 기둥 (Center Main Trunk) -->
+    <rect x="244" y="315" width="24" height="60" rx="8" fill="#ffffff" opacity="0.9" />
 
-    <!-- 숲 내면의 세련된 음영 스템 라인 -->
-    <path d="M 256 155 L 256 320" stroke="#044e3a" stroke-width="5.5" stroke-linecap="round" opacity="0.25" />
-    <path d="M 256 210 C 228 195, 202 205, 185 222" stroke="#044e3a" stroke-width="4.5" stroke-linecap="round" fill="none" opacity="0.2" />
-    <path d="M 256 240 C 284 225, 310 235, 327 252" stroke="#044e3a" stroke-width="4.5" stroke-linecap="round" fill="none" opacity="0.2" />
+    <!-- 중앙 메인 숲 나무 (직관적인 포근하고 정갈한 숲 상록수 Canopy) -->
+    <!-- 하단 숲 캐노피 레이어 -->
+    <path d="M 256 180 C 160 230, 140 330, 140 330 H 372 C 372 330, 352 230, 256 180 Z" fill="url(#tree-main)" />
+    <!-- 중단 숲 캐노피 레이어 -->
+    <path d="M 256 130 C 180 180, 165 260, 165 260 H 347 C 347 260, 332 180, 256 130 Z" fill="url(#tree-main)" opacity="0.96" />
+    <!-- 상단 숲 캐노피 레이어 (부드러운 돔 곡선 상단) -->
+    <path d="M 256 95 C 200 135, 190 195, 190 195 H 322 C 322 195, 312 135, 256 95 Z" fill="url(#tree-main)" />
   </g>
 </svg>
