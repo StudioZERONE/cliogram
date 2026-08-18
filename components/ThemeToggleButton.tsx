@@ -40,9 +40,9 @@ export function ThemeToggleButton() {
       aria-label="Toggle Theme"
     >
       {isDark ? (
-        <Sun className="h-4.5 w-4.5 text-amber-400 transition-transform group-hover:rotate-45" />
+        <Sun className="h-4.5 w-4.5 text-amber-400 fill-amber-400/20 transition-transform group-hover:rotate-45" />
       ) : (
-        <Moon className="h-4.5 w-4.5 text-slate-700 dark:text-slate-200 transition-transform group-hover:-rotate-12" />
+        <Moon className="h-4.5 w-4.5 text-sky-500 fill-sky-500/15 dark:text-sky-400 dark:fill-sky-400/20 transition-transform group-hover:-rotate-12" />
       )}
     </button>
   );

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Terminal } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { signInWithGoogle } from '@/lib/auth';
 import { fetchAndCacheThemeExpireHours } from '@/lib/theme';
@@ -14,8 +14,29 @@ export default function IndexPage() {
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isDev, setIsDev] = useState<boolean>(false);
+  const [isDark, setIsDark] = useState<boolean>(false);
 
   useEffect(() => {
+    // Check if current environment points to development DB or local server
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const isDevEnv =
+      supabaseUrl.includes('tulavtfoulzjpdtygmdx') ||
+      supabaseUrl.includes('-dev') ||
+      process.env.NODE_ENV === 'development';
+    setIsDev(isDevEnv);
+
+    // Track dark mode class on <html> element in real-time
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    checkDarkMode();
+
+    const observer = new MutationObserver(() => {
+      checkDarkMode();
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
     // Check URL parameters for unauthorized or auth errors
     const search = window.location.search;
     const hash = window.location.hash;
@@ -36,6 +57,10 @@ export default function IndexPage() {
       }
       setLoading(false);
     });
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   const handleLogin = async () => {
@@ -47,6 +72,22 @@ export default function IndexPage() {
     }
   };
 
+  const getBadgeStyle = () => {
+    if (!isDev) return {};
+    if (isDark) {
+      return {
+        backgroundColor: 'rgba(255, 238, 0, 0.18)',
+        borderColor: '#ffee00',
+        color: '#ffee00',
+      };
+    }
+    return {
+      backgroundColor: 'rgba(249, 115, 22, 0.12)',
+      borderColor: 'rgba(249, 115, 22, 0.5)',
+      color: '#ea580c',
+    };
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
       {/* Top Header Bar */}
@@ -56,7 +97,18 @@ export default function IndexPage() {
             <Image src="/icon.svg" alt="KLIOGRAM Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-[#057a5d] dark:text-[#10b981]">KLIOGRAM</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-[#057a5d] dark:text-[#10b981]">KLIOGRAM</h1>
+              {isDev && (
+                <span
+                  style={getBadgeStyle()}
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-black shadow-xs"
+                >
+                  <Terminal className="h-3 w-3" />
+                  Dev Sys
+                </span>
+              )}
+            </div>
             <p className="text-xs font-medium text-[var(--fg-muted)]">개인자산 관리 서비스</p>
           </div>
         </div>
@@ -68,6 +120,17 @@ export default function IndexPage() {
       {/* Main Hero & Auth Card Section */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl space-y-6">
+          {/* Dev Mode Banner Badge - Neat & Clean Badge Only */}
+          {isDev && (
+            <div
+              style={getBadgeStyle()}
+              className="rounded-2xl border px-3.5 py-2 text-center text-xs font-black flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <Terminal className="h-3.5 w-3.5 shrink-0" />
+              <span>DEVELOPMENT SYSTEM</span>
+            </div>
+          )}
+
           <div className="text-center">
             {/* Center Logo (96px) */}
             <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden mb-4">
@@ -107,7 +170,7 @@ export default function IndexPage() {
             </div>
           ) : (
             <div className="space-y-4 pt-2">
-              {/* Google 계정으로 로그인 */}
+              {/* Standard Google Button without extra color distraction */}
               <button
                 onClick={handleLogin}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-3.5 text-base font-bold text-[var(--fg)] transition-all hover:border-[#057a5d] dark:hover:border-emerald-500 cursor-pointer shadow-xs"

@@ -125,3 +125,33 @@ CREATE POLICY "User profiles policy" ON public.profiles FOR ALL USING (auth.uid(
 CREATE POLICY "User stocks policy" ON public.stocks FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "User trades policy" ON public.trades FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "User dividends policy" ON public.dividends FOR ALL USING (auth.uid() = user_id);
+
+-- =================================================================
+-- 10. auth.users ➔ public.profiles 자동 생성 트리거 (Auto Profile Trigger)
+-- 신규 유저가 Supabase Auth로 가입 시 public.profiles에 1:1 자동 프로필을 생성합니다.
+-- =================================================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, nickname)
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1))
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- auth.users 신규 생성 시 이벤트 트리거 바인딩
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 기존 가입되어 있는 auth.users 계정 profiles 일괄 동기화
+INSERT INTO public.profiles (id, email, nickname)
+SELECT id, email, COALESCE(raw_user_meta_data->>'full_name', raw_user_meta_data->>'name', split_part(email, '@', 1))
+FROM auth.users
+ON CONFLICT (id) DO NOTHING;
