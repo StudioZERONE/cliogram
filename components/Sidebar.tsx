@@ -28,35 +28,48 @@ export function Sidebar() {
     <aside
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`sticky top-0 z-40 flex h-screen flex-col border-r border-[var(--border)] bg-[var(--surface)] p-3 shadow-md shrink-0 select-none transition-all duration-300 ease-in-out ${
-        isHovered ? 'w-64 p-5 shadow-2xl' : 'w-20'
+      className={`sticky top-0 z-40 flex h-[100dvh] flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300 ease-in-out select-none shrink-0 ${
+        isHovered
+          ? 'w-64 p-4 shadow-2xl z-50'
+          : 'w-14 sm:w-16 p-2 sm:p-2.5 shadow-xs'
       }`}
     >
-      {/* Brand Logo Section */}
-      <div className={`flex items-center pb-5 border-b border-[var(--border)] transition-all ${
-        isHovered ? 'gap-3 justify-start' : 'justify-center'
-      }`}>
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden shrink-0">
-          <Image src="/icon.svg" alt="KLIOGRAM Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
+      {/* 1. Brand Logo Section (Fixed Icon Axis) */}
+      <div className="flex items-center h-12 pb-3 border-b border-[var(--border)] overflow-hidden">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+          <Image
+            src="/icon.svg"
+            alt="KLIOGRAM Logo"
+            width={36}
+            height={36}
+            className="h-9 w-9 object-contain"
+            priority
+          />
         </div>
         
-        {/* Brand Text - Smoothly fade & expand on hover */}
-        <div className={`flex flex-col transition-all duration-300 overflow-hidden whitespace-nowrap ${
-          isHovered ? 'opacity-100 max-w-xs ml-1' : 'opacity-0 max-w-0 pointer-events-none'
-        }`}>
-          <h1 className="text-xl font-bold tracking-tight text-[#057a5d] dark:text-[#10b981]">KLIOGRAM</h1>
-          <p className="text-[11px] font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
+        {/* Brand Text */}
+        <div
+          className={`ml-3 flex flex-col whitespace-nowrap transition-all duration-300 ${
+            isHovered
+              ? 'opacity-100 max-w-xs'
+              : 'opacity-0 max-w-0 pointer-events-none overflow-hidden'
+          }`}
+        >
+          <h1 className="text-lg font-bold tracking-tight text-[#057a5d] dark:text-[#10b981] leading-none">
+            KLIOGRAM
+          </h1>
+          <p className="text-[10px] font-medium text-[var(--fg-muted)] mt-0.5">
+            고요히 흘러 마침내 숲이 될 하루
+          </p>
         </div>
       </div>
 
-      {/* Main Navigation Links */}
-      <nav className="mt-6 flex-1 space-y-2">
+      {/* 2. Main Navigation Links (Compact Vertical Spacing: space-y-1.5) */}
+      <nav className="mt-4 flex-1 space-y-1.5 overflow-hidden">
         {/* Dashboard Link */}
         <Link
           href="/dashboard"
-          className={`group relative flex items-center rounded-xl py-3 transition-all cursor-pointer ${
-            isHovered ? 'px-4 justify-start gap-3' : 'justify-center px-0'
-          } ${
+          className={`group relative flex items-center h-11 rounded-xl transition-all cursor-pointer ${
             isOverview
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
               : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
@@ -66,10 +79,16 @@ export function Sidebar() {
           {isOverview && (
             <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
           )}
-          <LayoutDashboard className="h-5 w-5 shrink-0" />
-          <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap text-base font-semibold ${
-            isHovered ? 'opacity-100 max-w-xs' : 'opacity-0 max-w-0'
-          }`}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <LayoutDashboard className="h-5 w-5" />
+          </div>
+          <span
+            className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+              isHovered
+                ? 'opacity-100 max-w-xs'
+                : 'opacity-0 max-w-0 overflow-hidden'
+            }`}
+          >
             대시보드
           </span>
         </Link>
@@ -77,9 +96,7 @@ export function Sidebar() {
         {/* Trades Link */}
         <Link
           href="/trades"
-          className={`group relative flex items-center rounded-xl py-3 transition-all cursor-pointer ${
-            isHovered ? 'px-4 justify-start gap-3' : 'justify-center px-0'
-          } ${
+          className={`group relative flex items-center h-11 rounded-xl transition-all cursor-pointer ${
             isTrades
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
               : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
@@ -89,15 +106,25 @@ export function Sidebar() {
           {isTrades && (
             <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
           )}
-          <TrendingUp className="h-5 w-5 shrink-0" />
-          <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap text-base font-semibold ${
-            isHovered ? 'opacity-100 max-w-xs' : 'opacity-0 max-w-0'
-          }`}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+          <span
+            className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+              isHovered
+                ? 'opacity-100 max-w-xs'
+                : 'opacity-0 max-w-0 overflow-hidden'
+            }`}
+          >
             매매 내역
           </span>
-          <span className={`ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
-            isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
-          }`}>
+          <span
+            className={`ml-auto mr-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
+              isHovered
+                ? 'opacity-100 scale-100'
+                : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
+            }`}
+          >
             {tradesCount}
           </span>
         </Link>
@@ -105,9 +132,7 @@ export function Sidebar() {
         {/* Dividends Link */}
         <Link
           href="/dividends"
-          className={`group relative flex items-center rounded-xl py-3 transition-all cursor-pointer ${
-            isHovered ? 'px-4 justify-start gap-3' : 'justify-center px-0'
-          } ${
+          className={`group relative flex items-center h-11 rounded-xl transition-all cursor-pointer ${
             isDividends
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
               : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
@@ -117,48 +142,66 @@ export function Sidebar() {
           {isDividends && (
             <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
           )}
-          <DollarSign className="h-5 w-5 shrink-0" />
-          <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap text-base font-semibold ${
-            isHovered ? 'opacity-100 max-w-xs' : 'opacity-0 max-w-0'
-          }`}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <DollarSign className="h-5 w-5" />
+          </div>
+          <span
+            className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+              isHovered
+                ? 'opacity-100 max-w-xs'
+                : 'opacity-0 max-w-0 overflow-hidden'
+            }`}
+          >
             배당 내역
           </span>
-          <span className={`ml-auto rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
-            isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
-          }`}>
+          <span
+            className={`ml-auto mr-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
+              isHovered
+                ? 'opacity-100 scale-100'
+                : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
+            }`}
+          >
             {dividendsCount}
           </span>
         </Link>
       </nav>
 
-      {/* Bottom Settings Box */}
-      <div className="mt-auto">
-        <div className={`rounded-2xl border border-[var(--border)] bg-[var(--bg)] transition-all ${
-          isHovered ? 'p-3 space-y-2' : 'p-2 space-y-2'
-        }`}>
+      {/* 3. Bottom Settings Box (Safe Area Padding pb-10 sm:pb-3 for Mobile Bar Protection) */}
+      <div className="mt-auto pt-2 pb-10 sm:pb-3">
+        <div
+          className={`rounded-2xl border border-[var(--border)] bg-[var(--bg)] transition-all ${
+            isHovered ? 'p-2 space-y-1.5' : 'p-1 space-y-1'
+          }`}
+        >
           {/* Stocks Link */}
           <Link
             href="/stocks"
-            className={`flex items-center justify-between rounded-xl py-2.5 text-sm font-semibold transition-all cursor-pointer border ${
-              isHovered ? 'px-3.5' : 'px-0 justify-center'
-            } ${
+            className={`flex items-center h-10 rounded-xl text-sm font-semibold transition-all cursor-pointer border ${
               isStocks
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold'
                 : 'bg-[var(--surface)] border-[var(--border)] text-[var(--fg)] hover:border-emerald-500'
             }`}
             title="종목 마스터"
           >
-            <span className="flex items-center gap-2.5">
-              <Building2 className="h-4.5 w-4.5 shrink-0" />
-              <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${
-                isHovered ? 'opacity-100 max-w-xs' : 'opacity-0 max-w-0'
-              }`}>
-                종목 마스터
-              </span>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+              <Building2 className="h-4.5 w-4.5" />
+            </div>
+            <span
+              className={`ml-1 whitespace-nowrap transition-all duration-300 ${
+                isHovered
+                  ? 'opacity-100 max-w-xs'
+                  : 'opacity-0 max-w-0 overflow-hidden'
+              }`}
+            >
+              종목 마스터
             </span>
-            <span className={`rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
-              isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
-            }`}>
+            <span
+              className={`ml-auto mr-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
+                isHovered
+                  ? 'opacity-100 scale-100'
+                  : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
+              }`}
+            >
               {stocksCount}
             </span>
           </Link>
@@ -166,22 +209,24 @@ export function Sidebar() {
           {/* Common Codes Link */}
           <Link
             href="/codes"
-            className={`flex items-center justify-between rounded-xl py-2.5 text-sm font-semibold transition-all cursor-pointer border ${
-              isHovered ? 'px-3.5' : 'px-0 justify-center'
-            } ${
+            className={`flex items-center h-10 rounded-xl text-sm font-semibold transition-all cursor-pointer border ${
               isCodes
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold'
                 : 'bg-[var(--surface)] border-[var(--border)] text-[var(--fg)] hover:border-emerald-500'
             }`}
             title="공통코드"
           >
-            <span className="flex items-center gap-2.5">
-              <Settings className="h-4.5 w-4.5 shrink-0" />
-              <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${
-                isHovered ? 'opacity-100 max-w-xs' : 'opacity-0 max-w-0'
-              }`}>
-                공통코드
-              </span>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+              <Settings className="h-4.5 w-4.5" />
+            </div>
+            <span
+              className={`ml-1 whitespace-nowrap transition-all duration-300 ${
+                isHovered
+                  ? 'opacity-100 max-w-xs'
+                  : 'opacity-0 max-w-0 overflow-hidden'
+              }`}
+            >
+              공통코드
             </span>
           </Link>
         </div>
