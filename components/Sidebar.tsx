@@ -26,26 +26,29 @@ export function Sidebar() {
 
   return (
     /* Outer Fixed Spacer (Main page layout never compresses or shifts) */
-    <div className="relative shrink-0 w-14 sm:w-16 h-[100dvh] select-none z-40">
+    <div className="relative shrink-0 w-16 sm:w-20 h-[100dvh] select-none z-40">
       {/* Floating Overlay Sidebar */}
       <aside
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`absolute top-0 left-0 flex h-[100dvh] flex-col border-r border-[var(--border)] bg-[var(--surface)] p-3 transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`absolute top-0 left-0 flex h-[100dvh] flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300 ease-in-out overflow-hidden ${
           isHovered
             ? 'w-64 shadow-2xl z-50'
-            : 'w-14 sm:w-16 shadow-xs z-40'
+            : 'w-16 sm:w-20 shadow-xs z-40'
         }`}
       >
-        {/* 1. Brand Logo Section (Height h-20 80px: Perfectly aligned with Header h-20 line) */}
-        <div className="flex items-center h-20 border-b border-[var(--border)] shrink-0 overflow-hidden px-1">
+        {/* 1. Brand Logo Section (Exact 80px h-20: Pixel-perfect aligned with Header h-20 bottom line) */}
+        <div className="flex items-center h-20 px-3 border-b border-[var(--border)] shrink-0 overflow-hidden">
+          {/* Logo Container (Scales naturally: 32px when closed -> 40px when hovered) */}
           <div className="flex h-10 w-10 shrink-0 items-center justify-center">
             <Image
               src="/icon.svg"
               alt="KLIOGRAM Logo"
-              width={36}
-              height={36}
-              className="h-9 w-9 object-contain"
+              width={40}
+              height={40}
+              className={`object-contain transition-all duration-300 ${
+                isHovered ? 'h-10 w-10' : 'h-8 w-8'
+              }`}
               priority
             />
           </div>
@@ -67,8 +70,8 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* 2. Main Navigation Links (Compact Spacing: space-y-1.5) */}
-        <nav className="mt-4 flex-1 space-y-1.5 overflow-hidden">
+        {/* 2. Main Navigation Links (Compact Spacing: space-y-1.5, Padding px-3) */}
+        <nav className="mt-4 flex-1 space-y-1.5 px-3 overflow-hidden">
           {/* Dashboard Link */}
           <Link
             href="/dashboard"
@@ -83,7 +86,7 @@ export function Sidebar() {
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
             )}
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-              <LayoutDashboard className="h-5 w-5" />
+              <LayoutDashboard className={`transition-all duration-300 ${isHovered ? 'h-5 w-5' : 'h-4.5 w-4.5'}`} />
             </div>
             <span
               className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
@@ -110,7 +113,7 @@ export function Sidebar() {
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
             )}
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-              <TrendingUp className="h-5 w-5" />
+              <TrendingUp className={`transition-all duration-300 ${isHovered ? 'h-5 w-5' : 'h-4.5 w-4.5'}`} />
             </div>
             <span
               className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
@@ -146,7 +149,7 @@ export function Sidebar() {
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
             )}
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-              <DollarSign className="h-5 w-5" />
+              <DollarSign className={`transition-all duration-300 ${isHovered ? 'h-5 w-5' : 'h-4.5 w-4.5'}`} />
             </div>
             <span
               className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
@@ -169,8 +172,8 @@ export function Sidebar() {
           </Link>
         </nav>
 
-        {/* 3. Bottom Settings Section (Removed double outer border box, unified with top nav structure, added top divider) */}
-        <div className="mt-auto pt-3 pb-8 sm:pb-3 border-t border-[var(--border)] space-y-1.5 shrink-0 overflow-hidden">
+        {/* 3. Bottom Settings Section (Unified Padding px-3, Top Divider) */}
+        <div className="mt-auto pt-3 pb-8 sm:pb-3 border-t border-[var(--border)] px-3 space-y-1.5 shrink-0 overflow-hidden">
           {/* Stocks Link */}
           <Link
             href="/stocks"
@@ -185,7 +188,7 @@ export function Sidebar() {
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
             )}
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-              <Building2 className="h-5 w-5" />
+              <Building2 className={`transition-all duration-300 ${isHovered ? 'h-5 w-5' : 'h-4.5 w-4.5'}`} />
             </div>
             <span
               className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
@@ -213,7 +216,7 @@ export function Sidebar() {
             className={`group relative flex items-center h-11 rounded-xl transition-all cursor-pointer ${
               isCodes
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
-                : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
             title="공통코드"
           >
@@ -221,7 +224,7 @@ export function Sidebar() {
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
             )}
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-              <Settings className="h-5 w-5" />
+              <Settings className={`transition-all duration-300 ${isHovered ? 'h-5 w-5' : 'h-4.5 w-4.5'}`} />
             </div>
             <span
               className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
