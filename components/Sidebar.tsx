@@ -25,13 +25,13 @@ export function Sidebar() {
 
   return (
     <aside className="sticky top-0 z-40 flex h-screen w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs shrink-0 select-none">
-      {/* Brand Logo - Completely Clean & Transparent Background */}
+      {/* Brand Logo - Unified Forest Green Typography */}
       <div className="flex items-center gap-3 pb-6 border-b border-[var(--border)]">
         <div className="flex h-10 w-10 items-center justify-center overflow-hidden shrink-0">
           <Image src="/icon.svg" alt="KLIOGRAM Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">KLIOGRAM</h1>
+          <h1 className="text-xl font-bold tracking-tight text-[#057a5d] dark:text-[#10b981]">KLIOGRAM</h1>
           <p className="text-xs font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
         </div>
       </div>

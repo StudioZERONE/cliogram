@@ -47,14 +47,14 @@ export default function IndexPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      {/* Top Header Bar (Original 40px Logo Size / Requirement 1) */}
+      {/* Top Header Bar (Original 40px Logo Size / Unified 1~2 o'clock Forest Green Typography) */}
       <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden shrink-0">
             <Image src="/icon.svg" alt="KLIOGRAM Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">KLIOGRAM</h1>
+            <h1 className="text-xl font-bold tracking-tight text-[#057a5d] dark:text-[#10b981]">KLIOGRAM</h1>
             <p className="text-xs font-medium text-[var(--fg-muted)]">개인자산 관리 서비스</p>
           </div>
         </div>
@@ -88,15 +88,23 @@ export default function IndexPage() {
       {/* Main Hero & Auth Card Section */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl space-y-6">
-          <div className="text-center space-y-3">
-            <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden mb-2">
+          <div className="text-center">
+            {/* Center Logo (96px) */}
+            <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden mb-4">
               <Image src="/icon.svg" alt="Logo" width={96} height={96} className="h-24 w-24 object-contain" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-[var(--fg)]">KLIOGRAM</h2>
-            <p className="text-sm font-medium text-[var(--fg-muted)]">고요히 흘러 마침내 숲이 될 하루</p>
+            
+            {/* Unified Logo Color & Enlarged Typography */}
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#057a5d] dark:text-[#10b981]">
+              KLIOGRAM
+            </h2>
+            {/* Slogan tightly attached to title for beautiful cohesion */}
+            <p className="mt-1 text-sm font-medium text-[var(--fg-muted)]">
+              고요히 흘러 마침내 숲이 될 하루
+            </p>
           </div>
 
-          {/* Warning Message Box per Requirement 2 ("로그인 후 접근할 수 있습니다") */}
+          {/* Warning Message Box ("로그인 후 접근할 수 있습니다") */}
           {authError && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-xs font-semibold text-red-600 dark:text-red-400">
               {authError}
@@ -111,7 +119,7 @@ export default function IndexPage() {
               </div>
               <Link
                 href="/dashboard"
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white transition-colors shadow-xs hover:bg-emerald-500 cursor-pointer"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#057a5d] dark:bg-emerald-600 py-3.5 text-base font-bold text-white transition-colors shadow-xs hover:bg-[#04684f] dark:hover:bg-emerald-500 cursor-pointer"
               >
                 <span>대시보드로 이동</span>
                 <ArrowRight className="h-5 w-5" />
@@ -122,7 +130,7 @@ export default function IndexPage() {
               {/* Google 계정으로 로그인 */}
               <button
                 onClick={handleLogin}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-3.5 text-base font-bold text-[var(--fg)] transition-all hover:border-emerald-500 cursor-pointer shadow-xs"
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-3.5 text-base font-bold text-[var(--fg)] transition-all hover:border-[#057a5d] dark:hover:border-emerald-500 cursor-pointer shadow-xs"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -140,14 +148,14 @@ export default function IndexPage() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded-md border-[var(--border)] text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    className="h-4 w-4 rounded-md border-[var(--border)] text-[#057a5d] focus:ring-[#057a5d] cursor-pointer"
                   />
                   <span className="font-semibold text-sm">30일간 로그인 유지</span>
                 </label>
               </div>
 
               <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--fg-muted)] pt-2 border-t border-[var(--border)]/50">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                <ShieldCheck className="h-4 w-4 text-[#057a5d] dark:text-[#10b981]" />
                 <span>Google OAuth 2.0 보안 인증이 적용됩니다</span>
               </div>
             </div>
