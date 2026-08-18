@@ -28,14 +28,14 @@ export function Sidebar() {
     <aside
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`sticky top-0 z-40 flex h-[100dvh] flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-all duration-300 ease-in-out select-none shrink-0 ${
+      className={`sticky top-0 z-40 flex h-[100dvh] flex-col border-r border-[var(--border)] bg-[var(--surface)] p-3 transition-all duration-300 ease-in-out select-none shrink-0 overflow-hidden ${
         isHovered
-          ? 'w-64 p-4 shadow-2xl z-50'
-          : 'w-14 sm:w-16 p-2 sm:p-2.5 shadow-xs'
+          ? 'w-64 shadow-2xl z-50'
+          : 'w-14 sm:w-16 shadow-xs'
       }`}
     >
-      {/* 1. Brand Logo Section (Fixed Icon Axis) */}
-      <div className="flex items-center h-12 pb-3 border-b border-[var(--border)] overflow-hidden">
+      {/* 1. Brand Logo Section (Fixed Padding & Height - Zero Y-shift) */}
+      <div className="flex items-center h-12 pb-3 border-b border-[var(--border)] shrink-0 overflow-hidden">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center">
           <Image
             src="/icon.svg"
@@ -47,7 +47,7 @@ export function Sidebar() {
           />
         </div>
         
-        {/* Brand Text */}
+        {/* Brand Text - Pure Horizontal Fade In */}
         <div
           className={`ml-3 flex flex-col whitespace-nowrap transition-all duration-300 ${
             isHovered
@@ -58,13 +58,13 @@ export function Sidebar() {
           <h1 className="text-lg font-bold tracking-tight text-[#057a5d] dark:text-[#10b981] leading-none">
             KLIOGRAM
           </h1>
-          <p className="text-[10px] font-medium text-[var(--fg-muted)] mt-0.5">
+          <p className="text-[10px] font-medium text-[var(--fg-muted)] mt-1">
             고요히 흘러 마침내 숲이 될 하루
           </p>
         </div>
       </div>
 
-      {/* 2. Main Navigation Links (Compact Vertical Spacing: space-y-1.5) */}
+      {/* 2. Main Navigation Links (Fixed Height & Spacing - Zero Y-shift) */}
       <nav className="mt-4 flex-1 space-y-1.5 overflow-hidden">
         {/* Dashboard Link */}
         <Link
@@ -166,13 +166,9 @@ export function Sidebar() {
         </Link>
       </nav>
 
-      {/* 3. Bottom Settings Box (Safe Area Padding pb-10 sm:pb-3 for Mobile Bar Protection) */}
-      <div className="mt-auto pt-2 pb-10 sm:pb-3">
-        <div
-          className={`rounded-2xl border border-[var(--border)] bg-[var(--bg)] transition-all ${
-            isHovered ? 'p-2 space-y-1.5' : 'p-1 space-y-1'
-          }`}
-        >
+      {/* 3. Bottom Settings Box (Fixed Box Padding & Outer Bottom Padding pb-8 sm:pb-3) */}
+      <div className="mt-auto pt-2 pb-8 sm:pb-3 shrink-0 overflow-hidden">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-1.5 space-y-1.5 overflow-hidden">
           {/* Stocks Link */}
           <Link
             href="/stocks"
