@@ -1,11 +1,11 @@
 {
-  "name": "KLIOGRAM - 자산 & 배당 관리",
+  "name": "KLIOGRAM",
   "short_name": "KLIOGRAM",
-  "description": "실시간 환율 연동 주식 매매 및 배당금 자산 관리 플랫폼",
+  "description": "개인자산 관리 서비스",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#212734",
+  "theme_color": "#057a5d",
   "orientation": "portrait-primary",
   "icons": [
     {

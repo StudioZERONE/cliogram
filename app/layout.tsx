@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'KLIOGRAM | 고요히 흘러 마침내 숲이 될 하루',
-  description: '고요히 흘러 마침내 숲이 될 하루 - 실시간 환율 연동 자산, 매매, 배당금 및 자금 흐름 관리 대시보드',
+  title: 'KLIOGRAM',
+  description: '개인자산 관리 서비스',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#052e16',
+  themeColor: '#057a5d',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -52,7 +52,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-full font-sans antialiased`}
-        style={{ background: 'var(--bg)', color: 'var(--text)' }}
+        style={{ background: 'var(--bg)', color: 'var(--fg)' }}
       >
         <Providers>{children}</Providers>
       </body>
