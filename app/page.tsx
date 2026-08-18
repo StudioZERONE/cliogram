@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
-import { Sun, Moon, Monitor, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { signInWithGoogle } from '@/lib/auth';
+import { fetchAndCacheThemeExpireHours } from '@/lib/theme';
+import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 
 export default function IndexPage() {
-  const { theme, setTheme } = useTheme();
   const [userNickname, setUserNickname] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -22,11 +22,13 @@ export default function IndexPage() {
 
     if (search.includes('error') || hash.includes('error')) {
       setAuthError('로그인 후 접근할 수 있습니다.');
-      // Clean up URL query parameters to display clean http://localhost:3000/
       if (window.history.replaceState) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
+
+    // Cache theme expire hours on load
+    fetchAndCacheThemeExpireHours();
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
@@ -47,7 +49,7 @@ export default function IndexPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
-      {/* Top Header Bar (Original 40px Logo Size / Unified 1~2 o'clock Forest Green Typography) */}
+      {/* Top Header Bar */}
       <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden shrink-0">
@@ -59,30 +61,8 @@ export default function IndexPage() {
           </div>
         </div>
 
-        {/* Theme Switcher Toggle */}
-        <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
-          <button
-            onClick={() => setTheme('light')}
-            className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'light' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
-            title="White Mode"
-          >
-            <Sun className="h-4.5 w-4.5" />
-          </button>
-          <button
-            onClick={() => setTheme('dark')}
-            className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'dark' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
-            title="Dark Mode"
-          >
-            <Moon className="h-4.5 w-4.5" />
-          </button>
-          <button
-            onClick={() => setTheme('system')}
-            className={`rounded-lg p-2 transition-colors cursor-pointer ${theme === 'system' ? 'bg-[var(--surface)] text-[var(--fg)] shadow-xs' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
-            title="System Mode"
-          >
-            <Monitor className="h-4.5 w-4.5" />
-          </button>
-        </div>
+        {/* Dynamic Single Theme Toggle Button */}
+        <ThemeToggleButton />
       </header>
 
       {/* Main Hero & Auth Card Section */}
@@ -98,13 +78,13 @@ export default function IndexPage() {
             <h2 className="text-3xl font-extrabold tracking-tight text-[#057a5d] dark:text-[#10b981]">
               KLIOGRAM
             </h2>
-            {/* Slogan tightly attached to title for beautiful cohesion */}
+            {/* Slogan tightly attached to title */}
             <p className="mt-1 text-sm font-medium text-[var(--fg-muted)]">
               고요히 흘러 마침내 숲이 될 하루
             </p>
           </div>
 
-          {/* Warning Message Box ("로그인 후 접근할 수 있습니다") */}
+          {/* Warning Message Box */}
           {authError && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-xs font-semibold text-red-600 dark:text-red-400">
               {authError}
@@ -136,7 +116,7 @@ export default function IndexPage() {
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
                 <span>Google 계정으로 로그인</span>
               </button>
