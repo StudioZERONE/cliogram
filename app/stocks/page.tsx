@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Layers, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Layers, ChevronUp } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
 import { Sidebar } from '@/components/Sidebar';
@@ -116,27 +116,17 @@ export default function StocksPage() {
         <Header title="종목 마스터" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
-          {/* Top Info Banner Card */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs flex items-center justify-between gap-3">
+          {/* Top Info Banner Card (Desktop Only - Hidden on Mobile) */}
+          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+              <h3 className="text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
                 주식 종목 마스터 관리
               </h3>
-              <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-0.5 sm:mt-1">
+              <p className="text-sm text-[var(--fg-muted)] mt-1">
                 매매 및 배당 관리를 위한 기본 주식 종목(티커) 목록을 등록하고 관리합니다.
               </p>
             </div>
-
-            {/* Circular Green Add Button for Mobile Trigger / Header Action */}
-            <button
-              onClick={() => setIsMobileFormOpen(!isMobileFormOpen)}
-              className="lg:hidden flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-              title="종목 등록 폼 열기/닫기"
-              aria-label="종목 등록 폼 열기/닫기"
-            >
-              <Plus className={`h-5 w-5 stroke-[2.5] transition-transform ${isMobileFormOpen ? 'rotate-45' : ''}`} />
-            </button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
@@ -216,14 +206,14 @@ export default function StocksPage() {
                   <span className="text-xs sm:text-sm font-mono text-[var(--fg-muted)] font-normal">총 {stocks.length}개</span>
                 </h3>
 
-                {/* Circular Green Add Button on Desktop List Header */}
+                {/* Circular Green Add Button for Mobile & Desktop List Header */}
                 <button
                   onClick={() => setIsMobileFormOpen(!isMobileFormOpen)}
-                  className="hidden lg:flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
                   title="종목 추가"
                   aria-label="종목 추가"
                 >
-                  <Plus className="h-5 w-5 stroke-[2.5]" />
+                  <Plus className={`h-5 w-5 stroke-[2.5] transition-transform ${isMobileFormOpen ? 'rotate-45' : ''}`} />
                 </button>
               </div>
 

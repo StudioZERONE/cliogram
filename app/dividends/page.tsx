@@ -125,27 +125,17 @@ export default function DividendsPage() {
         <Header title="배당 내역" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
-          {/* Top Info Banner Card */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs flex items-center justify-between gap-3">
+          {/* Top Info Banner Card (Desktop Only - Hidden on Mobile) */}
+          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+              <h3 className="text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
                 배당 수령 내역 관리
               </h3>
-              <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-0.5 sm:mt-1">
+              <p className="text-sm text-[var(--fg-muted)] mt-1">
                 주식 종목별 배당금 지급 일자 및 지급 금액/세금 내역을 기록하고 분석합니다.
               </p>
             </div>
-
-            {/* Circular Green Add Button for Mobile Trigger */}
-            <button
-              onClick={() => setIsMobileFormOpen(!isMobileFormOpen)}
-              className="lg:hidden flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-              title="배당 내역 등록 폼 열기/닫기"
-              aria-label="배당 내역 등록 폼 열기/닫기"
-            >
-              <Plus className={`h-5 w-5 stroke-[2.5] transition-transform ${isMobileFormOpen ? 'rotate-45' : ''}`} />
-            </button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
@@ -238,14 +228,14 @@ export default function DividendsPage() {
                   <span className="text-xs sm:text-sm font-mono text-[var(--fg-muted)] font-normal">총 {dividends.length}건</span>
                 </h3>
 
-                {/* Circular Green Add Button on Desktop List Header */}
+                {/* Circular Green Add Button for Mobile & Desktop List Header */}
                 <button
                   onClick={() => setIsMobileFormOpen(!isMobileFormOpen)}
-                  className="hidden lg:flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
                   title="배당 내역 추가"
                   aria-label="배당 내역 추가"
                 >
-                  <Plus className="h-5 w-5 stroke-[2.5]" />
+                  <Plus className={`h-5 w-5 stroke-[2.5] transition-transform ${isMobileFormOpen ? 'rotate-45' : ''}`} />
                 </button>
               </div>
 

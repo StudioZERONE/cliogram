@@ -59,7 +59,7 @@ export default function CodesPage() {
   const [mobileView, setMobileView] = useState<'groups' | 'codes'>('groups');
   const [activeMobileActionId, setActiveMobileActionId] = useState<string | null>(null);
   
-  // Smart Fixed Popover Positioning State (Eliminates table inner scrollbar & shifts)
+  // Smart Fixed Popover Positioning State
   const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; openUp: boolean } | null>(null);
 
   // Modals state
@@ -362,15 +362,15 @@ export default function CodesPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header title="공통코드" />
 
-        <main className="p-3 sm:p-8 space-y-4 sm:space-y-6 flex-1">
-          {/* Top Header Card */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
+          {/* Top Header Card (Desktop Only - Hidden on Mobile to maximize screen real estate) */}
+          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+              <h3 className="text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
                 시스템 공통 코드 관리
               </h3>
-              <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-0.5 sm:mt-1">
+              <p className="text-sm text-[var(--fg-muted)] mt-1">
                 통화, 거래 유형, 종목 유형 등 시스템 전반에서 활용되는 마스터 코드를 등록하고 관리합니다.
               </p>
             </div>
@@ -530,8 +530,11 @@ export default function CodesPage() {
                         <span className="shrink-0">상세 코드 목록</span>
                         {/* Desktop Group Badge */}
                         {selectedGroup && (
-                          <span className="hidden sm:inline-flex text-xs font-mono rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
-                            {selectedGroup.group_name} ({selectedGroupId})
+                          <span className="hidden sm:inline-flex text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
+                            {selectedGroup.group_name.replace(/\s+/g, ' ')}{' '}
+                            <span className="font-mono text-[11px] font-semibold opacity-80 ml-1">
+                              ({selectedGroupId})
+                            </span>
                           </span>
                         )}
                       </h4>
@@ -562,14 +565,14 @@ export default function CodesPage() {
                   </button>
                 </div>
 
-                {/* Mobile Subheader Row: Group Name Badge Banner */}
+                {/* Mobile Subheader Row: Full Unclipped Group Name Banner (No wide letter-spacing or grey text clipping) */}
                 {selectedGroup && (
-                  <div className="sm:hidden flex items-center justify-between rounded-xl bg-[var(--bg)] border border-[var(--border)] px-3 py-2 shadow-xs">
-                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 truncate">
-                      {selectedGroup.group_name} ({selectedGroupId})
-                    </span>
-                    <span className="text-[10px] text-[var(--fg-muted)] font-medium shrink-0 ml-2">
-                      작업(⋮) 메뉴에서 순서 조율 가능
+                  <div className="sm:hidden flex items-center rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 shadow-xs">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      {selectedGroup.group_name.replace(/\s+/g, ' ')}{' '}
+                      <span className="font-mono text-[11px] font-semibold opacity-80">
+                        ({selectedGroupId})
+                      </span>
                     </span>
                   </div>
                 )}
@@ -712,7 +715,7 @@ export default function CodesPage() {
                                         closeMobileAction();
                                       }}
                                     />
-                                    {/* Smart Fixed Floating Popover (Always inside viewport, zero table scrollbars or shifts) */}
+                                    {/* Smart Fixed Floating Popover */}
                                     <div
                                       onClick={(e) => e.stopPropagation()}
                                       style={{
