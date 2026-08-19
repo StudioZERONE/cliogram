@@ -15,9 +15,13 @@
 ## 2. 헌법-지식 문서 이원화 연동 체계 (Constitution & Vault Knowledge Bridge)
 
 - **헌법(`GEMINI.md`)의 역할**: 개발 방향성, 서비스 정체성, 에이전트 핵심 행동 수칙 등 **강력한 의지를 담은 핵심 대원칙**만을 정의하여 컨텍스트 경량화 및 실행 명확성을 유지함.
-- **지식 문서(Obsidian Vault)의 역할**: 세부 CSS 디자인 토큰, UI/UX 컴포넌트 명세, 반응형 뷰포트 레이아웃, 개발일지 작성 양식 등 **상세 구현 가이드라인은 지식 문서(`21.Rules/`, `22.Design Rules/`)에 체계적으로 분리 관리**함.
+- **옵시디언 지식 문서 최상위 루트 경로 (Obsidian Vault Root)**:
+  - **경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/kliogram/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/kliogram/)
+  - **`21.Rules/`**: 코드 구현 규정, 코딩 컨벤션 및 DB 쿼리 정렬 가이드
+  - **`22.Design Rules/`**: 세부 UI/UX 컴포넌트 명세, 컬러 토큰, 사이드바 & 반응형 뷰포트 규정
+  - **`51.Journal/`**: 주차별 개발일지 및 작업 기록 문서
 - **AI 에이전트의 자율 지식 참조 원칙 (Active Knowledge Referencing)**:
-  - AI 에이전트는 UI/UX 디자인, DB 쿼리 작성, 문서 관리 작업 수행 시 **관련 옵시디언 지식 문서를 상시 활발히 참조**하여 프로젝트의 기존 디자인 시스템과 개발 컨벤션을 100% 동기화함.
+  - AI 에이전트는 새로운 대화 세션이나 작업 수행 시 위 옵시디언 루트 경로의 지식 문서를 **상시 활발히 참조**하여 기존 디자인 시스템과 코딩 컨벤션을 100% 동기화함.
 
 ---
 
@@ -30,7 +34,7 @@
   - **입력 필드 (Recessed Inset)**: 오목하게 들어간 느낌(`shadow-inner`, 짙은 필드 배경)으로 평면과 구분함.
   - **기능 버튼 및 컨트롤 (Elevated Raised Action)**: 양각으로 떠 있는 컨트롤 느낌(`bg-emerald-500/10 border-emerald-500/30 shadow-xs`)을 부여하여 조작 직관성을 높임.
   - **원장 데이터 추가 버튼 규정**: 신규 데이터 추가 버튼은 `+` 아이콘이 포함된 콤팩트 동그란 녹색 버튼(`rounded-full`)으로 단일화함.
-- **세부 레이아웃 및 뷰포트 규정**: 상세 반응형 디자인, 모바일 팝업 및 고밀도 컴팩트 스펙은 [`22.Design Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/kliogram/22.Design Rules/) 지식 문서를 참조함.
+- **세부 레이아웃 및 뷰포트 규정**: 상세 반응형 디자인, 모바일 팝업 및 고밀도 컴팩트 스펙은 지식 문서 [`22.Design Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/kliogram/22.Design Rules/)를 참조함.
 
 ---
 
