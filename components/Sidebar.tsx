@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -17,6 +17,11 @@ export function Sidebar() {
   const pathname = usePathname();
   const { tradesCount, dividendsCount, stocksCount } = useCounts();
   const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isOverview = pathname === '/dashboard';
   const isTrades = pathname === '/trades';
@@ -130,13 +135,14 @@ export function Sidebar() {
               매매 내역
             </span>
             <span
+              suppressHydrationWarning
               className={`ml-auto mr-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
                 isHovered
                   ? 'opacity-100 scale-100'
                   : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
               }`}
             >
-              {tradesCount}
+              {mounted ? tradesCount : 0}
             </span>
           </Link>
 
@@ -166,13 +172,14 @@ export function Sidebar() {
               배당 내역
             </span>
             <span
+              suppressHydrationWarning
               className={`ml-auto mr-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
                 isHovered
                   ? 'opacity-100 scale-100'
                   : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
               }`}
             >
-              {dividendsCount}
+              {mounted ? dividendsCount : 0}
             </span>
           </Link>
         </nav>
@@ -207,13 +214,14 @@ export function Sidebar() {
               종목 마스터
             </span>
             <span
+              suppressHydrationWarning
               className={`ml-auto mr-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
                 isHovered
                   ? 'opacity-100 scale-100'
                   : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
               }`}
             >
-              {stocksCount}
+              {mounted ? stocksCount : 0}
             </span>
           </Link>
 
