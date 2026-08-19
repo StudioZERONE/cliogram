@@ -55,7 +55,7 @@ VALUES
   ('STOCK_TYPE', 'RIA', '국내시장복귀계좌', 4, true),
   ('STOCK_TYPE', 'Save', '예적금 / 파킹', 5, true),
   ('STOCK_TYPE', 'Old.Growth', '구 성장주', 6, true),
-  ('STOCK_TYPE', 'OLD.DIVIDEND', '구 배당주', 7, true)
+  ('STOCK_TYPE', 'Old.Dividend', '구 배당주', 7, true)
 ON CONFLICT (group_id, code) DO UPDATE 
 SET code_name = EXCLUDED.code_name, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active;
 
