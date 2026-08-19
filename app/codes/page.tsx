@@ -149,7 +149,8 @@ export default function CodesPage() {
     const { data } = await supabase
       .from('common_codes')
       .select('*')
-      .order('sort_order', { ascending: true });
+      .order('sort_order', { ascending: true })
+      .order('code', { ascending: true });
     if (data) setCodes(data);
   };
 

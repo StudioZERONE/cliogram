@@ -54,8 +54,12 @@ export default function StocksPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Explicitly filter by user_id
-    const { data } = await supabase.from('stocks').select('*').eq('user_id', user.id).order('name', { ascending: true });
+    const { data } = await supabase
+      .from('stocks')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('name', { ascending: true })
+      .order('ticker', { ascending: true });
     if (data) setStocks(data as StockRecord[]);
   };
 

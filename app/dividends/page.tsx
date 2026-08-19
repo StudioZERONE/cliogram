@@ -63,8 +63,12 @@ export default function DividendsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Explicitly filter by user_id
-    const { data } = await supabase.from('dividends').select('*').eq('user_id', user.id).order('payment_date', { ascending: false });
+    const { data } = await supabase
+      .from('dividends')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('payment_date', { ascending: false })
+      .order('created_at', { ascending: false });
     if (data) setDividends(data as DividendRecord[]);
   };
 

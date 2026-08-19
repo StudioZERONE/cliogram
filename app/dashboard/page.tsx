@@ -64,9 +64,9 @@ export default function DashboardPage() {
 
     // Explicitly filter by current user's user_id to isolate data
     const [tradesRes, divRes, stocksRes] = await Promise.all([
-      supabase.from('trades').select('*').eq('user_id', user.id).order('trade_date', { ascending: false }),
-      supabase.from('dividends').select('*').eq('user_id', user.id).order('payment_date', { ascending: false }),
-      supabase.from('stocks').select('*').eq('user_id', user.id).order('name', { ascending: true })
+      supabase.from('trades').select('*').eq('user_id', user.id).order('trade_date', { ascending: false }).order('created_at', { ascending: false }),
+      supabase.from('dividends').select('*').eq('user_id', user.id).order('payment_date', { ascending: false }).order('created_at', { ascending: false }),
+      supabase.from('stocks').select('*').eq('user_id', user.id).order('name', { ascending: true }).order('ticker', { ascending: true })
     ]);
 
     if (tradesRes.data) setTrades(tradesRes.data as TradeRecord[]);

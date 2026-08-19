@@ -73,5 +73,9 @@
 8. **동적 마스터 초기 선택 및 DB 시드 SQL 동기화 원칙 (Dynamic Initial Selection & Seed Sync)**:
    - 마스터-디테일 UI 선택 시 특정 키를 하드코딩하여 지정하지 않고 DB 조회된 첫 번째 항목(`data[0].group_id`)을 동적 초기 선택함.
    - 코드 정렬 및 시드 변경 시 마스터 데이터 시드 SQL(`sql/b_data_system.sql`) 및 레거시 데이터 삭제 쿼리를 즉시 100% 동기화함.
+9. **엄격한 DB 쿼리 명시적 정렬 원칙 (Strict Deterministic Database Query Ordering)**:
+   - DB 조회(`select`) 쿼리를 작성할 때 `ORDER BY`(`.order()`) 절을 생략하는 행위를 엄격히 금지함.
+   - 정렬 조건이 없으면 PostgreSQL 물리적 튜플 저장 순서에 의존하게 되어 개발/운영 DB 간 데이터 표시 순서 불일치나 초기 선택 오류가 발생함.
+   - 반드시 주 정렬 조건(Primary)과 동률 발생 방지용 2차 동점 처리 조건(Secondary Tie-Breaker)을 명시적으로 작성하여 정렬 결정론(Determinism)을 100% 보장함.
 
 ---

@@ -26,7 +26,8 @@ export async function getCommonCodes(groupId: string): Promise<CommonCode[]> {
       .select('*')
       .eq('group_id', groupId)
       .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+      .order('sort_order', { ascending: true })
+      .order('code', { ascending: true });
 
     if (error || !data) {
       return [];
