@@ -3,6 +3,10 @@
 -- (시스템 운용에 필요한 공통코드 그룹, 공통코드, 초기 환율 시드)
 -- =========================================================
 
+-- 0. 레거시 구그룹 정리 (Legacy Clean-up)
+DELETE FROM public.common_codes WHERE group_id = 'CURRENCY';
+DELETE FROM public.common_code_groups WHERE group_id = 'CURRENCY';
+
 -- 1. 공통코드 그룹 (common_code_groups)
 INSERT INTO public.common_code_groups (group_id, group_name, description)
 VALUES 
