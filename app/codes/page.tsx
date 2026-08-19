@@ -12,7 +12,9 @@ import {
   ArrowLeft,
   Layers,
   Code2,
-  MoreVertical
+  MoreVertical,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
@@ -108,8 +110,6 @@ export default function CodesPage() {
     });
   }, [router]);
 
-
-
   const fetchGroups = async () => {
     const { data } = await supabase.from('common_code_groups').select('*');
     if (data) {
@@ -191,7 +191,6 @@ export default function CodesPage() {
 
   // Inline Active status toggle
   const toggleCodeActive = async (id: string, currentStatus: boolean) => {
-    // Optimistic local update
     setCodes((prev) =>
       prev.map((c) => (c.id === id ? { ...c, is_active: !currentStatus } : c))
     );
@@ -235,7 +234,7 @@ export default function CodesPage() {
     .filter((c) => c.group_id === selectedGroupId)
     .sort((a, b) => a.sort_order - b.sort_order);
 
-  // Drag and Drop reordering logic for Detail Codes
+  // Drag and Drop reordering logic for Desktop
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
   };
@@ -253,18 +252,15 @@ export default function CodesPage() {
       return;
     }
 
-    // Reorder local array
     const updated = [...currentGroupCodes];
     const [movedItem] = updated.splice(draggedIndex, 1);
     updated.splice(index, 0, movedItem);
 
-    // Re-assign sort_order sequentially: 1, 2, 3...
     const reindexed = updated.map((item, idx) => ({
       ...item,
       sort_order: idx + 1,
     }));
 
-    // Optimistic UI update
     setCodes((prev) => {
       const others = prev.filter((c) => c.group_id !== selectedGroupId);
       return [...others, ...reindexed];
@@ -273,7 +269,33 @@ export default function CodesPage() {
     setDraggedIndex(null);
     setDragOverIndex(null);
 
-    // Batch update DB in background
+    for (const item of reindexed) {
+      await supabase
+        .from('common_codes')
+        .update({ sort_order: item.sort_order })
+        .eq('id', item.id);
+    }
+  };
+
+  // Mobile Precision Order Movement Helper (Up / Down)
+  const moveCodeOrder = async (currentIndex: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= currentGroupCodes.length) return;
+
+    const updated = [...currentGroupCodes];
+    const [movedItem] = updated.splice(currentIndex, 1);
+    updated.splice(targetIndex, 0, movedItem);
+
+    const reindexed = updated.map((item, idx) => ({
+      ...item,
+      sort_order: idx + 1,
+    }));
+
+    setCodes((prev) => {
+      const others = prev.filter((c) => c.group_id !== selectedGroupId);
+      return [...others, ...reindexed];
+    });
+
     for (const item of reindexed) {
       await supabase
         .from('common_codes')
@@ -291,32 +313,32 @@ export default function CodesPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header title="공통코드" />
 
-        <main className="p-4 sm:p-8 space-y-6 flex-1">
+        <main className="p-3 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Header Card */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h3 className="text-xl font-bold flex items-center gap-2">
+              <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
                 시스템 공통 코드 관리
               </h3>
-              <p className="text-sm text-[var(--fg-muted)] mt-1">
+              <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-0.5 sm:mt-1">
                 통화, 거래 유형, 종목 유형 등 시스템 전반에서 활용되는 마스터 코드를 등록하고 관리합니다.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
             {/* Left Panel: Code Groups */}
             <div
-              className={`space-y-4 lg:col-span-5 ${
+              className={`space-y-3 sm:space-y-4 lg:col-span-5 ${
                 mobileView === 'codes' ? 'hidden lg:block' : 'block'
               }`}
             >
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-5 shadow-xs space-y-3 sm:space-y-4">
                 {/* Header & Create Group Button */}
                 <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-bold flex items-center gap-2">
-                    <Code2 className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
+                  <h4 className="text-base sm:text-lg font-bold flex items-center gap-2">
+                    <Code2 className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-[#057a5d] dark:text-emerald-400" />
                     코드 그룹 목록
                   </h4>
                   <button
@@ -332,15 +354,15 @@ export default function CodesPage() {
                 </div>
 
                 {/* Search Bar & Sort Dropdown */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                   <div className="relative sm:col-span-7">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--fg-muted)]" />
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)]" />
                     <input
                       type="text"
                       placeholder="그룹명/ID 검색..."
                       value={groupSearch}
                       onChange={(e) => setGroupSearch(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-8 pr-3 py-1.5 sm:py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
                   </div>
 
@@ -348,19 +370,19 @@ export default function CodesPage() {
                     <select
                       value={groupSort}
                       onChange={(e) => setGroupSort(e.target.value as GroupSortOption)}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer appearance-none pr-7"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 sm:py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer appearance-none pr-7"
                     >
                       <option value="name_asc">그룹명 순 (A-Z)</option>
                       <option value="name_desc">그룹명 역순 (Z-A)</option>
                       <option value="id_asc">그룹 ID 순</option>
                       <option value="id_desc">그룹 ID 역순</option>
                     </select>
-                    <ArrowUpDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)] pointer-events-none" />
+                    <ArrowUpDown className="absolute right-2.5 top-2 sm:top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)] pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Group Selector Cards */}
-                <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
+                <div className="space-y-1.5 sm:space-y-2 max-h-[560px] overflow-y-auto pr-0.5">
                   {filteredGroups.length === 0 ? (
                     <div className="py-8 text-center text-xs text-[var(--fg-muted)] border border-dashed border-[var(--border)] rounded-xl">
                       검색된 코드 그룹이 없습니다.
@@ -377,20 +399,20 @@ export default function CodesPage() {
                             setSelectedGroupId(group.group_id);
                             setMobileView('codes');
                           }}
-                          className={`group/card flex items-center justify-between rounded-xl px-4 py-3 border transition-all cursor-pointer ${
+                          className={`group/card flex items-center justify-between rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-3 border transition-all cursor-pointer ${
                             isSelected
                               ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
                               : 'border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:border-emerald-500/40'
                           }`}
                         >
                           <div className="min-w-0 flex-1 pr-2">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-bold truncate">{group.group_name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs sm:text-sm font-bold truncate">{group.group_name}</p>
                               <span className="text-[10px] font-mono rounded-full bg-[var(--surface)] px-2 py-0.5 font-bold border border-[var(--border)] shrink-0">
                                 {count}개
                               </span>
                             </div>
-                            <p className="text-xs font-mono text-[var(--fg-muted)] truncate mt-0.5">
+                            <p className="text-[11px] sm:text-xs font-mono text-[var(--fg-muted)] truncate mt-0.5">
                               {group.group_id}
                             </p>
                           </div>
@@ -409,7 +431,7 @@ export default function CodesPage() {
                               className="rounded-lg p-1.5 text-[var(--fg-muted)] hover:bg-[var(--surface)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                               title="그룹 수정"
                             >
-                              <Edit2 className="h-4 w-4" />
+                              <Edit2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
 
                             {/* Delete Group Button */}
@@ -426,7 +448,7 @@ export default function CodesPage() {
                               className="rounded-lg p-1.5 text-[var(--fg-muted)] hover:bg-[var(--surface)] hover:text-red-500 transition-colors"
                               title="그룹 삭제"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           </div>
                         </div>
@@ -439,23 +461,23 @@ export default function CodesPage() {
 
             {/* Right Panel: Detail Common Codes */}
             <div
-              className={`space-y-4 lg:col-span-7 ${
+              className={`space-y-3 sm:space-y-4 lg:col-span-7 ${
                 mobileView === 'groups' ? 'hidden lg:block' : 'block'
               }`}
             >
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-5 shadow-xs space-y-3 sm:space-y-4">
                 {/* Header Line 1: Mobile Back Button, Title & Add Code Button */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <button
                       onClick={() => setMobileView('groups')}
-                      className="lg:hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2 text-[var(--fg)] hover:bg-[var(--surface)] cursor-pointer shrink-0"
+                      className="lg:hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5 text-[var(--fg)] hover:bg-[var(--surface)] cursor-pointer shrink-0"
                       title="코드그룹 목록으로 돌아가기"
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </button>
                     <div className="min-w-0">
-                      <h4 className="text-lg font-bold flex items-center gap-2 flex-wrap">
+                      <h4 className="text-base sm:text-lg font-bold flex items-center gap-2 flex-wrap">
                         <span className="shrink-0">상세 코드 목록</span>
                         {/* Desktop Group Badge */}
                         {selectedGroup && (
@@ -493,28 +515,28 @@ export default function CodesPage() {
 
                 {/* Mobile Subheader Row: Group Name Badge Banner */}
                 {selectedGroup && (
-                  <div className="sm:hidden flex items-center justify-between rounded-xl bg-[var(--bg)] border border-[var(--border)] px-3.5 py-2.5 shadow-xs">
+                  <div className="sm:hidden flex items-center justify-between rounded-xl bg-[var(--bg)] border border-[var(--border)] px-3 py-2 shadow-xs">
                     <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 truncate">
                       {selectedGroup.group_name} ({selectedGroupId})
                     </span>
                     <span className="text-[10px] text-[var(--fg-muted)] font-medium shrink-0 ml-2">
-                      드래그 정렬 가능
+                      작업(⋮) 메뉴에서 순서 조율 가능
                     </span>
                   </div>
                 )}
 
                 {/* Detail Codes Table with Drag and Drop */}
                 <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-xs">
+                  <table className="w-full text-xs sm:text-sm">
+                    <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
                       <tr>
-                        <th className="py-3 px-2 text-center w-10">이동</th>
-                        <th className="hidden sm:table-cell py-3 px-3 text-center w-14">순서</th>
-                        <th className="py-3 px-2 sm:px-3 text-left">코드 (Code)</th>
-                        <th className="py-3 px-3 sm:px-4 text-left">코드명</th>
-                        <th className="hidden sm:table-cell py-3 px-3 text-center w-20">상태</th>
-                        <th className="hidden sm:table-cell py-3 px-3 text-center w-24">작업</th>
-                        <th className="sm:hidden py-3 px-2 text-center w-16">작업</th>
+                        <th className="hidden sm:table-cell py-2.5 px-2 text-center w-10">이동</th>
+                        <th className="hidden sm:table-cell py-2.5 px-3 text-center w-14">순서</th>
+                        <th className="py-2.5 px-2.5 sm:px-3 text-left">코드 (Code)</th>
+                        <th className="py-2.5 px-2.5 sm:px-4 text-left">코드명</th>
+                        <th className="hidden sm:table-cell py-2.5 px-3 text-center w-20">상태</th>
+                        <th className="hidden sm:table-cell py-2.5 px-3 text-center w-24">작업</th>
+                        <th className="sm:hidden py-2.5 px-2 text-center w-12">작업</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)] font-medium">
@@ -522,9 +544,9 @@ export default function CodesPage() {
                         <tr>
                           <td
                             colSpan={7}
-                            className="py-12 text-center text-xs text-[var(--fg-muted)]"
+                            className="py-10 text-center text-xs text-[var(--fg-muted)]"
                           >
-                            등록된 상세 코드가 없습니다. 상단 "+ 상세코드 추가" 버튼을 눌러 등록해 주세요.
+                            등록된 상세 코드가 없습니다. "+ 버튼"을 눌러 등록해 주세요.
                           </td>
                         </tr>
                       ) : (
@@ -547,28 +569,28 @@ export default function CodesPage() {
                                   : 'hover:bg-[var(--bg)]/70'
                               }`}
                             >
-                              {/* Drag Grip Handle */}
-                              <td className="py-3 px-2 text-center text-[var(--fg-muted)]">
+                              {/* Drag Grip Handle (Desktop Only) */}
+                              <td className="hidden sm:table-cell py-2.5 px-2 text-center text-[var(--fg-muted)]">
                                 <GripVertical className="h-4 w-4 mx-auto cursor-grab active:cursor-grabbing hover:text-emerald-500" />
                               </td>
 
                               {/* Sort Order (Desktop Only) */}
-                              <td className="hidden sm:table-cell py-3 px-3 text-center font-mono text-xs text-[var(--fg-muted)]">
+                              <td className="hidden sm:table-cell py-2.5 px-3 text-center font-mono text-xs text-[var(--fg-muted)]">
                                 {item.sort_order}
                               </td>
 
                               {/* Code */}
-                              <td className="py-3 px-2 sm:px-3 text-left font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                              <td className="py-2.5 px-2.5 sm:px-3 text-left font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                                 {item.code}
                               </td>
 
                               {/* Code Name */}
-                              <td className="py-3 px-3 sm:px-4 text-left font-semibold text-[var(--fg)] text-xs sm:text-sm">
+                              <td className="py-2.5 px-2.5 sm:px-4 text-left font-semibold text-[var(--fg)] text-xs sm:text-sm">
                                 {item.code_name}
                               </td>
 
                               {/* Desktop Active Status Toggle */}
-                              <td className="hidden sm:table-cell py-3 px-3 text-center">
+                              <td className="hidden sm:table-cell py-2.5 px-3 text-center">
                                 <button
                                   type="button"
                                   onClick={() => toggleCodeActive(item.id, item.is_active)}
@@ -583,7 +605,7 @@ export default function CodesPage() {
                               </td>
 
                               {/* Desktop Actions (Edit & Delete) */}
-                              <td className="hidden sm:table-cell py-3 px-3 text-center">
+                              <td className="hidden sm:table-cell py-2.5 px-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     type="button"
@@ -618,8 +640,8 @@ export default function CodesPage() {
                                 </div>
                               </td>
 
-                              {/* Mobile Only: Combined Action Button & Layer Popover */}
-                              <td className="sm:hidden py-3 px-2 text-center relative">
+                              {/* Mobile Only: Zero-Space Action Button & Reorder Layer Popover */}
+                              <td className="sm:hidden py-2 px-2 text-center relative">
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -628,10 +650,10 @@ export default function CodesPage() {
                                       activeMobileActionId === item.id ? null : item.id
                                     );
                                   }}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 text-[var(--fg-muted)] hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer mx-auto shrink-0"
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 text-[var(--fg-muted)] hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer mx-auto shrink-0"
                                   title="작업 메뉴"
                                 >
-                                  <MoreVertical className="h-4 w-4" />
+                                  <MoreVertical className="h-3.5 w-3.5" />
                                 </button>
 
                                 {activeMobileActionId === item.id && (
@@ -646,8 +668,38 @@ export default function CodesPage() {
                                     />
                                     <div
                                       onClick={(e) => e.stopPropagation()}
-                                      className="absolute right-1 top-10 z-50 w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95 cursor-default"
+                                      className="absolute right-1 top-9 z-50 w-40 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95 cursor-default"
                                     >
+                                      {/* Reorder Order Up */}
+                                      <button
+                                        type="button"
+                                        disabled={index === 0}
+                                        onClick={() => {
+                                          moveCodeOrder(index, 'up');
+                                          setActiveMobileActionId(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none"
+                                      >
+                                        <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        <span>위로 이동</span>
+                                      </button>
+
+                                      {/* Reorder Order Down */}
+                                      <button
+                                        type="button"
+                                        disabled={index === currentGroupCodes.length - 1}
+                                        onClick={() => {
+                                          moveCodeOrder(index, 'down');
+                                          setActiveMobileActionId(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none"
+                                      >
+                                        <ArrowDown className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        <span>아래로 이동</span>
+                                      </button>
+
+                                      <div className="border-t border-[var(--border)] my-1" />
+
                                       {/* Status Toggle */}
                                       <button
                                         type="button"
