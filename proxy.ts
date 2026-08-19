@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
+export function proxy(request: NextRequest) {
   // Allow Next.js client-side auth guard to handle session token hash exchange safely
   return NextResponse.next();
 }
