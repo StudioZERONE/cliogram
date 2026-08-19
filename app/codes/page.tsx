@@ -46,7 +46,11 @@ export default function CodesPage() {
   const router = useRouter();
   const [groups, setGroups] = useState<CodeGroup[]>([]);
   const [codes, setCodes] = useState<CommonCode[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('THEME_CONFIG');
+  // Dynamically default to first code group when data is fetched, instead of hardcoded 'THEME_CONFIG'
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+
+  // Responsive desktop check to disable HTML5 draggable on mobile (prevents iOS long-press drag preview freeze & color artifacts)
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
 
   // Search & Sorting state for Code Groups
   const [groupSearch, setGroupSearch] = useState<string>('');
@@ -110,12 +114,28 @@ export default function CodesPage() {
     });
   }, [router]);
 
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 640);
+    };
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
   const fetchGroups = async () => {
     const { data } = await supabase.from('common_code_groups').select('*');
     if (data) {
       setGroups(data);
-      if (data.length > 0 && !data.some((g) => g.group_id === selectedGroupId)) {
-        setSelectedGroupId(data[0].group_id);
+      if (data.length > 0) {
+        setSelectedGroupId((prev) => {
+          if (prev && data.some((g) => g.group_id === prev)) {
+            return prev;
+          }
+          return data[0].group_id;
+        });
+      } else {
+        setSelectedGroupId('');
       }
     }
   };
@@ -551,17 +571,19 @@ export default function CodesPage() {
                         </tr>
                       ) : (
                         currentGroupCodes.map((item, index) => {
-                          const isBeingDragged = draggedIndex === index;
-                          const isTargetDragOver = dragOverIndex === index;
+                          const isBeingDragged = isDesktop && draggedIndex === index;
+                          const isTargetDragOver = isDesktop && dragOverIndex === index;
 
                           return (
                             <tr
                               key={item.id}
-                              draggable={true}
-                              onDragStart={() => handleDragStart(index)}
-                              onDragOver={(e) => handleDragOver(e, index)}
-                              onDrop={() => handleDrop(index)}
-                              className={`transition-colors cursor-grab active:cursor-grabbing ${
+                              draggable={isDesktop}
+                              onDragStart={() => isDesktop && handleDragStart(index)}
+                              onDragOver={(e) => isDesktop && handleDragOver(e, index)}
+                              onDrop={() => isDesktop && handleDrop(index)}
+                              className={`transition-colors ${
+                                isDesktop ? 'cursor-grab active:cursor-grabbing' : ''
+                              } ${
                                 isBeingDragged
                                   ? 'opacity-30 bg-emerald-500/20'
                                   : isTargetDragOver
