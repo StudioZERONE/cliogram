@@ -126,7 +126,10 @@ export default function CodesPage() {
   }, []);
 
   const fetchGroups = async () => {
-    const { data } = await supabase.from('common_code_groups').select('*');
+    const { data } = await supabase
+      .from('common_code_groups')
+      .select('*')
+      .order('group_name', { ascending: true });
     if (data) {
       setGroups(data);
       if (data.length > 0) {
