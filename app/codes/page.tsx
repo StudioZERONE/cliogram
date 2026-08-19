@@ -11,7 +11,8 @@ import {
   GripVertical,
   ArrowLeft,
   Layers,
-  Code2
+  Code2,
+  MoreVertical
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
@@ -51,6 +52,7 @@ export default function CodesPage() {
 
   // Mobile Master-Detail view state ('groups' | 'codes')
   const [mobileView, setMobileView] = useState<'groups' | 'codes'>('groups');
+  const [activeMobileActionId, setActiveMobileActionId] = useState<string | null>(null);
 
   // Modals state
   const [groupModal, setGroupModal] = useState<{
@@ -105,6 +107,14 @@ export default function CodesPage() {
       fetchCodes();
     });
   }, [router]);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setActiveMobileActionId(null);
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
 
   const fetchGroups = async () => {
     const { data } = await supabase.from('common_code_groups').select('*');
@@ -439,26 +449,27 @@ export default function CodesPage() {
               }`}
             >
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-4">
-                {/* Mobile Back Button & Header */}
+                {/* Header Line 1: Mobile Back Button, Title & Add Code Button */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <button
                       onClick={() => setMobileView('groups')}
-                      className="lg:hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2 text-[var(--fg)] hover:bg-[var(--surface)] cursor-pointer"
+                      className="lg:hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2 text-[var(--fg)] hover:bg-[var(--surface)] cursor-pointer shrink-0"
                       title="코드그룹 목록으로 돌아가기"
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </button>
-                    <div>
-                      <h4 className="text-lg font-bold flex items-center gap-2">
-                        <span>상세 코드 목록</span>
+                    <div className="min-w-0">
+                      <h4 className="text-lg font-bold flex items-center gap-2 flex-wrap">
+                        <span className="shrink-0">상세 코드 목록</span>
+                        {/* Desktop Group Badge */}
                         {selectedGroup && (
-                          <span className="text-xs font-mono rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold">
+                          <span className="hidden sm:inline-flex text-xs font-mono rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
                             {selectedGroup.group_name} ({selectedGroupId})
                           </span>
                         )}
                       </h4>
-                      <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                      <p className="hidden sm:block text-xs text-[var(--fg-muted)] mt-0.5">
                         마우스 드래그 앤 드롭으로 정렬 순서를 변경할 수 있습니다.
                       </p>
                     </div>
@@ -477,12 +488,24 @@ export default function CodesPage() {
                         },
                       })
                     }
-                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 dark:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer shrink-0"
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 dark:bg-emerald-500 px-3 py-2 sm:px-3.5 sm:py-2 text-xs font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer shrink-0"
                   >
                     <Plus className="h-4 w-4" />
                     <span>상세코드 추가</span>
                   </button>
                 </div>
+
+                {/* Mobile Subheader Row: Group Name Badge Banner */}
+                {selectedGroup && (
+                  <div className="sm:hidden flex items-center justify-between rounded-xl bg-[var(--bg)] border border-[var(--border)] px-3.5 py-2.5 shadow-xs">
+                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                      {selectedGroup.group_name} ({selectedGroupId})
+                    </span>
+                    <span className="text-[10px] text-[var(--fg-muted)] font-medium shrink-0 ml-2">
+                      드래그 정렬 가능
+                    </span>
+                  </div>
+                )}
 
                 {/* Detail Codes Table with Drag and Drop */}
                 <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
@@ -490,18 +513,19 @@ export default function CodesPage() {
                     <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-xs">
                       <tr>
                         <th className="py-3 px-2 text-center w-10">이동</th>
-                        <th className="py-3 px-3 text-center w-14">순서</th>
-                        <th className="py-3 px-3 text-left">코드 (Code)</th>
-                        <th className="py-3 px-4 text-left">코드명</th>
-                        <th className="py-3 px-3 text-center w-20">상태</th>
-                        <th className="py-3 px-3 text-center w-24">작업</th>
+                        <th className="hidden sm:table-cell py-3 px-3 text-center w-14">순서</th>
+                        <th className="py-3 px-2 sm:px-3 text-left">코드 (Code)</th>
+                        <th className="py-3 px-3 sm:px-4 text-left">코드명</th>
+                        <th className="hidden sm:table-cell py-3 px-3 text-center w-20">상태</th>
+                        <th className="hidden sm:table-cell py-3 px-3 text-center w-24">작업</th>
+                        <th className="sm:hidden py-3 px-2 text-center w-16">작업</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)] font-medium">
                       {currentGroupCodes.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             className="py-12 text-center text-xs text-[var(--fg-muted)]"
                           >
                             등록된 상세 코드가 없습니다. 상단 "+ 상세코드 추가" 버튼을 눌러 등록해 주세요.
@@ -532,23 +556,23 @@ export default function CodesPage() {
                                 <GripVertical className="h-4 w-4 mx-auto cursor-grab active:cursor-grabbing hover:text-emerald-500" />
                               </td>
 
-                              {/* Sort Order */}
-                              <td className="py-3 px-3 text-center font-mono text-xs text-[var(--fg-muted)]">
+                              {/* Sort Order (Desktop Only) */}
+                              <td className="hidden sm:table-cell py-3 px-3 text-center font-mono text-xs text-[var(--fg-muted)]">
                                 {item.sort_order}
                               </td>
 
                               {/* Code */}
-                              <td className="py-3 px-3 text-left font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              <td className="py-3 px-2 sm:px-3 text-left font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                                 {item.code}
                               </td>
 
                               {/* Code Name */}
-                              <td className="py-3 px-4 text-left font-semibold text-[var(--fg)]">
+                              <td className="py-3 px-3 sm:px-4 text-left font-semibold text-[var(--fg)] text-xs sm:text-sm">
                                 {item.code_name}
                               </td>
 
-                              {/* Active Status Toggle */}
-                              <td className="py-3 px-3 text-center">
+                              {/* Desktop Active Status Toggle */}
+                              <td className="hidden sm:table-cell py-3 px-3 text-center">
                                 <button
                                   type="button"
                                   onClick={() => toggleCodeActive(item.id, item.is_active)}
@@ -562,10 +586,9 @@ export default function CodesPage() {
                                 </button>
                               </td>
 
-                              {/* Actions (Edit & Delete) */}
-                              <td className="py-3 px-3 text-center">
+                              {/* Desktop Actions (Edit & Delete) */}
+                              <td className="hidden sm:table-cell py-3 px-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
-                                  {/* Edit Button */}
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -581,7 +604,6 @@ export default function CodesPage() {
                                     <Edit2 className="h-4 w-4" />
                                   </button>
 
-                                  {/* Delete Button */}
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -598,6 +620,88 @@ export default function CodesPage() {
                                     <Trash2 className="h-4 w-4" />
                                   </button>
                                 </div>
+                              </td>
+
+                              {/* Mobile Only: Combined Action Button & Layer Popover */}
+                              <td className="sm:hidden py-3 px-2 text-center relative">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMobileActionId(
+                                      activeMobileActionId === item.id ? null : item.id
+                                    );
+                                  }}
+                                  className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs font-bold text-[var(--fg)] hover:bg-[var(--surface)] transition-colors cursor-pointer flex items-center justify-center gap-0.5 mx-auto"
+                                >
+                                  <span>작업</span>
+                                  <MoreVertical className="h-3 w-3 text-[var(--fg-muted)]" />
+                                </button>
+
+                                {activeMobileActionId === item.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute right-1 top-10 z-50 w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95"
+                                  >
+                                    {/* Status Toggle */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        toggleCodeActive(item.id, item.is_active);
+                                        setActiveMobileActionId(null);
+                                      }}
+                                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-bold transition-colors hover:bg-[var(--bg)]"
+                                    >
+                                      <span>상태</span>
+                                      <span
+                                        className={`rounded-full px-2 py-0.5 text-[10px] ${
+                                          item.is_active
+                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                            : 'bg-red-500/10 text-red-500'
+                                        }`}
+                                      >
+                                        {item.is_active ? '사용중' : '중지'}
+                                      </span>
+                                    </button>
+
+                                    <div className="border-t border-[var(--border)] my-1" />
+
+                                    {/* Edit */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCodeModal({
+                                          isOpen: true,
+                                          mode: 'edit',
+                                          initialData: item,
+                                        });
+                                        setActiveMobileActionId(null);
+                                      }}
+                                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)]"
+                                    >
+                                      <Edit2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                      <span>코드 수정</span>
+                                    </button>
+
+                                    {/* Delete */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDeleteConfirm({
+                                          isOpen: true,
+                                          type: 'code',
+                                          targetId: item.id,
+                                          targetName: `${item.code_name} (${item.code})`,
+                                        });
+                                        setActiveMobileActionId(null);
+                                      }}
+                                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-red-500 hover:bg-[var(--bg)]"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                      <span>코드 삭제</span>
+                                    </button>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           );
