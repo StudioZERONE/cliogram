@@ -54,7 +54,4 @@ sql/migration_data.sql
 !sql/a_schema.sql
 !sql/b_data_system.sql
 
-# Obsidian Journals (Keep in Obsidian Vault only, exclude from GitHub)
-51.Journal/
-*.journal.md
 

@@ -50,11 +50,15 @@
 ## 5. AI 에이전트 개발 자율성 & 업무 생명주기 (Agent Autonomy & Lifecycle)
 
 - **소스 및 주석 수호**: 기존 소스, 주석, JSDoc을 100% 보존하며 섣부른 코드 삭제를 금함.
-- **실증 검증 필수**: 수정 후 반드시 `npm run build` 성공을 검증한 후 보고함.
-- **Universal AI Protection 🔒**: 계정/비밀번호/API 키 등 보안 정보 100% 보존.
-- **자율 커밋 & 푸시 원칙 (Auto Push)**: 사용자가 보류를 명시하지 않는 한, 구현 및 `npm run build` 검증 통과 즉시 `git commit` & `git push origin main`까지 자율 완료함.
+- **자동화 테스트 및 실증 검증 필수 (Test-First Build & Report)**:
+  - 기능 추가 및 코드 수정 시 상응하는 자동화 테스트 코드를 반드시 함께 작성함.
+  - 프로덕션 번들 빌드 전 자동화 테스트(`vitest run`) 100% 통과 및 `npm run build` 성공을 필수 검증함.
+  - 빌드가 포함된 모든 대화 보고 시 **테스트 실행 건수와 통과 결과(Pass Count)를 누락 없이 항상 명시적으로 리포트**함.
+- **Universal AI Protection**: 계정/비밀번호/API 키 등 보안 정보 100% 보존.
+- **자율 커밋 & 푸시 원칙 (Auto Push)**: 사용자가 보류를 명시하지 않는 한, 구현 및 테스트/빌드 검증 통과 즉시 `git commit` & `git push origin main`까지 자율 완료함.
 - **출퇴근 생명주기 기반 개발 서버 관리**:
   - **출근 감지 시**: `http://localhost:3000` 개발 서버 프로세스 백그라운드 자동 가동 및 유지.
   - **퇴근 감지 시**: 개발 서버 프로세스 자동 종료(`kill`) 후 세션 종료.
+
 
 ---
