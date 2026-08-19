@@ -402,8 +402,9 @@ export default function CodesPage() {
                   </button>
                 </div>
 
-                {/* Search Bar & Sort Dropdown */}
+                {/* Distinct Search Bar (Recessed Inset) & Sort Dropdown (Raised Action Button) */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  {/* Recessed Inset Search Box */}
                   <div className="relative sm:col-span-7">
                     <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)]" />
                     <input
@@ -411,22 +412,23 @@ export default function CodesPage() {
                       placeholder="그룹명/ID 검색..."
                       value={groupSearch}
                       onChange={(e) => setGroupSearch(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-8 pr-3 py-1.5 sm:py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-slate-300/80 dark:border-slate-700/80 bg-slate-100/90 dark:bg-slate-900/90 pl-8 pr-3 py-1.5 sm:py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-inner"
                     />
                   </div>
 
+                  {/* Elevated Floating Sort Dropdown */}
                   <div className="relative sm:col-span-5">
                     <select
                       value={groupSort}
                       onChange={(e) => setGroupSort(e.target.value as GroupSortOption)}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 sm:py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer appearance-none pr-7"
+                      className="w-full rounded-xl border border-emerald-500/30 dark:border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-1.5 sm:py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 cursor-pointer appearance-none pr-7 shadow-xs hover:bg-emerald-500/15 dark:hover:bg-emerald-500/25 transition-all"
                     >
-                      <option value="name_asc">그룹명 순 (A-Z)</option>
-                      <option value="name_desc">그룹명 역순 (Z-A)</option>
-                      <option value="id_asc">그룹 ID 순</option>
-                      <option value="id_desc">그룹 ID 역순</option>
+                      <option value="name_asc" className="bg-[var(--surface)] text-[var(--fg)] font-medium">그룹명 순 (A-Z)</option>
+                      <option value="name_desc" className="bg-[var(--surface)] text-[var(--fg)] font-medium">그룹명 역순 (Z-A)</option>
+                      <option value="id_asc" className="bg-[var(--surface)] text-[var(--fg)] font-medium">그룹 ID 순</option>
+                      <option value="id_desc" className="bg-[var(--surface)] text-[var(--fg)] font-medium">그룹 ID 역순</option>
                     </select>
-                    <ArrowUpDown className="absolute right-2.5 top-2 sm:top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)] pointer-events-none" />
+                    <ArrowUpDown className="absolute right-2.5 top-2 sm:top-2.5 h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 pointer-events-none" />
                   </div>
                 </div>
 
@@ -457,11 +459,11 @@ export default function CodesPage() {
                           <div className="min-w-0 flex-1 pr-2">
                             <div className="flex items-center gap-1.5">
                               <p className="text-xs sm:text-sm font-bold truncate">{group.group_name}</p>
-                              <span className="text-[10px] font-mono rounded-full bg-[var(--surface)] px-2 py-0.5 font-bold border border-[var(--border)] shrink-0">
+                              <span className="text-[10px] rounded-full bg-[var(--surface)] px-2 py-0.5 font-bold border border-[var(--border)] shrink-0">
                                 {count}개
                               </span>
                             </div>
-                            <p className="text-[11px] sm:text-xs font-mono text-[var(--fg-muted)] truncate mt-0.5">
+                            <p className="text-[11px] sm:text-xs text-[var(--fg-muted)] truncate mt-0.5 font-semibold">
                               {group.group_id}
                             </p>
                           </div>
@@ -532,7 +534,7 @@ export default function CodesPage() {
                         {selectedGroup && (
                           <span className="hidden sm:inline-flex items-baseline gap-1 text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
                             <span>{selectedGroup.group_name.replace(/\s+/g, ' ')}</span>
-                            <span className="font-mono text-[11px] font-semibold opacity-80">
+                            <span className="text-[11px] font-semibold opacity-80">
                               ({selectedGroupId})
                             </span>
                           </span>
@@ -571,7 +573,7 @@ export default function CodesPage() {
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       {selectedGroup.group_name.replace(/\s+/g, ' ')}
                     </span>
-                    <span className="font-mono text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80">
+                    <span className="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80">
                       ({selectedGroupId})
                     </span>
                   </div>
@@ -629,12 +631,12 @@ export default function CodesPage() {
                               </td>
 
                               {/* Sort Order (Desktop Only) */}
-                              <td className="hidden sm:table-cell py-2.5 px-3 text-center font-mono text-xs text-[var(--fg-muted)]">
+                              <td className="hidden sm:table-cell py-2.5 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
                                 {item.sort_order}
                               </td>
 
                               {/* Code */}
-                              <td className="py-2.5 px-2.5 sm:px-3 text-left font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                              <td className="py-2.5 px-2.5 sm:px-3 text-left font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                                 {item.code}
                               </td>
 

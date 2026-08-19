@@ -165,13 +165,13 @@ export default function DashboardPage() {
                   <tbody className="divide-y divide-[var(--border)]">
                     {trades.slice(0, 5).map((item) => (
                       <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                        <td className="py-3.5 px-4 text-center font-mono text-sm">{item.trade_date}</td>
+                        <td className="py-3.5 px-4 text-center text-sm font-semibold">{item.trade_date}</td>
                         <td className="py-3.5 px-4 text-center">
                           <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{item.trade_type}</span>
                         </td>
                         <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                         <td className="py-3.5 px-4 text-left font-semibold">{item.stock_name}</td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold">{item.price.toLocaleString()}</td>
+                        <td className="py-3.5 px-4 text-right font-bold">{item.price.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -199,11 +199,11 @@ export default function DashboardPage() {
                   <tbody className="divide-y divide-[var(--border)]">
                     {dividends.slice(0, 5).map((item) => (
                       <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                        <td className="py-3.5 px-4 text-center font-mono text-sm">{item.payment_date}</td>
+                        <td className="py-3.5 px-4 text-center text-sm font-semibold">{item.payment_date}</td>
                         <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
                         <td className="py-3.5 px-4 text-left font-semibold text-emerald-500">{item.stock_name}</td>
-                        <td className="py-3.5 px-4 text-right font-mono">{item.amount.toLocaleString()}</td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-500">{(item.amount - item.tax).toLocaleString()}</td>
+                        <td className="py-3.5 px-4 text-right font-semibold">{item.amount.toLocaleString()}</td>
+                        <td className="py-3.5 px-4 text-right font-bold text-emerald-500">{(item.amount - item.tax).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -182,7 +182,7 @@ export default function TradesPage() {
                     selected={tradeForm.trade_date}
                     onChange={(date: Date | null) => date && setTradeForm({ ...tradeForm, trade_date: date })}
                     dateFormat="yyyy-MM-dd"
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer font-semibold"
                   />
                 </div>
 
@@ -217,7 +217,7 @@ export default function TradesPage() {
                       placeholder="10"
                       value={tradeForm.quantity}
                       onChange={(e) => setTradeForm({ ...tradeForm, quantity: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
                     />
                   </div>
                   <div>
@@ -228,7 +228,7 @@ export default function TradesPage() {
                       placeholder="180.5"
                       value={tradeForm.price}
                       onChange={(e) => setTradeForm({ ...tradeForm, price: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
                     />
                   </div>
                 </div>
@@ -258,7 +258,7 @@ export default function TradesPage() {
               <div className="flex items-center justify-between mb-3.5 sm:mb-5">
                 <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
                   <span>전체 매매 내역 목록</span>
-                  <span className="text-xs sm:text-sm font-mono text-[var(--fg-muted)] font-normal">총 {trades.length}건</span>
+                  <span className="text-xs sm:text-sm text-[var(--fg-muted)] font-normal">총 {trades.length}건</span>
                 </h3>
 
                 {/* Circular Green Add Button for Mobile & Desktop List Header */}
@@ -296,7 +296,7 @@ export default function TradesPage() {
                     ) : (
                       trades.map((item) => (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
-                          <td className="py-2.5 px-3 text-center font-mono text-[11px] sm:text-xs text-[var(--fg-muted)]">{item.trade_date}</td>
+                          <td className="py-2.5 px-3 text-center text-[11px] sm:text-xs text-[var(--fg-muted)] font-semibold">{item.trade_date}</td>
                           <td className="py-2.5 px-2.5 text-center">
                             <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-bold border ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'}`}>
                               {item.trade_type}
@@ -304,9 +304,9 @@ export default function TradesPage() {
                           </td>
                           <td className="py-2.5 px-2.5 text-center">{renderFlagEmoji(item.currency)}</td>
                           <td className="py-2.5 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm">{item.stock_name}</td>
-                          <td className="py-2.5 px-2.5 text-right font-mono text-xs sm:text-sm">{item.quantity.toLocaleString()}</td>
-                          <td className="py-2.5 px-2.5 text-right font-mono text-xs sm:text-sm">{item.price.toLocaleString()}</td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                          <td className="py-2.5 px-2.5 text-right text-xs sm:text-sm font-semibold">{item.quantity.toLocaleString()}</td>
+                          <td className="py-2.5 px-2.5 text-right text-xs sm:text-sm font-semibold">{item.price.toLocaleString()}</td>
+                          <td className="py-2.5 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                             {(item.quantity * item.price).toLocaleString()}
                           </td>
                           <td className="py-2.5 px-2 text-center">

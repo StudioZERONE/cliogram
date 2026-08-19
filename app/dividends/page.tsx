@@ -166,7 +166,7 @@ export default function DividendsPage() {
                     selected={dividendForm.payment_date}
                     onChange={(date: Date | null) => date && setDividendForm({ ...dividendForm, payment_date: date })}
                     dateFormat="yyyy-MM-dd"
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer font-semibold"
                   />
                 </div>
 
@@ -195,7 +195,7 @@ export default function DividendsPage() {
                       placeholder="25.5"
                       value={dividendForm.amount}
                       onChange={(e) => setDividendForm({ ...dividendForm, amount: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
                     />
                   </div>
                   <div>
@@ -206,7 +206,7 @@ export default function DividendsPage() {
                       placeholder="3.8"
                       value={dividendForm.tax}
                       onChange={(e) => setDividendForm({ ...dividendForm, tax: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
                     />
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export default function DividendsPage() {
               <div className="flex items-center justify-between mb-3.5 sm:mb-5">
                 <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
                   <span>전체 배당 수령 목록</span>
-                  <span className="text-xs sm:text-sm font-mono text-[var(--fg-muted)] font-normal">총 {dividends.length}건</span>
+                  <span className="text-xs sm:text-sm text-[var(--fg-muted)] font-normal">총 {dividends.length}건</span>
                 </h3>
 
                 {/* Circular Green Add Button for Mobile & Desktop List Header */}
@@ -264,14 +264,14 @@ export default function DividendsPage() {
                         const netAmount = item.amount - (item.tax || 0);
                         return (
                           <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
-                            <td className="py-2.5 px-3 text-center font-mono text-[11px] sm:text-xs text-[var(--fg-muted)]">{item.payment_date}</td>
+                            <td className="py-2.5 px-3 text-center text-[11px] sm:text-xs text-[var(--fg-muted)] font-semibold">{item.payment_date}</td>
                             <td className="py-2.5 px-2.5 text-center">{renderFlagEmoji(item.currency)}</td>
                             <td className="py-2.5 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm">{item.stock_name}</td>
-                            <td className="py-2.5 px-3 text-right font-mono text-xs sm:text-sm">{item.amount.toLocaleString()}</td>
-                            <td className="hidden sm:table-cell py-2.5 px-3 text-right font-mono text-xs sm:text-sm text-[var(--fg-muted)]">
+                            <td className="py-2.5 px-3 text-right text-xs sm:text-sm font-semibold">{item.amount.toLocaleString()}</td>
+                            <td className="hidden sm:table-cell py-2.5 px-3 text-right text-xs sm:text-sm text-[var(--fg-muted)] font-semibold">
                               {item.tax ? item.tax.toLocaleString() : '0'}
                             </td>
-                            <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                            <td className="py-2.5 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                               {netAmount.toLocaleString()}
                             </td>
                             <td className="py-2.5 px-2 text-center">

@@ -158,7 +158,7 @@ export default function StocksPage() {
                     placeholder="예: AAPL, 005930"
                     value={stockForm.ticker}
                     onChange={(e) => setStockForm({ ...stockForm, ticker: e.target.value })}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center font-mono text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                   />
                 </div>
 
@@ -203,7 +203,7 @@ export default function StocksPage() {
               <div className="flex items-center justify-between mb-3.5 sm:mb-5">
                 <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
                   <span>등록된 주식 종목 목록</span>
-                  <span className="text-xs sm:text-sm font-mono text-[var(--fg-muted)] font-normal">총 {stocks.length}개</span>
+                  <span className="text-xs sm:text-sm text-[var(--fg-muted)] font-normal">총 {stocks.length}개</span>
                 </h3>
 
                 {/* Circular Green Add Button for Mobile & Desktop List Header */}
@@ -222,7 +222,7 @@ export default function StocksPage() {
                   <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
                     <tr>
                       <th className="py-2.5 px-3 text-left">종목명</th>
-                      <th className="py-2.5 px-2.5 text-center font-mono">티커</th>
+                      <th className="py-2.5 px-2.5 text-center font-bold">티커</th>
                       <th className="py-2.5 px-2.5 text-center">유형</th>
                       <th className="py-2.5 px-2.5 text-center">통화</th>
                       <th className="hidden sm:table-cell py-2.5 px-3 text-center">상장 시장</th>
@@ -240,14 +240,14 @@ export default function StocksPage() {
                       stocks.map((item) => (
                         <tr key={item.ticker} className="hover:bg-[var(--bg)]/70 transition-colors">
                           <td className="py-2.5 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm">{item.name}</td>
-                          <td className="py-2.5 px-2.5 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">{item.ticker}</td>
+                          <td className="py-2.5 px-2.5 text-center font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">{item.ticker}</td>
                           <td className="py-2.5 px-2.5 text-center">
                             <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                               {item.type}
                             </span>
                           </td>
                           <td className="py-2.5 px-2.5 text-center">{renderFlagEmoji(item.currency)}</td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-center font-mono text-xs text-[var(--fg-muted)]">{item.market}</td>
+                          <td className="hidden sm:table-cell py-2.5 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">{item.market}</td>
                           <td className="py-2.5 px-2 text-center">
                             <button
                               onClick={() => setDeleteTargetTicker(item.ticker)}
