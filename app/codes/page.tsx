@@ -46,10 +46,9 @@ export default function CodesPage() {
   const router = useRouter();
   const [groups, setGroups] = useState<CodeGroup[]>([]);
   const [codes, setCodes] = useState<CommonCode[]>([]);
-  // Dynamically default to first code group when data is fetched, instead of hardcoded 'THEME_CONFIG'
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
-  // Responsive desktop check to disable HTML5 draggable on mobile (prevents iOS long-press drag preview freeze & color artifacts)
+  // Responsive desktop check to disable HTML5 draggable on mobile
   const [isDesktop, setIsDesktop] = useState<boolean>(false);
 
   // Search & Sorting state for Code Groups
@@ -59,6 +58,9 @@ export default function CodesPage() {
   // Mobile Master-Detail view state ('groups' | 'codes')
   const [mobileView, setMobileView] = useState<'groups' | 'codes'>('groups');
   const [activeMobileActionId, setActiveMobileActionId] = useState<string | null>(null);
+  
+  // Smart Fixed Popover Positioning State (Eliminates table inner scrollbar & shifts)
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; openUp: boolean } | null>(null);
 
   // Modals state
   const [groupModal, setGroupModal] = useState<{
@@ -324,6 +326,33 @@ export default function CodesPage() {
     }
   };
 
+  // Smart Mobile Action Menu Toggle Handler with Fixed Screen Boundary Detection
+  const handleToggleMobileAction = (e: React.MouseEvent<HTMLButtonElement>, itemId: string) => {
+    e.stopPropagation();
+    if (activeMobileActionId === itemId) {
+      setActiveMobileActionId(null);
+      setActionMenuPos(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
+    // Float UPWARD if the button is in the lower 45% of the screen
+    const openUp = rect.top > windowHeight * 0.55;
+
+    setActionMenuPos({
+      top: rect.top,
+      right: window.innerWidth - rect.right,
+      openUp,
+    });
+    setActiveMobileActionId(itemId);
+  };
+
+  const closeMobileAction = () => {
+    setActiveMobileActionId(null);
+    setActionMenuPos(null);
+  };
+
   const selectedGroup = groups.find((g) => g.group_id === selectedGroupId);
 
   return (
@@ -545,8 +574,8 @@ export default function CodesPage() {
                   </div>
                 )}
 
-                {/* Detail Codes Table with Drag and Drop */}
-                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                {/* Detail Codes Table with Clean Flow (No table-internal scrollbars) */}
+                <div className="rounded-xl border border-[var(--border)]">
                   <table className="w-full text-xs sm:text-sm">
                     <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
                       <tr>
@@ -662,35 +691,38 @@ export default function CodesPage() {
                                 </div>
                               </td>
 
-                              {/* Mobile Only: Zero-Space Action Button & Reorder Layer Popover */}
-                              <td className="sm:hidden py-2 px-2 text-center relative">
+                              {/* Mobile Only: Smart Action Button & Fixed Floating Popover */}
+                              <td className="sm:hidden py-2 px-2 text-center">
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveMobileActionId(
-                                      activeMobileActionId === item.id ? null : item.id
-                                    );
-                                  }}
+                                  onClick={(e) => handleToggleMobileAction(e, item.id)}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 text-[var(--fg-muted)] hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer mx-auto shrink-0"
                                   title="작업 메뉴"
                                 >
                                   <MoreVertical className="h-3.5 w-3.5" />
                                 </button>
 
-                                {activeMobileActionId === item.id && (
+                                {activeMobileActionId === item.id && actionMenuPos && (
                                   <>
-                                    {/* Transparent Backdrop to close menu when tapping outside */}
+                                    {/* Transparent Backdrop */}
                                     <div
                                       className="fixed inset-0 z-40 bg-transparent cursor-default"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setActiveMobileActionId(null);
+                                        closeMobileAction();
                                       }}
                                     />
+                                    {/* Smart Fixed Floating Popover (Always inside viewport, zero table scrollbars or shifts) */}
                                     <div
                                       onClick={(e) => e.stopPropagation()}
-                                      className="absolute right-1 top-9 z-50 w-40 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95 cursor-default"
+                                      style={{
+                                        position: 'fixed',
+                                        right: `${actionMenuPos.right}px`,
+                                        ...(actionMenuPos.openUp
+                                          ? { bottom: `${window.innerHeight - actionMenuPos.top + 6}px` }
+                                          : { top: `${actionMenuPos.top + 32}px` }),
+                                      }}
+                                      className="z-50 w-40 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95 cursor-default"
                                     >
                                       {/* Reorder Order Up */}
                                       <button
@@ -698,7 +730,7 @@ export default function CodesPage() {
                                         disabled={index === 0}
                                         onClick={() => {
                                           moveCodeOrder(index, 'up');
-                                          setActiveMobileActionId(null);
+                                          closeMobileAction();
                                         }}
                                         className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none"
                                       >
@@ -712,7 +744,7 @@ export default function CodesPage() {
                                         disabled={index === currentGroupCodes.length - 1}
                                         onClick={() => {
                                           moveCodeOrder(index, 'down');
-                                          setActiveMobileActionId(null);
+                                          closeMobileAction();
                                         }}
                                         className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none"
                                       >
@@ -727,7 +759,7 @@ export default function CodesPage() {
                                         type="button"
                                         onClick={() => {
                                           toggleCodeActive(item.id, item.is_active);
-                                          setActiveMobileActionId(null);
+                                          closeMobileAction();
                                         }}
                                         className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-bold transition-colors hover:bg-[var(--bg)]"
                                       >
@@ -754,7 +786,7 @@ export default function CodesPage() {
                                             mode: 'edit',
                                             initialData: item,
                                           });
-                                          setActiveMobileActionId(null);
+                                          closeMobileAction();
                                         }}
                                         className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)]"
                                       >
@@ -772,7 +804,7 @@ export default function CodesPage() {
                                             targetId: item.id,
                                             targetName: `${item.code_name} (${item.code})`,
                                           });
-                                          setActiveMobileActionId(null);
+                                          closeMobileAction();
                                         }}
                                         className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-red-500 hover:bg-[var(--bg)]"
                                       >
