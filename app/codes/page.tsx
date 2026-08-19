@@ -108,13 +108,7 @@ export default function CodesPage() {
     });
   }, [router]);
 
-  useEffect(() => {
-    const handleGlobalClick = () => {
-      setActiveMobileActionId(null);
-    };
-    document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
-  }, []);
+
 
   const fetchGroups = async () => {
     const { data } = await supabase.from('common_code_groups').select('*');
@@ -632,75 +626,85 @@ export default function CodesPage() {
                                       activeMobileActionId === item.id ? null : item.id
                                     );
                                   }}
-                                  className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs font-bold text-[var(--fg)] hover:bg-[var(--surface)] transition-colors cursor-pointer flex items-center justify-center gap-0.5 mx-auto"
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 text-[var(--fg-muted)] hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer mx-auto shrink-0"
+                                  title="작업 메뉴"
                                 >
-                                  <span>작업</span>
-                                  <MoreVertical className="h-3 w-3 text-[var(--fg-muted)]" />
+                                  <MoreVertical className="h-4 w-4" />
                                 </button>
 
                                 {activeMobileActionId === item.id && (
-                                  <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="absolute right-1 top-10 z-50 w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95"
-                                  >
-                                    {/* Status Toggle */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        toggleCodeActive(item.id, item.is_active);
+                                  <>
+                                    {/* Transparent Backdrop to close menu when tapping outside */}
+                                    <div
+                                      className="fixed inset-0 z-40 bg-transparent cursor-default"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         setActiveMobileActionId(null);
                                       }}
-                                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-bold transition-colors hover:bg-[var(--bg)]"
+                                    />
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="absolute right-1 top-10 z-50 w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95 cursor-default"
                                     >
-                                      <span>상태</span>
-                                      <span
-                                        className={`rounded-full px-2 py-0.5 text-[10px] ${
-                                          item.is_active
-                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                            : 'bg-red-500/10 text-red-500'
-                                        }`}
+                                      {/* Status Toggle */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          toggleCodeActive(item.id, item.is_active);
+                                          setActiveMobileActionId(null);
+                                        }}
+                                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-bold transition-colors hover:bg-[var(--bg)]"
                                       >
-                                        {item.is_active ? '사용중' : '중지'}
-                                      </span>
-                                    </button>
+                                        <span>상태</span>
+                                        <span
+                                          className={`rounded-full px-2 py-0.5 text-[10px] ${
+                                            item.is_active
+                                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                              : 'bg-red-500/10 text-red-500'
+                                          }`}
+                                        >
+                                          {item.is_active ? '사용중' : '중지'}
+                                        </span>
+                                      </button>
 
-                                    <div className="border-t border-[var(--border)] my-1" />
+                                      <div className="border-t border-[var(--border)] my-1" />
 
-                                    {/* Edit */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setCodeModal({
-                                          isOpen: true,
-                                          mode: 'edit',
-                                          initialData: item,
-                                        });
-                                        setActiveMobileActionId(null);
-                                      }}
-                                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)]"
-                                    >
-                                      <Edit2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                                      <span>코드 수정</span>
-                                    </button>
+                                      {/* Edit */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCodeModal({
+                                            isOpen: true,
+                                            mode: 'edit',
+                                            initialData: item,
+                                          });
+                                          setActiveMobileActionId(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)]"
+                                      >
+                                        <Edit2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        <span>코드 수정</span>
+                                      </button>
 
-                                    {/* Delete */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setDeleteConfirm({
-                                          isOpen: true,
-                                          type: 'code',
-                                          targetId: item.id,
-                                          targetName: `${item.code_name} (${item.code})`,
-                                        });
-                                        setActiveMobileActionId(null);
-                                      }}
-                                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-red-500 hover:bg-[var(--bg)]"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                                      <span>코드 삭제</span>
-                                    </button>
-                                  </div>
+                                      {/* Delete */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setDeleteConfirm({
+                                            isOpen: true,
+                                            type: 'code',
+                                            targetId: item.id,
+                                            targetName: `${item.code_name} (${item.code})`,
+                                          });
+                                          setActiveMobileActionId(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-red-500 hover:bg-[var(--bg)]"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                        <span>코드 삭제</span>
+                                      </button>
+                                    </div>
+                                  </>
                                 )}
                               </td>
                             </tr>
