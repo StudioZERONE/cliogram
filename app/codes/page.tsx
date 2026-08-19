@@ -323,10 +323,11 @@ export default function CodesPage() {
                     onClick={() =>
                       setGroupModal({ isOpen: true, mode: 'create', initialData: null })
                     }
-                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 dark:bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
+                    title="그룹 추가"
+                    aria-label="그룹 추가"
                   >
-                    <Plus className="h-4 w-4" />
-                    <span>그룹 추가</span>
+                    <Plus className="h-5 w-5 stroke-[2.5]" />
                   </button>
                 </div>
 
@@ -482,10 +483,11 @@ export default function CodesPage() {
                         },
                       })
                     }
-                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 dark:bg-emerald-500 px-3 py-2 sm:px-3.5 sm:py-2 text-xs font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer shrink-0"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
+                    title="상세코드 추가"
+                    aria-label="상세코드 추가"
                   >
-                    <Plus className="h-4 w-4" />
-                    <span>상세코드 추가</span>
+                    <Plus className="h-5 w-5 stroke-[2.5]" />
                   </button>
                 </div>
 
