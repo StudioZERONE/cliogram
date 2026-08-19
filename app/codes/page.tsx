@@ -363,7 +363,7 @@ export default function CodesPage() {
         <Header title="공통코드" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
-          {/* Top Header Card (Desktop Only - Hidden on Mobile to maximize screen real estate) */}
+          {/* Top Header Card (Desktop Only - Hidden on Mobile) */}
           <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-bold flex items-center gap-2">
@@ -528,11 +528,11 @@ export default function CodesPage() {
                     <div className="min-w-0">
                       <h4 className="text-base sm:text-lg font-bold flex items-center gap-2 flex-wrap">
                         <span className="shrink-0">상세 코드 목록</span>
-                        {/* Desktop Group Badge */}
+                        {/* Desktop Group Badge with Explicit Baseline Alignment */}
                         {selectedGroup && (
-                          <span className="hidden sm:inline-flex text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
-                            {selectedGroup.group_name.replace(/\s+/g, ' ')}{' '}
-                            <span className="font-mono text-[11px] font-semibold opacity-80 ml-1">
+                          <span className="hidden sm:inline-flex items-baseline gap-1 text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
+                            <span>{selectedGroup.group_name.replace(/\s+/g, ' ')}</span>
+                            <span className="font-mono text-[11px] font-semibold opacity-80">
                               ({selectedGroupId})
                             </span>
                           </span>
@@ -565,14 +565,14 @@ export default function CodesPage() {
                   </button>
                 </div>
 
-                {/* Mobile Subheader Row: Full Unclipped Group Name Banner (No wide letter-spacing or grey text clipping) */}
+                {/* Mobile Subheader Row: Full Unclipped Group Name Banner with Explicit Baseline Alignment */}
                 {selectedGroup && (
-                  <div className="sm:hidden flex items-center rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 shadow-xs">
+                  <div className="sm:hidden flex items-baseline gap-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 shadow-xs">
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      {selectedGroup.group_name.replace(/\s+/g, ' ')}{' '}
-                      <span className="font-mono text-[11px] font-semibold opacity-80">
-                        ({selectedGroupId})
-                      </span>
+                      {selectedGroup.group_name.replace(/\s+/g, ' ')}
+                    </span>
+                    <span className="font-mono text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80">
+                      ({selectedGroupId})
                     </span>
                   </div>
                 )}
