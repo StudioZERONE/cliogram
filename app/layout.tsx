@@ -46,6 +46,27 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window !== 'undefined') {
+                  var origErr = console.error;
+                  console.error = function() {
+                    if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].indexOf('Encountered a script tag') !== -1) return;
+                    origErr.apply(console, arguments);
+                  };
+                  window.addEventListener('error', function(e) {
+                    if (e.message && e.message.indexOf('Encountered a script tag') !== -1) {
+                      e.stopImmediatePropagation();
+                      e.preventDefault();
+                    }
+                  }, true);
+                }
+              })();
+            `,
+          }}
+        />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon.svg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
