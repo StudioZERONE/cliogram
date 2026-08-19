@@ -2,16 +2,30 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2 } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  Search,
+  ArrowUpDown,
+  GripVertical,
+  ArrowLeft,
+  Layers,
+  Code2
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
+import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { CodeGroupModal } from '@/components/CodeGroupModal';
+import { CommonCodeModal } from '@/components/CommonCodeModal';
 
 interface CodeGroup {
   group_id: string;
   group_name: string;
   description?: string;
+  created_at?: string;
 }
 
 interface CommonCode {
@@ -23,14 +37,63 @@ interface CommonCode {
   is_active: boolean;
 }
 
+type GroupSortOption = 'name_asc' | 'name_desc' | 'id_asc' | 'id_desc';
+
 export default function CodesPage() {
   const router = useRouter();
   const [groups, setGroups] = useState<CodeGroup[]>([]);
   const [codes, setCodes] = useState<CommonCode[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('CURRENCY');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('THEME_CONFIG');
 
-  const [newGroup, setNewGroup] = useState({ group_id: '', group_name: '', description: '' });
-  const [newCode, setNewCode] = useState({ code: '', code_name: '', sort_order: '1' });
+  // Search & Sorting state for Code Groups
+  const [groupSearch, setGroupSearch] = useState<string>('');
+  const [groupSort, setGroupSort] = useState<GroupSortOption>('name_asc');
+
+  // Mobile Master-Detail view state ('groups' | 'codes')
+  const [mobileView, setMobileView] = useState<'groups' | 'codes'>('groups');
+
+  // Modals state
+  const [groupModal, setGroupModal] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    initialData: CodeGroup | null;
+  }>({
+    isOpen: false,
+    mode: 'create',
+    initialData: null,
+  });
+
+  const [codeModal, setCodeModal] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    initialData: {
+      id?: string;
+      code: string;
+      code_name: string;
+      sort_order: number;
+      is_active?: boolean;
+    } | null;
+  }>({
+    isOpen: false,
+    mode: 'create',
+    initialData: null,
+  });
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    type: 'group' | 'code';
+    targetId: string;
+    targetName: string;
+  }>({
+    isOpen: false,
+    type: 'code',
+    targetId: '',
+    targetName: '',
+  });
+
+  // Drag and Drop state for Common Codes
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
@@ -44,58 +107,178 @@ export default function CodesPage() {
   }, [router]);
 
   const fetchGroups = async () => {
-    const { data } = await supabase.from('common_code_groups').select('*').order('group_id');
-    if (data) setGroups(data);
+    const { data } = await supabase.from('common_code_groups').select('*');
+    if (data) {
+      setGroups(data);
+      if (data.length > 0 && !data.some((g) => g.group_id === selectedGroupId)) {
+        setSelectedGroupId(data[0].group_id);
+      }
+    }
   };
 
   const fetchCodes = async () => {
-    const { data } = await supabase.from('common_codes').select('*').order('sort_order', { ascending: true });
+    const { data } = await supabase
+      .from('common_codes')
+      .select('*')
+      .order('sort_order', { ascending: true });
     if (data) setCodes(data);
   };
 
-  const handleAddGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroup.group_id || !newGroup.group_name) return;
-    const { error } = await supabase.from('common_code_groups').insert([{
-      group_id: newGroup.group_id.toUpperCase(),
-      group_name: newGroup.group_name,
-      description: newGroup.description
-    }]);
+  // Group Save handler (Create / Edit)
+  const handleSaveGroup = async (groupData: {
+    group_id: string;
+    group_name: string;
+    description?: string;
+  }) => {
+    if (groupModal.mode === 'create') {
+      const { error } = await supabase.from('common_code_groups').insert([groupData]);
+      if (!error) {
+        setSelectedGroupId(groupData.group_id);
+        fetchGroups();
+      }
+    } else {
+      const { error } = await supabase
+        .from('common_code_groups')
+        .update({
+          group_name: groupData.group_name,
+          description: groupData.description,
+        })
+        .eq('group_id', groupData.group_id);
 
-    if (!error) {
-      setNewGroup({ group_id: '', group_name: '', description: '' });
-      fetchGroups();
+      if (!error) {
+        fetchGroups();
+      }
     }
   };
 
-  const handleAddCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCode.code || !newCode.code_name || !selectedGroupId) return;
-    const { error } = await supabase.from('common_codes').insert([{
-      group_id: selectedGroupId,
-      code: newCode.code.toUpperCase(),
-      code_name: newCode.code_name,
-      sort_order: parseInt(newCode.sort_order, 10) || 1,
-      is_active: true
-    }]);
+  // Common Code Save handler (Create / Edit)
+  const handleSaveCode = async (codeData: {
+    id?: string;
+    group_id: string;
+    code: string;
+    code_name: string;
+    sort_order: number;
+    is_active: boolean;
+  }) => {
+    if (codeModal.mode === 'create') {
+      const { error } = await supabase.from('common_codes').insert([
+        {
+          group_id: codeData.group_id,
+          code: codeData.code,
+          code_name: codeData.code_name,
+          sort_order: codeData.sort_order,
+          is_active: codeData.is_active,
+        },
+      ]);
+      if (!error) fetchCodes();
+    } else if (codeData.id) {
+      const { error } = await supabase
+        .from('common_codes')
+        .update({
+          code_name: codeData.code_name,
+          sort_order: codeData.sort_order,
+          is_active: codeData.is_active,
+        })
+        .eq('id', codeData.id);
 
-    if (!error) {
-      setNewCode({ code: '', code_name: '', sort_order: '1' });
-      fetchCodes();
+      if (!error) fetchCodes();
     }
   };
 
+  // Inline Active status toggle
   const toggleCodeActive = async (id: string, currentStatus: boolean) => {
+    // Optimistic local update
+    setCodes((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, is_active: !currentStatus } : c))
+    );
     await supabase.from('common_codes').update({ is_active: !currentStatus }).eq('id', id);
-    fetchCodes();
   };
 
-  const deleteCode = async (id: string) => {
-    await supabase.from('common_codes').delete().eq('id', id);
-    fetchCodes();
+  // Deletion Execution
+  const handleConfirmDelete = async () => {
+    if (deleteConfirm.type === 'code') {
+      const { error } = await supabase.from('common_codes').delete().eq('id', deleteConfirm.targetId);
+      if (!error) fetchCodes();
+    } else if (deleteConfirm.type === 'group') {
+      const { error } = await supabase.from('common_code_groups').delete().eq('group_id', deleteConfirm.targetId);
+      if (!error) {
+        fetchGroups();
+        fetchCodes();
+      }
+    }
   };
 
-  const filteredCodes = codes.filter((c) => c.group_id === selectedGroupId);
+  // Filter & Sort Groups
+  const filteredGroups = groups
+    .filter((g) => {
+      const search = groupSearch.trim().toLowerCase();
+      if (!search) return true;
+      return (
+        g.group_name.toLowerCase().includes(search) ||
+        g.group_id.toLowerCase().includes(search)
+      );
+    })
+    .sort((a, b) => {
+      if (groupSort === 'name_asc') return a.group_name.localeCompare(b.group_name, 'ko');
+      if (groupSort === 'name_desc') return b.group_name.localeCompare(a.group_name, 'ko');
+      if (groupSort === 'id_asc') return a.group_id.localeCompare(b.group_id);
+      if (groupSort === 'id_desc') return b.group_id.localeCompare(a.group_id);
+      return 0;
+    });
+
+  // Filtered Detail Codes for selected group (Strictly ordered by sort_order)
+  const currentGroupCodes = codes
+    .filter((c) => c.group_id === selectedGroupId)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  // Drag and Drop reordering logic for Detail Codes
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    // Reorder local array
+    const updated = [...currentGroupCodes];
+    const [movedItem] = updated.splice(draggedIndex, 1);
+    updated.splice(index, 0, movedItem);
+
+    // Re-assign sort_order sequentially: 1, 2, 3...
+    const reindexed = updated.map((item, idx) => ({
+      ...item,
+      sort_order: idx + 1,
+    }));
+
+    // Optimistic UI update
+    setCodes((prev) => {
+      const others = prev.filter((c) => c.group_id !== selectedGroupId);
+      return [...others, ...reindexed];
+    });
+
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+
+    // Batch update DB in background
+    for (const item of reindexed) {
+      await supabase
+        .from('common_codes')
+        .update({ sort_order: item.sort_order })
+        .eq('id', item.id);
+    }
+  };
+
+  const selectedGroup = groups.find((g) => g.group_id === selectedGroupId);
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--fg)] transition-colors select-none">
@@ -104,150 +287,322 @@ export default function CodesPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header title="공통코드" />
 
-        <main className="p-8 space-y-8 flex-1">
-          {/* Top Info Header */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs flex items-center justify-between">
+        <main className="p-4 sm:p-8 space-y-6 flex-1">
+          {/* Top Header Card */}
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold">시스템 공통 코드 관리</h3>
-              <p className="text-sm text-[var(--fg-muted)] mt-1">통화, 거래 유형, 종목 유형 등 시스템 전반에서 활용되는 마스터 코드를 등록하고 관리합니다.</p>
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
+                시스템 공통 코드 관리
+              </h3>
+              <p className="text-sm text-[var(--fg-muted)] mt-1">
+                통화, 거래 유형, 종목 유형 등 시스템 전반에서 활용되는 마스터 코드를 등록하고 관리합니다.
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-            {/* Left: Code Groups */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-                <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-emerald-500" />
-                  코드 그룹 신규 등록
-                </h4>
-                <form onSubmit={handleAddGroup} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">그룹 ID (Group ID)</label>
-                    <input
-                      type="text"
-                      placeholder="예: ACCOUNT_TYPE"
-                      value={newGroup.group_id}
-                      onChange={(e) => setNewGroup({ ...newGroup, group_id: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-mono text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">그룹명</label>
-                    <input
-                      type="text"
-                      placeholder="예: 계좌 유형"
-                      value={newGroup.group_name}
-                      onChange={(e) => setNewGroup({ ...newGroup, group_name: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
-                    />
-                  </div>
-                  <button type="submit" className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-bold text-white transition-colors cursor-pointer hover:bg-emerald-500">
-                    코드 그룹 추가
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Left Panel: Code Groups */}
+            <div
+              className={`space-y-4 lg:col-span-5 ${
+                mobileView === 'codes' ? 'hidden lg:block' : 'block'
+              }`}
+            >
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-4">
+                {/* Header & Create Group Button */}
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-bold flex items-center gap-2">
+                    <Code2 className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
+                    코드 그룹 목록
+                  </h4>
+                  <button
+                    onClick={() =>
+                      setGroupModal({ isOpen: true, mode: 'create', initialData: null })
+                    }
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 dark:bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>그룹 추가</span>
                   </button>
-                </form>
-              </div>
+                </div>
 
-              {/* Group Selector List */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-3">
-                <h4 className="text-lg font-bold mb-2">코드 그룹 목록</h4>
-                <div className="space-y-2">
-                  {groups.map((group) => (
-                    <button
-                      key={group.group_id}
-                      onClick={() => setSelectedGroupId(group.group_id)}
-                      className={`w-full flex items-center justify-between rounded-xl px-4 py-3 text-left transition-colors cursor-pointer border ${
-                        selectedGroupId === group.group_id
-                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
-                          : 'border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:border-emerald-500/30'
-                      }`}
+                {/* Search Bar & Sort Dropdown */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                  <div className="relative sm:col-span-7">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--fg-muted)]" />
+                    <input
+                      type="text"
+                      placeholder="그룹명/ID 검색..."
+                      value={groupSearch}
+                      onChange={(e) => setGroupSearch(e.target.value)}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  </div>
+
+                  <div className="relative sm:col-span-5">
+                    <select
+                      value={groupSort}
+                      onChange={(e) => setGroupSort(e.target.value as GroupSortOption)}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-medium text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer appearance-none pr-7"
                     >
-                      <div>
-                        <p className="text-sm font-bold">{group.group_name}</p>
-                        <p className="text-xs font-mono text-[var(--fg-muted)]">{group.group_id}</p>
-                      </div>
-                      <span className="text-xs font-mono rounded-full bg-[var(--surface)] px-2.5 py-1 font-bold border border-[var(--border)]">
-                        {codes.filter((c) => c.group_id === group.group_id).length}개
-                      </span>
-                    </button>
-                  ))}
+                      <option value="name_asc">그룹명 순 (A-Z)</option>
+                      <option value="name_desc">그룹명 역순 (Z-A)</option>
+                      <option value="id_asc">그룹 ID 순</option>
+                      <option value="id_desc">그룹 ID 역순</option>
+                    </select>
+                    <ArrowUpDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)] pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Group Selector Cards */}
+                <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
+                  {filteredGroups.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-[var(--fg-muted)] border border-dashed border-[var(--border)] rounded-xl">
+                      검색된 코드 그룹이 없습니다.
+                    </div>
+                  ) : (
+                    filteredGroups.map((group) => {
+                      const count = codes.filter((c) => c.group_id === group.group_id).length;
+                      const isSelected = selectedGroupId === group.group_id;
+
+                      return (
+                        <div
+                          key={group.group_id}
+                          onClick={() => {
+                            setSelectedGroupId(group.group_id);
+                            setMobileView('codes');
+                          }}
+                          className={`group/card flex items-center justify-between rounded-xl px-4 py-3 border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
+                              : 'border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:border-emerald-500/40'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1 pr-2">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold truncate">{group.group_name}</p>
+                              <span className="text-[10px] font-mono rounded-full bg-[var(--surface)] px-2 py-0.5 font-bold border border-[var(--border)] shrink-0">
+                                {count}개
+                              </span>
+                            </div>
+                            <p className="text-xs font-mono text-[var(--fg-muted)] truncate mt-0.5">
+                              {group.group_id}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* Edit Group Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setGroupModal({
+                                  isOpen: true,
+                                  mode: 'edit',
+                                  initialData: group,
+                                });
+                              }}
+                              className="rounded-lg p-1.5 text-[var(--fg-muted)] hover:bg-[var(--surface)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                              title="그룹 수정"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+
+                            {/* Delete Group Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({
+                                  isOpen: true,
+                                  type: 'group',
+                                  targetId: group.group_id,
+                                  targetName: group.group_name,
+                                });
+                              }}
+                              className="rounded-lg p-1.5 text-[var(--fg-muted)] hover:bg-[var(--surface)] hover:text-red-500 transition-colors"
+                              title="그룹 삭제"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Right: Code Details */}
-            <div className="lg:col-span-7 space-y-6">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-                <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-emerald-500" />
-                  상세 코드 추가 ({selectedGroupId})
-                </h4>
-                <form onSubmit={handleAddCode} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">코드 (Code)</label>
-                    <input
-                      type="text"
-                      placeholder="예: JPY"
-                      value={newCode.code}
-                      onChange={(e) => setNewCode({ ...newCode, code: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-mono text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">코드명</label>
-                    <input
-                      type="text"
-                      placeholder="예: 일본 엔화 (¥)"
-                      value={newCode.code_name}
-                      onChange={(e) => setNewCode({ ...newCode, code_name: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <button type="submit" className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-bold text-white transition-colors cursor-pointer hover:bg-emerald-500">
-                      상세 코드 추가
+            {/* Right Panel: Detail Common Codes */}
+            <div
+              className={`space-y-4 lg:col-span-7 ${
+                mobileView === 'groups' ? 'hidden lg:block' : 'block'
+              }`}
+            >
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-4">
+                {/* Mobile Back Button & Header */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setMobileView('groups')}
+                      className="lg:hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2 text-[var(--fg)] hover:bg-[var(--surface)] cursor-pointer"
+                      title="코드그룹 목록으로 돌아가기"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
                     </button>
+                    <div>
+                      <h4 className="text-lg font-bold flex items-center gap-2">
+                        <span>상세 코드 목록</span>
+                        {selectedGroup && (
+                          <span className="text-xs font-mono rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold">
+                            {selectedGroup.group_name} ({selectedGroupId})
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                        마우스 드래그 앤 드롭으로 정렬 순서를 변경할 수 있습니다.
+                      </p>
+                    </div>
                   </div>
-                </form>
-              </div>
 
-              {/* Detail Code Table */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-                <h4 className="text-lg font-bold mb-4">상세 코드 목록 ({selectedGroupId})</h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-base">
-                    <thead className="border-b border-[var(--border)] text-[var(--fg-muted)] font-semibold">
+                  {/* Create Code Button */}
+                  <button
+                    onClick={() =>
+                      setCodeModal({
+                        isOpen: true,
+                        mode: 'create',
+                        initialData: {
+                          code: '',
+                          code_name: '',
+                          sort_order: currentGroupCodes.length + 1,
+                        },
+                      })
+                    }
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 dark:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer shrink-0"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>상세코드 추가</span>
+                  </button>
+                </div>
+
+                {/* Detail Codes Table with Drag and Drop */}
+                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-xs">
                       <tr>
-                        <th className="py-3 px-4 text-center">순서</th>
-                        <th className="py-3 px-4 text-center">코드</th>
+                        <th className="py-3 px-2 text-center w-10">이동</th>
+                        <th className="py-3 px-3 text-center w-14">순서</th>
+                        <th className="py-3 px-3 text-left">코드 (Code)</th>
                         <th className="py-3 px-4 text-left">코드명</th>
-                        <th className="py-3 px-4 text-center">상태</th>
-                        <th className="py-3 px-4 text-center">삭제</th>
+                        <th className="py-3 px-3 text-center w-20">상태</th>
+                        <th className="py-3 px-3 text-center w-24">작업</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {filteredCodes.map((item) => (
-                        <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                          <td className="py-3.5 px-4 text-center font-mono text-sm">{item.sort_order}</td>
-                          <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">{item.code}</td>
-                          <td className="py-3.5 px-4 text-left font-semibold">{item.code_name}</td>
-                          <td className="py-3.5 px-4 text-center">
-                            <button
-                              onClick={() => toggleCodeActive(item.id, item.is_active)}
-                              className={`rounded-full px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
-                                item.is_active ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
-                              }`}
-                            >
-                              {item.is_active ? '사용중' : '중지'}
-                            </button>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <button onClick={() => deleteCode(item.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 p-1 cursor-pointer" title="삭제">
-                              <Trash2 className="h-5 w-5 mx-auto" />
-                            </button>
+                    <tbody className="divide-y divide-[var(--border)] font-medium">
+                      {currentGroupCodes.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="py-12 text-center text-xs text-[var(--fg-muted)]"
+                          >
+                            등록된 상세 코드가 없습니다. 상단 "+ 상세코드 추가" 버튼을 눌러 등록해 주세요.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        currentGroupCodes.map((item, index) => {
+                          const isBeingDragged = draggedIndex === index;
+                          const isTargetDragOver = dragOverIndex === index;
+
+                          return (
+                            <tr
+                              key={item.id}
+                              draggable={true}
+                              onDragStart={() => handleDragStart(index)}
+                              onDragOver={(e) => handleDragOver(e, index)}
+                              onDrop={() => handleDrop(index)}
+                              className={`transition-colors cursor-grab active:cursor-grabbing ${
+                                isBeingDragged
+                                  ? 'opacity-30 bg-emerald-500/20'
+                                  : isTargetDragOver
+                                  ? 'bg-emerald-500/10 border-t-2 border-emerald-500'
+                                  : 'hover:bg-[var(--bg)]/70'
+                              }`}
+                            >
+                              {/* Drag Grip Handle */}
+                              <td className="py-3 px-2 text-center text-[var(--fg-muted)]">
+                                <GripVertical className="h-4 w-4 mx-auto cursor-grab active:cursor-grabbing hover:text-emerald-500" />
+                              </td>
+
+                              {/* Sort Order */}
+                              <td className="py-3 px-3 text-center font-mono text-xs text-[var(--fg-muted)]">
+                                {item.sort_order}
+                              </td>
+
+                              {/* Code */}
+                              <td className="py-3 px-3 text-left font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                {item.code}
+                              </td>
+
+                              {/* Code Name */}
+                              <td className="py-3 px-4 text-left font-semibold text-[var(--fg)]">
+                                {item.code_name}
+                              </td>
+
+                              {/* Active Status Toggle */}
+                              <td className="py-3 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleCodeActive(item.id, item.is_active)}
+                                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold transition-colors cursor-pointer border ${
+                                    item.is_active
+                                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                      : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                  }`}
+                                >
+                                  {item.is_active ? '사용중' : '중지'}
+                                </button>
+                              </td>
+
+                              {/* Actions (Edit & Delete) */}
+                              <td className="py-3 px-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {/* Edit Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setCodeModal({
+                                        isOpen: true,
+                                        mode: 'edit',
+                                        initialData: item,
+                                      })
+                                    }
+                                    className="rounded-lg p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                                    title="코드 수정"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+
+                                  {/* Delete Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setDeleteConfirm({
+                                        isOpen: true,
+                                        type: 'code',
+                                        targetId: item.id,
+                                        targetName: `${item.code_name} (${item.code})`,
+                                      })
+                                    }
+                                    className="rounded-lg p-1.5 text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-red-500 transition-colors cursor-pointer"
+                                    title="코드 삭제"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -256,6 +611,34 @@ export default function CodesPage() {
           </div>
         </main>
       </div>
+
+      {/* Code Group Modal (Create / Edit) */}
+      <CodeGroupModal
+        isOpen={groupModal.isOpen}
+        mode={groupModal.mode}
+        initialData={groupModal.initialData}
+        onClose={() => setGroupModal({ ...groupModal, isOpen: false })}
+        onSave={handleSaveGroup}
+      />
+
+      {/* Common Code Modal (Create / Edit) */}
+      <CommonCodeModal
+        isOpen={codeModal.isOpen}
+        mode={codeModal.mode}
+        groupId={selectedGroupId}
+        initialData={codeModal.initialData}
+        onClose={() => setCodeModal({ ...codeModal, isOpen: false })}
+        onSave={handleSaveCode}
+      />
+
+      {/* Defensive Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={deleteConfirm.isOpen}
+        title={deleteConfirm.type === 'group' ? '코드 그룹 삭제' : '상세 코드 삭제'}
+        message={`'${deleteConfirm.targetName}' 항목을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.`}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteConfirm({ ...deleteConfirm, isOpen: false })}
+      />
     </div>
   );
 }
