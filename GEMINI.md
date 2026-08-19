@@ -35,6 +35,11 @@
 
 - **플로팅 오버레이 사이드바**: `fixed top-0 left-0 h-screen z-40`으로 뷰포트에 완전 고정되며, 호버 시 사이드바만 상단 오버레이로 슬라이드되어 본문 가로폭이 밀리지 않음.
 - **스마트 테마 토글**: 기본 `system` 모드 추종 및 12시간 TTL 수동 오버라이드 캐싱 후 자동 복귀.
+- **모바일 뷰포트 고정 스마트 팝업 레이어 (Fixed Smart Viewport Popover)**:
+  - 모바일 테이블 내부에 이중 스크롤바나 컨텐츠 밀림("꾸물럭거림")이 생기지 않도록 `overflow-x-auto` 감싸개 내부 `absolute` 포지셔닝을 금지함.
+  - 점 세 개(`⋮`) 버튼의 작업 팝업 레이어는 `position: fixed` 및 화면 위치 감지(`getBoundingClientRect()`)를 적용하여, 화면 하단(55% 이하)에서는 **상단 방향(`bottom`)**, 상단에서는 **하단 방향(`top`)**으로 자동 플로팅 처리함.
+- **모바일 Touch-Ergonomics & HTML5 Draggable 조건부 제어**:
+  - 모바일(`width < 640px`)에서는 iOS Safari 길게 누름(Long-Press) 드래그 프리뷰 프리즈 버그 및 색상 잔상 고정 방지를 위해 HTML5 `draggable={false}`로 조건부 차단하고, 팝업 내 `위로 이동`/`아래로 이동` 버튼으로 조율함. PC 데스크톱(`sm:`)에서는 드래그 앤 드롭(`draggable={true}`)을 동적 유지함.
 
 ---
 
@@ -60,5 +65,8 @@
 7. **엄격한 DB 마스터 진실 원칙 및 우회/가짜 임시 데이터 금지 (Strict DB Truth & No Silent Fallbacks)**:
    - DB 조회 시 데이터가 없거나 쿼리 대상이 올바르지 않을 때, 임시용 하드코딩 덤미 데이터(Fallback Mock Data)를 반환하거나 조용하게 인자를 우회 변환(Alias Remapping)하여 감추는 포장 행위를 전면 금지함.
    - 코드 오류나 미설정 상태가 개발 중 즉시 실증 감지될 수 있도록, 항상 DB의 실제 상태(`[]` 빈 배열 등)만을 엄격하게 직접 반환하고 표출함.
+8. **동적 마스터 초기 선택 및 DB 시드 SQL 동기화 원칙 (Dynamic Initial Selection & Seed Sync)**:
+   - 마스터-디테일 UI 선택 시 특정 키를 하드코딩하여 지정하지 않고 DB 조회된 첫 번째 항목(`data[0].group_id`)을 동적 초기 선택함.
+   - 코드 정렬 및 시드 변경 시 마스터 데이터 시드 SQL(`sql/b_data_system.sql`) 및 레거시 데이터 삭제 쿼리를 즉시 100% 동기화함.
 
 ---
