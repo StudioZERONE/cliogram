@@ -17,10 +17,12 @@ export interface CommonCode {
 
 // Fallback initial common codes to ensure smooth UX even before SQL execution
 export const FALLBACK_CODES: Record<string, CommonCode[]> = {
-  CURRENCY: [
-    { group_id: 'CURRENCY', code: 'USD', code_name: '미국 달러 ($)', sort_order: 1, is_active: true },
-    { group_id: 'CURRENCY', code: 'KRW', code_name: '대한민국 원 (₩)', sort_order: 2, is_active: true },
-    { group_id: 'CURRENCY', code: 'EUR', code_name: '유로화 (€)', sort_order: 3, is_active: true },
+  CURRENCY_CODE: [
+    { group_id: 'CURRENCY_CODE', code: 'KRW', code_name: '대한민국 원 (₩)', sort_order: 1, is_active: true },
+    { group_id: 'CURRENCY_CODE', code: 'USD', code_name: '미국 달러 ($)', sort_order: 2, is_active: true },
+    { group_id: 'CURRENCY_CODE', code: 'EUR', code_name: '유로 (€)', sort_order: 3, is_active: true },
+    { group_id: 'CURRENCY_CODE', code: 'JPY', code_name: '일본 엔 (¥)', sort_order: 4, is_active: true },
+    { group_id: 'CURRENCY_CODE', code: 'CNY', code_name: '중국 위안 (¥)', sort_order: 5, is_active: true },
   ],
   STOCK_TYPE: [
     { group_id: 'STOCK_TYPE', code: 'Growth', code_name: '성장주', sort_order: 1, is_active: true },
@@ -46,19 +48,22 @@ export const FALLBACK_CODES: Record<string, CommonCode[]> = {
 };
 
 export async function getCommonCodes(groupId: string): Promise<CommonCode[]> {
+  // Alias legacy CURRENCY group_id to DB group_id CURRENCY_CODE
+  const targetGroupId = groupId === 'CURRENCY' ? 'CURRENCY_CODE' : groupId;
+
   try {
     const { data, error } = await supabase
       .from('common_codes')
       .select('*')
-      .eq('group_id', groupId)
+      .eq('group_id', targetGroupId)
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
 
     if (error || !data || data.length === 0) {
-      return FALLBACK_CODES[groupId] || [];
+      return FALLBACK_CODES[targetGroupId] || [];
     }
     return data as CommonCode[];
   } catch {
-    return FALLBACK_CODES[groupId] || [];
+    return FALLBACK_CODES[targetGroupId] || [];
   }
 }

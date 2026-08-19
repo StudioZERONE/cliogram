@@ -30,6 +30,13 @@
   }
 }
 
+/* Hide Next.js Dev Indicator [N] Floating Button completely */
+nextjs-portal,
+#nextjs-dev-tools,
+[data-nextjs-toast] {
+  display: none !important;
+}
+
 /* Uplon Textual Inputs - Date Picker Styling (Matching Template 1st Screenshot) */
 .react-datepicker-wrapper {
   width: 100% !important;
@@ -117,8 +124,6 @@
 
 .react-datepicker__navigation-icon {
   position: relative !important;
-  top: 0 !important;
-  left: 0 !important;
 }
 
 .react-datepicker__navigation-icon::before {

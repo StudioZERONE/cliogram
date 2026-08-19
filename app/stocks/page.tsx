@@ -147,7 +147,7 @@ export default function StocksPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">통화</label>
-                    <CodeSelect groupId="CURRENCY" value={stockForm.currency} onChange={(val) => setStockForm({ ...stockForm, currency: val })} />
+                    <CodeSelect groupId="CURRENCY_CODE" value={stockForm.currency} onChange={(val) => setStockForm({ ...stockForm, currency: val })} />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">상장 시장</label>

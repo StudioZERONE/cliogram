@@ -140,7 +140,7 @@ export default function DividendsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">통화</label>
-                  <CodeSelect groupId="CURRENCY" value={dividendForm.currency} onChange={(val) => setDividendForm({ ...dividendForm, currency: val as any })} />
+                  <CodeSelect groupId="CURRENCY_CODE" value={dividendForm.currency} onChange={(val) => setDividendForm({ ...dividendForm, currency: val as any })} />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[var(--fg-muted)] mb-1.5">종목명 / 티커</label>

@@ -5,7 +5,7 @@ import { ChevronDown, Check } from 'lucide-react';
 import { getCommonCodes, CommonCode, FALLBACK_CODES } from '@/lib/codes';
 
 interface CodeSelectProps {
-  groupId: 'CURRENCY' | 'STOCK_TYPE' | 'MARKET_TYPE' | 'TRADE_TYPE';
+  groupId: 'CURRENCY_CODE' | 'CURRENCY' | 'STOCK_TYPE' | 'MARKET_TYPE' | 'TRADE_TYPE';
   value: string;
   onChange: (value: string) => void;
   className?: string;
@@ -13,13 +13,14 @@ interface CodeSelectProps {
 }
 
 export function CodeSelect({ groupId, value, onChange, className = '', disabled = false }: CodeSelectProps) {
-  const [codes, setCodes] = useState<CommonCode[]>(FALLBACK_CODES[groupId] || []);
+  const normalizedGroupId = groupId === 'CURRENCY' ? 'CURRENCY_CODE' : groupId;
+  const [codes, setCodes] = useState<CommonCode[]>(FALLBACK_CODES[normalizedGroupId] || []);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let isMounted = true;
-    getCommonCodes(groupId).then((data) => {
+    getCommonCodes(normalizedGroupId).then((data) => {
       if (isMounted && data.length > 0) {
         setCodes(data);
       }
@@ -27,7 +28,7 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
     return () => {
       isMounted = false;
     };
-  }, [groupId]);
+  }, [normalizedGroupId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -49,7 +50,7 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
 
   return (
     <div ref={containerRef} className={`relative inline-block w-full text-left ${className}`}>
-      {/* Custom Combobox Trigger Button with text-left (Requirement 3) */}
+      {/* Custom Combobox Trigger Button with text-left */}
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
