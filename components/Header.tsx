@@ -145,7 +145,7 @@ export function Header({ title }: HeaderProps) {
         {/* 2. Real-time Exchange Rate Badge */}
         <div className="hidden sm:flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2 text-sm font-medium">
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-[var(--fg-muted)]">USD/KRW:</span>
+          <span className="text-[var(--fg-muted)]">KRW/USD:</span>
           <span className="font-bold text-[var(--fg)]">{exchangeRate.toLocaleString()}원</span>
         </div>
 
