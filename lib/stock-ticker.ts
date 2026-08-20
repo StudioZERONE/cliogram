@@ -1,3 +1,9 @@
+/**
+ * 종목 정보 출처 (Stock Data Sourcing Architecture):
+ * 1. 1차 소스 (Local Preset Dictionary): 미국/한국 주요 상장 종목 및 ETF 초고속 반환.
+ * 2. 2차 소스 (Extensible Public API / DB Sync): 필요 시 공공 증권 API 및 외부 파이낸스 API 연동 구역.
+ * 3. 3차 소스 (User Direct Editing): 자동 완성 추천 후 사용자의 직접 편집 및 덮어쓰기 허용.
+ */
 export interface PresetStockInfo {
   ticker: string;
   name: string;
