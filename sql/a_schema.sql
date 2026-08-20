@@ -40,10 +40,12 @@ CREATE TABLE IF NOT EXISTS public.stocks (
   ticker TEXT NOT NULL,
   sort_code TEXT,
   name TEXT NOT NULL,
+  short_name TEXT,
   sort_name TEXT,
   type TEXT,
   currency TEXT DEFAULT 'USD',
   market TEXT,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, ticker)
 );

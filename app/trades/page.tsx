@@ -60,6 +60,8 @@ export default function TradesPage() {
     notes: ''
   });
 
+  const [allStocks, setAllStocks] = useState<{ ticker: string; name: string; short_name: string; is_active: boolean }[]>([]);
+
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
       if (!valid) {
@@ -68,8 +70,29 @@ export default function TradesPage() {
       }
       setIsAuthChecking(false);
       fetchTrades();
+      fetchAllStocks();
     });
   }, [router]);
+
+  const fetchAllStocks = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('stocks')
+      .select('ticker, name, short_name, is_active')
+      .eq('user_id', user.id)
+      .order('name', { ascending: true });
+
+    if (data) {
+      setAllStocks(data.map((s: any) => ({
+        ticker: s.ticker,
+        name: s.name,
+        short_name: s.short_name || s.name,
+        is_active: s.is_active ?? true,
+      })));
+    }
+  };
 
   const fetchTrades = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -202,14 +225,22 @@ export default function TradesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">종목명 / 티커</label>
+                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">종목명 / 티커 (사용중지 종목 선택 가능)</label>
                   <input
                     type="text"
+                    list="all-stock-list"
                     placeholder="예: Apple (AAPL)"
                     value={tradeForm.stock_name}
                     onChange={(e) => setTradeForm({ ...tradeForm, stock_name: e.target.value })}
                     className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
                   />
+                  <datalist id="all-stock-list">
+                    {allStocks.map((s) => (
+                      <option key={s.ticker} value={`${s.short_name || s.name} (${s.ticker})`}>
+                        {s.name} ({s.ticker}){!s.is_active ? ' [사용중지]' : ''}
+                      </option>
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
