@@ -49,6 +49,7 @@ export function StockModal({
   const [isActive, setIsActive] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [autoFillNotice, setAutoFillNotice] = useState<string | null>(null);
+  const [isSearchingTicker, setIsSearchingTicker] = useState<boolean>(false);
 
   const backdropRef = useRef<HTMLDivElement>(null);
 
@@ -92,8 +93,6 @@ export function StockModal({
       onClose();
     }
   };
-
-  const [isSearchingTicker, setIsSearchingTicker] = useState<boolean>(false);
 
   const handleTickerChange = async (value: string) => {
     const uppercaseTicker = value.toUpperCase().trim();
