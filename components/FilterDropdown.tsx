@@ -41,14 +41,14 @@ export function FilterDropdown({
     ? `${labelPrefix}: ${selectedOption.label}`
     : `${labelPrefix}: 전체`;
 
-  // Calculate longest text length among all options to freeze button width and eliminate layout shifts
+  // Calculate compact width based on longest label text to trim right excess margin
   const minWidthPx = useMemo(() => {
-    if (!options || options.length === 0) return 140;
+    if (!options || options.length === 0) return 100;
     const maxChars = Math.max(
       ...options.map((opt) => `${labelPrefix}: ${opt.label}`.length)
     );
-    // Approx 11.5px per character + 46px (padding + chevron icon + gap)
-    return Math.max(130, Math.ceil(maxChars * 11.5 + 46));
+    // Compact calculation: approx 9.2px per character + 32px (padding + chevron icon)
+    return Math.max(92, Math.ceil(maxChars * 9.2 + 32));
   }, [labelPrefix, options]);
 
   const handleSelect = (val: string) => {
@@ -62,13 +62,13 @@ export function FilterDropdown({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         style={{ minWidth: `${minWidthPx}px` }}
-        className={`flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
+        className={`flex items-center justify-between gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
           isOpen ? 'ring-2 ring-emerald-500/30 bg-emerald-500/20' : ''
         }`}
       >
         <span className="truncate">{displayLabel}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 transition-transform duration-200 ${
+          className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-emerald-600 dark:text-emerald-400 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -83,15 +83,15 @@ export function FilterDropdown({
                 key={opt.value}
                 type="button"
                 onClick={() => handleSelect(opt.value)}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   isSelected
                     ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                     : 'text-[var(--fg)] hover:bg-[var(--bg)]'
                 }`}
               >
-                <span className="truncate">{opt.label}</span>
+                <span className="truncate pr-1.5">{opt.label}</span>
                 {isSelected && (
-                  <Check className="h-4 w-4 text-emerald-500 shrink-0 ml-2" />
+                  <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500 shrink-0 ml-1" />
                 )}
               </button>
             );
