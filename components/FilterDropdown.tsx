@@ -40,15 +40,19 @@ export function FilterDropdown({
 
   const selectedOption = options.find((opt) => opt.value === value) || options[0];
 
-  // Desktop & Mobile label strings
+  // Desktop label logic: "종목 유형: 전체", "종목 유형: 성장주"
   const desktopLabel = selectedOption
     ? `${labelPrefix}: ${selectedOption.label}`
     : `${labelPrefix}: 전체`;
 
+  // Mobile compact label logic for iPhone 13 Mini:
+  // When 'ALL' (전체): display shortened label ("유형", "시장", "상태")
+  // When specific value selected: display selected value label ("성장주", "나스닥", "사용중")
   const mPrefix = mobileLabelPrefix || labelPrefix;
-  const mobileLabel = selectedOption
-    ? `${mPrefix}: ${selectedOption.label}`
-    : `${mPrefix}: 전체`;
+  const mobileLabel =
+    selectedOption && selectedOption.value !== 'ALL'
+      ? selectedOption.label
+      : mPrefix;
 
   const handleSelect = (val: string) => {
     onChange(val);
@@ -61,7 +65,7 @@ export function FilterDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex w-full items-center justify-between gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
+        className={`flex w-full items-center justify-between gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 sm:px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
           isOpen ? 'ring-2 ring-emerald-500/30 bg-emerald-500/20' : ''
         }`}
       >
