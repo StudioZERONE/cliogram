@@ -23,10 +23,9 @@
 - **헌법(`GEMINI.md`)의 역할**: 개발 방향성, 서비스 정체성, 에이전트 핵심 행동 수칙 등 **강력한 의지를 담은 핵심 대원칙**만을 정의하여 컨텍스트 경량화 및 실행 명확성을 유지함.
 - **옵시디언 지식 문서 최상위 루트 경로 (Obsidian Vault Root)**:
   - **경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/)
-  - **규정 문서 디렉토리 (`21.Rules/`) 절대 경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/21.Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/21.Rules/)
-  - **디자인 규정 디렉토리 (`22.Design Rules/`) 절대 경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/22.Design Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/22.Design Rules/)
-- **세션 시작 시 규정 문서 필수 선행 독해 의무 (Mandatory Session Pre-Read Rule)**:
-  - AI 에이전트는 새로운 대화 세션이 시작되거나 신규 기능 개발/문서 작성에 착수할 때, 미시적인 개별 규칙을 추측하지 않고 **위 절대 경로(`21.Rules/` 및 `22.Design Rules/`)에 존재하는 모든 규정 문서들을 필히 먼저 전수 읽고 정확히 숙지한 후 작업을 수행**해야 함.
+  - **20번대 규정 폴더 디렉토리 (20s Rules Directories)**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/21.Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/21.Rules/) 및 [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/22.Design Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/22.Design Rules/) 등 **20번대 번호로 시작하는 모든 규정 디렉토리**
+- **세션 시작 시 20번대 규정 문서 필수 선행 독해 의무 (Mandatory 20s Rules Pre-Read)**:
+  - AI 에이전트는 새로운 대화 세션이 시작되거나 신규 기능 개발/문서 작성에 착수할 때, 미시적인 개별 규칙을 추측하지 않고 **위 20번대 규정 폴더(`21.Rules/`, `22.Design Rules/` 등)에 존재하는 모든 규정 문서들을 필히 먼저 전수 읽고 정확히 숙지한 후 작업을 수행**해야 함.
 
 ---
 
@@ -61,7 +60,7 @@
 - **Universal AI Protection**: 계정/비밀번호/API 키 등 보안 정보 100% 보존.
 - **자율 커밋 & 푸시 원칙 (Auto Push)**: 사용자가 보류를 명시하지 않는 한, 구현 및 테스트/빌드 검증 통과 즉시 `git commit` & `git push origin main`까지 자율 완료함.
 - **출퇴근 생명주기 및 세션 시작 능동 리포트 (Session Lifecycle & Proactive Report)**:
-  - **새 대화 세션 시작 시 (New Session Start Event)**: 영일님이 묻지 않아도 **(1) 사전에 점검한 항목들(규정 문서 전수 독해 완료 상태, 개발 서버, Git 워킹트리/최신 이력, Vitest 테스트 통과 수치)**과 **(2) 해당 항목들을 확인한 헌법 및 규정 기준**을 대화 서두에 능동적으로 투명하게 먼저 브리핑함.
+  - **새 대화 세션 시작 시 (New Session Start Event)**: 영일님이 묻지 않아도 **(1) 사전에 점검한 항목들(20번대 규정 폴더 전수 독해 완료 상태, 개발 서버, Git 워킹트리/최신 이력, Vitest 테스트 통과 수치)**과 **(2) 해당 항목들을 확인한 헌법 및 규정 기준**을 대화 서두에 능동적으로 투명하게 먼저 브리핑함.
   - **출근 감지 시 (Work Start Event)**: `http://localhost:3000` 개발 서버 프로세스 백그라운드 자동 가동 및 유지.
   - **퇴근 감지 시 (Work End Event)**: 개발 서버 프로세스 자동 종료(`kill`)와 함께, 당일 나눈 대화를 **단순 대화 단위가 아닌 '주제별/기능별 묶음(Topic-based Grouping)'**으로 정제하여 대화로그(`51.02.개발일지 대화로그/`) 작성 및 주차별 개발일지(`51.01.개발일지/`) `작업` 컬럼 위키링크(`[[ ... ]]`) 일괄 연결/최신화 수행 후 세션 종료.
 
