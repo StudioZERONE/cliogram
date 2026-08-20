@@ -731,95 +731,98 @@ export default function CodesPage() {
                                           ? { bottom: `${window.innerHeight - actionMenuPos.top + 6}px` }
                                           : { top: `${actionMenuPos.top + 32}px` }),
                                       }}
-                                      className="z-50 w-40 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs space-y-0.5 animate-in fade-in-50 zoom-in-95 cursor-default"
+                                      className="z-50 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs divide-y divide-[var(--border)] animate-in fade-in-50 zoom-in-95 cursor-default"
                                     >
-                                      {/* Reorder Order Up */}
-                                      <button
-                                        type="button"
-                                        disabled={index === 0}
-                                        onClick={() => {
-                                          moveCodeOrder(index, 'up');
-                                          closeMobileAction();
-                                        }}
-                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none"
-                                      >
-                                        <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                                        <span>위로 이동</span>
-                                      </button>
+                                      {/* Reorder Group */}
+                                      <div className="pb-1 space-y-0.5">
+                                        <button
+                                          type="button"
+                                          disabled={index === 0}
+                                          onClick={() => {
+                                            moveCodeOrder(index, 'up');
+                                            closeMobileAction();
+                                          }}
+                                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                                        >
+                                          <ArrowUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                          <span>위로 이동</span>
+                                        </button>
 
-                                      {/* Reorder Order Down */}
-                                      <button
-                                        type="button"
-                                        disabled={index === currentGroupCodes.length - 1}
-                                        onClick={() => {
-                                          moveCodeOrder(index, 'down');
-                                          closeMobileAction();
-                                        }}
-                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none"
-                                      >
-                                        <ArrowDown className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                                        <span>아래로 이동</span>
-                                      </button>
-
-                                      <div className="border-t border-[var(--border)] my-1" />
+                                        <button
+                                          type="button"
+                                          disabled={index === currentGroupCodes.length - 1}
+                                          onClick={() => {
+                                            moveCodeOrder(index, 'down');
+                                            closeMobileAction();
+                                          }}
+                                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-[var(--fg)] hover:bg-[var(--bg)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                                        >
+                                          <ArrowDown className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                          <span>아래로 이동</span>
+                                        </button>
+                                      </div>
 
                                       {/* Status Toggle */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          toggleCodeActive(item.id, item.is_active);
-                                          closeMobileAction();
-                                        }}
-                                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-bold transition-colors hover:bg-[var(--bg)]"
-                                      >
-                                        <span>상태</span>
-                                        <span
-                                          className={`rounded-full px-2 py-0.5 text-[10px] ${
-                                            item.is_active
-                                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                              : 'bg-red-500/10 text-red-500'
-                                          }`}
+                                      <div className="py-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            toggleCodeActive(item.id, item.is_active);
+                                            closeMobileAction();
+                                          }}
+                                          className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 min-h-[42px] font-bold transition-colors hover:bg-[var(--bg)] cursor-pointer"
                                         >
-                                          {item.is_active ? '사용중' : '중지'}
-                                        </span>
-                                      </button>
-
-                                      <div className="border-t border-[var(--border)] my-1" />
+                                          <span className="text-[var(--fg)]">상태 변경</span>
+                                          <span
+                                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                              item.is_active
+                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                                : 'bg-red-500/10 text-red-500 border border-red-500/30'
+                                            }`}
+                                          >
+                                            {item.is_active ? '사용중' : '중지'}
+                                          </span>
+                                        </button>
+                                      </div>
 
                                       {/* Edit */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setCodeModal({
-                                            isOpen: true,
-                                            mode: 'edit',
-                                            initialData: item,
-                                          });
-                                          closeMobileAction();
-                                        }}
-                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-[var(--fg)] hover:bg-[var(--bg)]"
-                                      >
-                                        <Edit2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                                        <span>코드 수정</span>
-                                      </button>
+                                      <div className="py-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setCodeModal({
+                                              isOpen: true,
+                                              mode: 'edit',
+                                              initialData: item,
+                                            });
+                                            closeMobileAction();
+                                          }}
+                                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-[var(--fg)] hover:bg-[var(--bg)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                                        >
+                                          <Edit2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                          <span>코드 수정</span>
+                                        </button>
+                                      </div>
 
                                       {/* Delete */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setDeleteConfirm({
-                                            isOpen: true,
-                                            type: 'code',
-                                            targetId: item.id,
-                                            targetName: `${item.code_name} (${item.code})`,
-                                          });
-                                          closeMobileAction();
-                                        }}
-                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-red-500 hover:bg-[var(--bg)]"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                                        <span>코드 삭제</span>
-                                      </button>
+                                      <div className="pt-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDeleteConfirm({
+                                              isOpen: true,
+                                              type: 'code',
+                                              targetId: item.id,
+                                              targetName: `${item.code_name} (${item.code})`,
+                                            });
+                                            closeMobileAction();
+                                          }}
+                                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                        >
+                                          <Trash2 className="h-4 w-4 shrink-0" />
+                                          <span>코드 삭제</span>
+                                        </button>
+                                      </div>
                                     </div>
                                   </>
                                 )}

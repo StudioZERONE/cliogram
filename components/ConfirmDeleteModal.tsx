@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, AlertCircle, X } from 'lucide-react';
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
   title?: string;
   message?: string;
+  confirmText?: string;
+  confirmVariant?: 'danger' | 'warning' | 'emerald';
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -15,6 +17,8 @@ export function ConfirmDeleteModal({
   isOpen,
   title = '데이터 삭제 확인',
   message = '선택하신 항목을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.',
+  confirmText = '삭제하기',
+  confirmVariant = 'danger',
   onConfirm,
   onClose
 }: ConfirmDeleteModalProps) {
@@ -40,6 +44,26 @@ export function ConfirmDeleteModal({
 
   const messageLines = message.split('\n');
 
+  const renderIcon = () => {
+    if (confirmVariant === 'emerald') {
+      return <AlertCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400 shrink-0" />;
+    }
+    if (confirmVariant === 'warning') {
+      return <AlertCircle className="h-6 w-6 text-amber-500 shrink-0" />;
+    }
+    return <AlertTriangle className="h-6 w-6 text-red-500 dark:text-red-400 shrink-0" />;
+  };
+
+  const renderButtonClass = () => {
+    if (confirmVariant === 'emerald') {
+      return 'bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600';
+    }
+    if (confirmVariant === 'warning') {
+      return 'bg-amber-600 dark:bg-amber-500 text-white hover:bg-amber-500 dark:hover:bg-amber-600';
+    }
+    return 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-500 dark:hover:bg-red-600';
+  };
+
   return (
     <div
       ref={backdropRef}
@@ -51,8 +75,8 @@ export function ConfirmDeleteModal({
         className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-5 animate-in zoom-in-95 cursor-default"
       >
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
-          <div className="flex items-center gap-2.5 text-red-500 dark:text-red-400">
-            <AlertTriangle className="h-6 w-6 shrink-0" />
+          <div className="flex items-center gap-2.5">
+            {renderIcon()}
             <h3 className="text-xl font-bold text-[var(--fg)]">{title}</h3>
           </div>
           <button
@@ -86,9 +110,9 @@ export function ConfirmDeleteModal({
               onConfirm();
               onClose();
             }}
-            className="rounded-xl bg-red-600 dark:bg-red-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-500 dark:hover:bg-red-600 transition-colors shadow-xs cursor-pointer"
+            className={`rounded-xl px-5 py-2.5 text-sm font-bold transition-colors shadow-xs cursor-pointer ${renderButtonClass()}`}
           >
-            삭제하기
+            {confirmText}
           </button>
         </div>
       </div>

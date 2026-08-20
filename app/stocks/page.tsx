@@ -874,6 +874,8 @@ export default function StocksPage() {
       <ConfirmDeleteModal
         isOpen={!!toggleTargetStock}
         title="종목 사용 상태 변경 확인"
+        confirmText="상태 변경하기"
+        confirmVariant="emerald"
         message={
           toggleTargetStock
             ? toggleTargetStock.is_active
