@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { X, Layers, Sparkles } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
-import { lookupTickerInfo } from '@/lib/stock-ticker';
+import { lookupTickerInfo, fetchRemoteTickerInfo } from '@/lib/stock-ticker';
 
 export interface StockRecordData {
   id?: string;
@@ -93,35 +93,61 @@ export function StockModal({
     }
   };
 
-  const handleTickerChange = (value: string) => {
-    const uppercaseTicker = value.toUpperCase();
+  const [isSearchingTicker, setIsSearchingTicker] = useState<boolean>(false);
+
+  const handleTickerChange = async (value: string) => {
+    const uppercaseTicker = value.toUpperCase().trim();
     setTicker(uppercaseTicker);
 
-    // Auto Lookup for Known Tickers in Create mode or when name is empty
-    if (mode === 'create' || !name) {
-      const info = lookupTickerInfo(uppercaseTicker);
-      if (info) {
-        setName(info.name);
-        setShortName(info.short_name);
-        setType(info.type);
-        setCurrency(info.currency);
-        setMarket(info.market);
-        setAutoFillNotice(`티커 '${info.ticker}' 정보가 자동으로 추천 입력되었습니다.`);
+    if (!uppercaseTicker || (mode === 'edit' && name)) return;
+
+    // 1차: 로컬 프리셋 즉시 반영
+    const local = lookupTickerInfo(uppercaseTicker);
+    if (local) {
+      setName(local.name);
+      setShortName(local.short_name);
+      setType(local.type);
+      setCurrency(local.currency);
+      setMarket(local.market);
+      setAutoFillNotice(`티커 '${local.ticker}' 정보가 로컬 프리셋으로 자동 반영되었습니다.`);
+      return;
+    }
+
+    // 2차: 티커 길이가 2자 이상일 때 백엔드 API 실시간 조회
+    if (uppercaseTicker.length >= 2) {
+      setIsSearchingTicker(true);
+      setAutoFillNotice('실시간 외부 파이낸스 API에서 종목 정보를 조회 중입니다...');
+      const remote = await fetchRemoteTickerInfo(uppercaseTicker);
+      setIsSearchingTicker(false);
+
+      if (remote) {
+        setName(remote.name);
+        setShortName(remote.short_name || remote.name);
+        setType(remote.type || 'Growth');
+        setCurrency(remote.currency || 'USD');
+        setMarket(remote.market || 'NASDAQ');
+        setAutoFillNotice(`티커 '${remote.ticker}' 실시간 수집 정보가 자동 추천 반영되었습니다.`);
       } else {
         setAutoFillNotice(null);
       }
+    } else {
+      setAutoFillNotice(null);
     }
   };
 
-  const handleApplyPreset = () => {
-    const info = lookupTickerInfo(ticker);
+  const handleApplyPreset = async () => {
+    if (!ticker) return;
+    setIsSearchingTicker(true);
+    setAutoFillNotice('종목 정보를 실시간 재조회 중입니다...');
+    const info = await fetchRemoteTickerInfo(ticker);
+    setIsSearchingTicker(false);
     if (info) {
       setName(info.name);
-      setShortName(info.short_name);
-      setType(info.type);
-      setCurrency(info.currency);
-      setMarket(info.market);
-      setAutoFillNotice(`티커 '${info.ticker}' 표준 정보가 반영되었습니다.`);
+      setShortName(info.short_name || info.name);
+      setType(info.type || 'Growth');
+      setCurrency(info.currency || 'USD');
+      setMarket(info.market || 'NASDAQ');
+      setAutoFillNotice(`티커 '${info.ticker}' 표준 실시간 정보가 반영되었습니다.`);
     }
   };
 

@@ -51,3 +51,34 @@ export function lookupTickerInfo(ticker: string): PresetStockInfo | null {
   const cleanTicker = ticker.trim().toUpperCase();
   return POPULAR_STOCKS_PRESETS[cleanTicker] || null;
 }
+
+/**
+ * 티커 코드를 바탕으로 1차 로컬 딕셔너리 및 2차 백엔드 실시간 API(/api/stock-lookup) 통합 조회
+ */
+export async function fetchRemoteTickerInfo(ticker: string): Promise<(PresetStockInfo & { source?: string }) | null> {
+  if (!ticker || !ticker.trim()) return null;
+  const cleanTicker = ticker.trim().toUpperCase();
+
+  // 1차: 로컬 딕셔너리 즉시 반환
+  const local = lookupTickerInfo(cleanTicker);
+  if (local) return { ...local, source: 'preset' };
+
+  // 2차: 백엔드 API 라우트 호출
+  try {
+    const res = await fetch(`/api/stock-lookup?ticker=${encodeURIComponent(cleanTicker)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      ticker: data.ticker || cleanTicker,
+      name: data.name || cleanTicker,
+      short_name: data.short_name || data.name || cleanTicker,
+      type: data.type || 'Growth',
+      currency: data.currency || 'USD',
+      market: data.market || 'NASDAQ',
+      source: data.source || 'yahoo_finance',
+    };
+  } catch (err) {
+    console.error('fetchRemoteTickerInfo error:', err);
+    return null;
+  }
+}

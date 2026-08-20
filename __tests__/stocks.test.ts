@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lookupTickerInfo } from '../lib/stock-ticker';
+import { lookupTickerInfo, fetchRemoteTickerInfo } from '../lib/stock-ticker';
 
 interface StockItem {
   ticker: string;
@@ -37,6 +37,13 @@ describe('Stock Ticker Auto-Lookup Helper', () => {
   it('unknown ticker returns null', () => {
     const info = lookupTickerInfo('UNKNOWN_TICKER_999');
     expect(info).toBeNull();
+  });
+
+  it('fetchRemoteTickerInfo returns preset info with source preset for known ticker', async () => {
+    const info = await fetchRemoteTickerInfo('AAPL');
+    expect(info).not.toBeNull();
+    expect(info?.name).toBe('Apple Inc.');
+    expect(info?.source).toBe('preset');
   });
 });
 
