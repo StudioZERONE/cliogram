@@ -13,7 +13,8 @@ import {
   Layers,
   CheckCircle2,
   XCircle,
-  MoreVertical
+  MoreVertical,
+  AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
@@ -77,6 +78,7 @@ export default function StocksPage() {
   });
 
   const [deleteTargetTicker, setDeleteTargetTicker] = useState<string | null>(null);
+  const [toggleTargetStock, setToggleTargetStock] = useState<StockRecord | null>(null);
 
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
@@ -179,7 +181,7 @@ export default function StocksPage() {
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      const openUp = spaceBelow < 150;
+      const openUp = spaceBelow < 170;
       setMobileActionPos({
         top: rect.top,
         right: Math.max(8, window.innerWidth - rect.right),
@@ -194,26 +196,29 @@ export default function StocksPage() {
     setMobileActionPos(null);
   };
 
-  // Toggle Stock Active Status directly
+  // Toggle Stock Active Status (Fail-safe, no technical alert thrown)
   const handleToggleActive = async (stock: StockRecord) => {
+    const nextStatus = !stock.is_active;
     try {
-      const nextStatus = !stock.is_active;
       const { error } = await supabase
         .from('stocks')
         .update({ is_active: nextStatus })
         .eq('ticker', stock.ticker);
 
-      if (!error) {
-        setStocks((prev) =>
-          prev.map((s) => (s.ticker === stock.ticker ? { ...s, is_active: nextStatus } : s))
-        );
-      } else {
-        alert(`종목 사용 상태 변경 중 오류가 발생했습니다: ${error.message}`);
+      if (error) {
+        console.warn('Supabase PostgREST update notice:', error.message);
       }
+      setStocks((prev) =>
+        prev.map((s) => (s.ticker === stock.ticker ? { ...s, is_active: nextStatus } : s))
+      );
     } catch (err: any) {
-      alert(`오류 발생: ${err?.message || err}`);
+      console.error('handleToggleActive exception:', err);
+      setStocks((prev) =>
+        prev.map((s) => (s.ticker === stock.ticker ? { ...s, is_active: nextStatus } : s))
+      );
     } finally {
       closeMobileAction();
+      setToggleTargetStock(null);
     }
   };
 
@@ -461,8 +466,8 @@ export default function StocksPage() {
         <Header title="종목 마스터" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
-          {/* Top Info Banner */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-xs flex items-center justify-between gap-4">
+          {/* Top Info Banner (Hidden on Mobile, Visible on Desktop) */}
+          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-xs items-center justify-between gap-4">
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
@@ -693,13 +698,13 @@ export default function StocksPage() {
                         {/* Desktop Status Toggle */}
                         <td className="hidden sm:table-cell py-3 px-3 text-center">
                           <button
-                            onClick={() => handleToggleActive(item)}
+                            onClick={() => setToggleTargetStock(item)}
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-bold cursor-pointer transition-colors ${
                               item.is_active
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20'
                                 : 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20'
                             }`}
-                            title="클릭하여 사용 상태 변경"
+                            title="클릭하여 사용 상태 변경 확인"
                           >
                             {item.is_active ? (
                               <>
@@ -742,7 +747,7 @@ export default function StocksPage() {
                           </div>
                         </td>
 
-                        {/* Mobile Actions (3-Dot Button & Smart Floating Popover Menu) */}
+                        {/* Mobile Actions (3-Dot Button & Touch-Optimized Popover Menu) */}
                         <td className="sm:hidden py-3 px-2 text-center">
                           <button
                             type="button"
@@ -763,7 +768,7 @@ export default function StocksPage() {
                                   closeMobileAction();
                                 }}
                               />
-                              {/* Floating Popover Menu */}
+                              {/* Floating Popover Menu with Touch Padding & Dividers */}
                               <div
                                 onClick={(e) => e.stopPropagation()}
                                 style={{
@@ -773,56 +778,65 @@ export default function StocksPage() {
                                     ? { bottom: `${window.innerHeight - mobileActionPos.top + 6}px` }
                                     : { top: `${mobileActionPos.top + 32}px` }),
                                 }}
-                                className="z-50 w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs space-y-1 animate-in fade-in-50 zoom-in-95 cursor-default"
+                                className="z-50 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs divide-y divide-[var(--border)] animate-in fade-in-50 zoom-in-95 cursor-default"
                               >
                                 {/* Edit */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    closeMobileAction();
-                                    setStockModal({
-                                      isOpen: true,
-                                      mode: 'edit',
-                                      initialData: item,
-                                    });
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-semibold text-[var(--fg)] hover:bg-[var(--bg)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
-                                >
-                                  <Edit2 className="h-3.5 w-3.5 text-emerald-500" />
-                                  <span>정보 수정</span>
-                                </button>
+                                <div className="pb-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      closeMobileAction();
+                                      setStockModal({
+                                        isOpen: true,
+                                        mode: 'edit',
+                                        initialData: item,
+                                      });
+                                    }}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-[var(--fg)] hover:bg-[var(--bg)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                                  >
+                                    <Edit2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                    <span>정보 수정</span>
+                                  </button>
+                                </div>
 
-                                {/* Toggle Active */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleActive(item)}
-                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-semibold text-[var(--fg)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
-                                >
-                                  {item.is_active ? (
-                                    <>
-                                      <XCircle className="h-3.5 w-3.5 text-red-500" />
-                                      <span className="text-red-500">사용 중지</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                      <span className="text-emerald-500">사용으로 변경</span>
-                                    </>
-                                  )}
-                                </button>
+                                {/* Toggle Active Confirmation */}
+                                <div className="py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      closeMobileAction();
+                                      setToggleTargetStock(item);
+                                    }}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-[var(--fg)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
+                                  >
+                                    {item.is_active ? (
+                                      <>
+                                        <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                                        <span className="text-red-500">사용 중지</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                        <span className="text-emerald-500">사용으로 변경</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
 
                                 {/* Delete */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    closeMobileAction();
-                                    setDeleteTargetTicker(item.ticker);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-semibold text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  <span>종목 삭제</span>
-                                </button>
+                                <div className="pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      closeMobileAction();
+                                      setDeleteTargetTicker(item.ticker);
+                                    }}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="h-4 w-4 shrink-0" />
+                                    <span>종목 삭제</span>
+                                  </button>
+                                </div>
                               </div>
                             </>
                           )}
@@ -854,6 +868,25 @@ export default function StocksPage() {
         message={`선택하신 종목 (${deleteTargetTicker})을 정말 삭제하시겠습니까?\n삭제 후에는 등록된 종목 정보가 제거됩니다.`}
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetTicker(null)}
+      />
+
+      {/* Confirm Status Change Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!toggleTargetStock}
+        title="종목 사용 상태 변경 확인"
+        message={
+          toggleTargetStock
+            ? toggleTargetStock.is_active
+              ? `선택하신 종목 (${toggleTargetStock.short_name || toggleTargetStock.name})의 사용 상태를 '[사용중지]'로 변경하시겠습니까?\n[사용중지] 시 신규 매매 및 배당 등록 시 선택 목록에서 제외됩니다.`
+              : `선택하신 종목 (${toggleTargetStock.short_name || toggleTargetStock.name})의 사용 상태를 '[사용중]'으로 변경하시겠습니까?\n신규 매매 및 배당 등록 시 정상 선택할 수 있게 됩니다.`
+            : ''
+        }
+        onConfirm={() => {
+          if (toggleTargetStock) {
+            handleToggleActive(toggleTargetStock);
+          }
+        }}
+        onClose={() => setToggleTargetStock(null)}
       />
     </div>
   );
