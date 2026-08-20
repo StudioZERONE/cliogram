@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
 export interface FilterOption {
@@ -41,16 +41,6 @@ export function FilterDropdown({
     ? `${labelPrefix}: ${selectedOption.label}`
     : `${labelPrefix}: 전체`;
 
-  // Ultra-compact dynamic width calculation to eliminate any excess right margin
-  const widthPx = useMemo(() => {
-    if (!options || options.length === 0) return 80;
-    const labelLen = displayLabel.length;
-    const maxOptLen = Math.max(...options.map((opt) => opt.label.length));
-    const len = Math.max(labelLen, maxOptLen);
-    // Compact formula: 8.2px per character + 22px (padding & icon)
-    return Math.max(72, Math.ceil(len * 8.2 + 22));
-  }, [displayLabel, options]);
-
   const handleSelect = (val: string) => {
     onChange(val);
     setIsOpen(false);
@@ -58,24 +48,25 @@ export function FilterDropdown({
 
   return (
     <div ref={containerRef} className={`relative inline-block text-left ${className}`}>
+      {/* Combobox Trigger Button: Automatically fits text without any truncation (...) */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        style={{ width: `${widthPx}px` }}
-        className={`flex items-center justify-between gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
+        className={`inline-flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 whitespace-nowrap min-w-max ${
           isOpen ? 'ring-2 ring-emerald-500/30 bg-emerald-500/20' : ''
         }`}
       >
-        <span className="truncate">{displayLabel}</span>
+        <span>{displayLabel}</span>
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 transition-transform duration-200 ${
+          className={`h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
+      {/* Popover Dropdown Menu: Natural width fit with zero truncation */}
       {isOpen && (
-        <div className="absolute left-0 z-50 mt-1 w-full min-w-full max-h-60 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95">
+        <div className="absolute left-0 z-50 mt-1.5 min-w-full w-max max-w-xs overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -83,15 +74,15 @@ export function FilterDropdown({
                 key={opt.value}
                 type="button"
                 onClick={() => handleSelect(opt.value)}
-                className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                   isSelected
                     ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                     : 'text-[var(--fg)] hover:bg-[var(--bg)]'
                 }`}
               >
-                <span className="truncate pr-1">{opt.label}</span>
+                <span>{opt.label}</span>
                 {isSelected && (
-                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 ml-1" />
+                  <Check className="h-4 w-4 text-emerald-500 shrink-0 ml-1.5" />
                 )}
               </button>
             );
