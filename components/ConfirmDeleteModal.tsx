@@ -8,7 +8,7 @@ interface ConfirmDeleteModalProps {
   title?: string;
   message?: string;
   confirmText?: string;
-  confirmVariant?: 'danger' | 'warning' | 'emerald';
+  confirmVariant?: 'danger' | 'warning' | 'primary' | 'emerald';
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -44,8 +44,10 @@ export function ConfirmDeleteModal({
 
   const messageLines = message.split('\n');
 
+  const isPrimary = confirmVariant === 'primary' || confirmVariant === 'emerald';
+
   const renderIcon = () => {
-    if (confirmVariant === 'emerald') {
+    if (isPrimary) {
       return <AlertCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400 shrink-0" />;
     }
     if (confirmVariant === 'warning') {
@@ -55,7 +57,7 @@ export function ConfirmDeleteModal({
   };
 
   const renderButtonClass = () => {
-    if (confirmVariant === 'emerald') {
+    if (isPrimary) {
       return 'bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600';
     }
     if (confirmVariant === 'warning') {
