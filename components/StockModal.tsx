@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
-import { X, Layers, Sparkles } from 'lucide-react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { X, Layers, Sparkles, AlertCircle } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
 import { lookupTickerInfo, fetchRemoteTickerInfo } from '@/lib/stock-ticker';
 
@@ -20,6 +20,7 @@ export interface StockModalProps {
   isOpen: boolean;
   mode: 'create' | 'edit';
   initialData?: StockRecordData | null;
+  existingTickers?: string[];
   onClose: () => void;
   onSave: (data: {
     id?: string;
@@ -37,6 +38,7 @@ export function StockModal({
   isOpen,
   mode,
   initialData,
+  existingTickers = [],
   onClose,
   onSave,
 }: StockModalProps) {
@@ -85,6 +87,13 @@ export function StockModal({
     }
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  // Check duplicate ticker for 'create' mode
+  const isDuplicateTicker = useMemo(() => {
+    if (mode !== 'create' || !ticker.trim()) return false;
+    const uppercase = ticker.trim().toUpperCase();
+    return existingTickers.some((t) => t.toUpperCase() === uppercase);
+  }, [mode, ticker, existingTickers]);
 
   if (!isOpen) return null;
 
@@ -137,13 +146,11 @@ export function StockModal({
         setMarket(remote.market || 'NASDAQ');
         setAutoFillNotice(`티커 '${remote.ticker}' 실시간 수집 정보가 자동 추천 반영되었습니다.`);
       } else {
-        // 티커 수정/삭제 시 조회가 안되면 이전 자동채움 정보 리셋
         setName('');
         setShortName('');
         setAutoFillNotice(null);
       }
     } else {
-      // 1자 이하로 지워졌을 때는 이전 자동채움 정보 클리어
       setName('');
       setShortName('');
       setAutoFillNotice(null);
@@ -168,7 +175,7 @@ export function StockModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticker.trim() || !name.trim()) return;
+    if (!ticker.trim() || !name.trim() || isDuplicateTicker) return;
 
     setIsSubmitting(true);
     try {
@@ -178,18 +185,22 @@ export function StockModal({
         ticker: ticker.trim().toUpperCase(),
         name: name.trim(),
         short_name: finalShortName,
-        type,
-        currency,
-        market,
+        type: type || 'Growth',
+        currency: currency || 'USD',
+        market: market || 'NASDAQ',
         is_active: isActive,
       });
       onClose();
+    } catch (err: any) {
+      console.error('StockModal save error:', err);
+      alert(`종목 정보 저장 중 오류가 발생했습니다: ${err?.message || err}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const matchedPreset = lookupTickerInfo(ticker);
+  const isSubmitDisabled = isSubmitting || isDuplicateTicker || !ticker.trim() || !name.trim();
 
   return (
     <div
@@ -199,9 +210,10 @@ export function StockModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in zoom-in-95 cursor-default text-[var(--fg)] max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden cursor-default text-[var(--fg)] animate-in zoom-in-95"
       >
-        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5">
+        {/* Fixed Header outside scroll area */}
+        <div className="shrink-0 p-5 sm:p-6 border-b border-[var(--border)] flex items-center justify-between">
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
             <Layers className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
             <h3 className="text-lg sm:text-xl font-bold">
@@ -217,7 +229,8 @@ export function StockModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
           {/* Ticker Input */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -241,12 +254,21 @@ export function StockModal({
               value={ticker}
               onChange={(e) => handleTickerChange(e.target.value)}
               disabled={mode === 'edit'}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:opacity-60 disabled:cursor-not-allowed shadow-inner"
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-bold uppercase tracking-wider focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-inner ${
+                isDuplicateTicker
+                  ? 'border-red-500 text-red-500 focus:ring-red-500/20 bg-red-500/5'
+                  : 'border-[var(--border)] bg-[var(--bg)] text-emerald-600 dark:text-emerald-400 focus:ring-[var(--accent)]/20'
+              }`}
               required
             />
-            {/* Reserved Fixed Height Notice Block to Prevent Layout Jitter */}
+            {/* Reserved Fixed Height Notice Block */}
             <div className="mt-1 h-5 flex items-center">
-              {isSearchingTicker ? (
+              {isDuplicateTicker ? (
+                <p className="text-[11px] font-bold text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  이미 등록된 티커입니다. 다른 티커를 입력하거나 목록에서 수정해 주세요.
+                </p>
+              ) : isSearchingTicker ? (
                 <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 animate-pulse flex items-center gap-1">
                   <Sparkles className="h-3 w-3 animate-spin" />
                   실시간 파이낸스 API에서 종목 정보를 조회하고 있습니다...
@@ -364,8 +386,8 @@ export function StockModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="rounded-xl bg-emerald-600 dark:bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              disabled={isSubmitDisabled}
+              className="rounded-xl bg-emerald-600 dark:bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? '저장 중...' : mode === 'create' ? '종목 추가하기' : '수정 완료'}
             </button>

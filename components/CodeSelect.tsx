@@ -15,7 +15,9 @@ interface CodeSelectProps {
 export function CodeSelect({ groupId, value, onChange, className = '', disabled = false }: CodeSelectProps) {
   const [codes, setCodes] = useState<CommonCode[]>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [openDirection, setOpenDirection] = useState<'down' | 'up'>('down');
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,6 +41,22 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleToggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      // 아래쪽 잔여 공간이 230px 미만이고 위쪽 공간이 더 넓으면 상단(UP)으로 스마트 플립
+      if (spaceBelow < 230 && spaceAbove > spaceBelow) {
+        setOpenDirection('up');
+      } else {
+        setOpenDirection('down');
+      }
+    }
+    setIsOpen(!isOpen);
+  };
+
   const selectedCodeObj = codes.find((c) => c.code === value) || codes[0];
   const displayLabel = selectedCodeObj ? selectedCodeObj.code_name : value;
 
@@ -51,8 +69,9 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
     <div ref={containerRef} className={`relative inline-block w-full text-left ${className}`}>
       {/* Custom Combobox Trigger Button with text-left */}
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggleOpen}
         disabled={disabled}
         className={`flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[var(--fg)] shadow-inner transition-colors cursor-pointer hover:border-[var(--accent)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:cursor-not-allowed disabled:opacity-50 ${
           isOpen ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20' : ''
@@ -62,9 +81,13 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
         <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--accent)]' : ''}`} />
       </button>
 
-      {/* Custom Dropdown Popover */}
+      {/* Smart Auto-Flip Dropdown Popover (Up / Down) */}
       {isOpen && (
-        <div className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95">
+        <div
+          className={`absolute left-0 right-0 z-50 max-h-52 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95 ${
+            openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+          }`}
+        >
           {codes.length === 0 ? (
             <div className="px-3.5 py-2.5 text-xs text-[var(--fg-muted)] text-center">
               등록된 공통코드가 없습니다.

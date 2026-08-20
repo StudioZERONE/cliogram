@@ -719,6 +719,7 @@ export default function StocksPage() {
         isOpen={stockModal.isOpen}
         mode={stockModal.mode}
         initialData={stockModal.initialData}
+        existingTickers={stocks.map((s) => s.ticker)}
         onClose={() => setStockModal({ ...stockModal, isOpen: false })}
         onSave={handleSaveStock}
       />
