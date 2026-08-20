@@ -507,10 +507,10 @@ export default function StocksPage() {
               </button>
             </div>
 
-            {/* Filter Toolbar: Search Bar & Custom Filter Dropdowns */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pb-1">
-              {/* Search Bar */}
-              <div className="relative flex-1 min-w-[160px] sm:min-w-[220px]">
+            {/* Filter Toolbar: Structured 2-Row Grid on Mobile, 1-Row Flex on Desktop */}
+            <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-3 pb-1">
+              {/* Row 1 (Mobile: Full Width Search Bar) */}
+              <div className="relative w-full sm:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
                 <input
                   type="text"
@@ -521,29 +521,38 @@ export default function StocksPage() {
                 />
               </div>
 
-              {/* Stock Type Filter Combobox */}
-              <FilterDropdown
-                labelPrefix="종목 유형"
-                value={typeFilter}
-                options={typeFilterOptions}
-                onChange={setTypeFilter}
-              />
+              {/* Row 2 (Mobile: 3-Column Equal Grid for 3 Comboboxes) */}
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-3 w-full sm:w-auto sm:flex sm:items-center">
+                {/* Stock Type Filter Combobox */}
+                <FilterDropdown
+                  labelPrefix="종목 유형"
+                  mobileLabelPrefix="유형"
+                  value={typeFilter}
+                  options={typeFilterOptions}
+                  onChange={setTypeFilter}
+                  className="w-full sm:w-auto"
+                />
 
-              {/* Market Type Filter Combobox (상장 시장) */}
-              <FilterDropdown
-                labelPrefix="상장 시장"
-                value={marketFilter}
-                options={marketFilterOptions}
-                onChange={setMarketFilter}
-              />
+                {/* Market Type Filter Combobox (상장 시장) */}
+                <FilterDropdown
+                  labelPrefix="상장 시장"
+                  mobileLabelPrefix="시장"
+                  value={marketFilter}
+                  options={marketFilterOptions}
+                  onChange={setMarketFilter}
+                  className="w-full sm:w-auto"
+                />
 
-              {/* Status Filter Combobox */}
-              <FilterDropdown
-                labelPrefix="상태"
-                value={statusFilter}
-                options={statusFilterOptions}
-                onChange={setStatusFilter}
-              />
+                {/* Status Filter Combobox */}
+                <FilterDropdown
+                  labelPrefix="상태"
+                  mobileLabelPrefix="상태"
+                  value={statusFilter}
+                  options={statusFilterOptions}
+                  onChange={setStatusFilter}
+                  className="w-full sm:w-auto"
+                />
+              </div>
             </div>
 
             {/* High Density Table */}
