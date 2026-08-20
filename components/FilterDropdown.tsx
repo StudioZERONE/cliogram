@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
 export interface FilterOption {
@@ -41,6 +41,16 @@ export function FilterDropdown({
     ? `${labelPrefix}: ${selectedOption.label}`
     : `${labelPrefix}: 전체`;
 
+  // Calculate longest text length among all options to freeze button width and eliminate layout shifts
+  const minWidthPx = useMemo(() => {
+    if (!options || options.length === 0) return 140;
+    const maxChars = Math.max(
+      ...options.map((opt) => `${labelPrefix}: ${opt.label}`.length)
+    );
+    // Approx 11.5px per character + 46px (padding + chevron icon + gap)
+    return Math.max(130, Math.ceil(maxChars * 11.5 + 46));
+  }, [labelPrefix, options]);
+
   const handleSelect = (val: string) => {
     onChange(val);
     setIsOpen(false);
@@ -51,7 +61,8 @@ export function FilterDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
+        style={{ minWidth: `${minWidthPx}px` }}
+        className={`flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
           isOpen ? 'ring-2 ring-emerald-500/30 bg-emerald-500/20' : ''
         }`}
       >
@@ -64,7 +75,7 @@ export function FilterDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 z-50 mt-1.5 min-w-[160px] max-h-60 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95">
+        <div className="absolute left-0 z-50 mt-1.5 w-full min-w-full max-h-60 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (

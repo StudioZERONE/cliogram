@@ -98,7 +98,17 @@ export function StockModal({
     const uppercaseTicker = value.toUpperCase().trim();
     setTicker(uppercaseTicker);
 
-    if (!uppercaseTicker || (mode === 'edit' && name)) return;
+    if (mode === 'edit') return;
+
+    if (!uppercaseTicker) {
+      setName('');
+      setShortName('');
+      setType('Growth');
+      setCurrency('USD');
+      setMarket('NASDAQ');
+      setAutoFillNotice(null);
+      return;
+    }
 
     // 1차: 로컬 프리셋 즉시 반영
     const local = lookupTickerInfo(uppercaseTicker);
@@ -115,7 +125,7 @@ export function StockModal({
     // 2차: 티커 길이가 2자 이상일 때 백엔드 API 실시간 조회
     if (uppercaseTicker.length >= 2) {
       setIsSearchingTicker(true);
-      setAutoFillNotice('실시간 외부 파이낸스 API에서 종목 정보를 조회 중입니다...');
+      setAutoFillNotice('실시간 파이낸스 API에서 종목 정보를 조회하고 있습니다...');
       const remote = await fetchRemoteTickerInfo(uppercaseTicker);
       setIsSearchingTicker(false);
 
@@ -127,9 +137,15 @@ export function StockModal({
         setMarket(remote.market || 'NASDAQ');
         setAutoFillNotice(`티커 '${remote.ticker}' 실시간 수집 정보가 자동 추천 반영되었습니다.`);
       } else {
+        // 티커 수정/삭제 시 조회가 안되면 이전 자동채움 정보 리셋
+        setName('');
+        setShortName('');
         setAutoFillNotice(null);
       }
     } else {
+      // 1자 이하로 지워졌을 때는 이전 자동채움 정보 클리어
+      setName('');
+      setShortName('');
       setAutoFillNotice(null);
     }
   };
@@ -241,7 +257,7 @@ export function StockModal({
                 </p>
               ) : (
                 <p className="text-[11px] text-[var(--fg-muted)]">
-                  티커 코드를 입력하시면 종목 정보가 자동으로 검색됩니다.
+                  티커를 입력하시면 종목이 자동으로 검색됩니다.
                 </p>
               )}
             </div>
