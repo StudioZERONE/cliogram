@@ -206,7 +206,7 @@ export function StockModal({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-bold text-[var(--fg-muted)]">
-                티커 코드 (Ticker) <span className="text-red-500">*</span>
+                티커 코드 <span className="text-red-500">*</span>
               </label>
               {matchedPreset && (
                 <button
@@ -225,20 +225,32 @@ export function StockModal({
               value={ticker}
               onChange={(e) => handleTickerChange(e.target.value)}
               disabled={mode === 'edit'}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:opacity-60 disabled:cursor-not-allowed shadow-inner"
               required
             />
-            {autoFillNotice && (
-              <p className="mt-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <span>✓</span> {autoFillNotice}
-              </p>
-            )}
+            {/* Reserved Fixed Height Notice Block to Prevent Layout Jitter */}
+            <div className="mt-1 h-5 flex items-center">
+              {isSearchingTicker ? (
+                <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 animate-pulse flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 animate-spin" />
+                  실시간 파이낸스 API에서 종목 정보를 조회하고 있습니다...
+                </p>
+              ) : autoFillNotice ? (
+                <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span>✓</span> {autoFillNotice}
+                </p>
+              ) : (
+                <p className="text-[11px] text-[var(--fg-muted)]">
+                  티커 코드를 입력하시면 종목 정보가 자동으로 검색됩니다.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Full Stock Name */}
           <div>
             <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-              종목명 (Stock Name) <span className="text-red-500">*</span>
+              종목명 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -248,7 +260,7 @@ export function StockModal({
                 setName(e.target.value);
                 if (!shortName) setShortName(e.target.value);
               }}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
               required
             />
           </div>
@@ -256,14 +268,14 @@ export function StockModal({
           {/* Short Stock Name */}
           <div>
             <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-              짧은 종목명 (Short Name)
+              짧은 종목명
             </label>
             <input
               type="text"
               placeholder="미입력 시 종목명과 동일하게 설정됨"
               value={shortName}
               onChange={(e) => setShortName(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
             />
             <p className="mt-1 text-[10px] text-[var(--fg-muted)]">
               화면 공간이 좁거나 통계표 표출 시 사용할 간결한 종목명입니다.
@@ -273,7 +285,7 @@ export function StockModal({
           {/* Stock Type Select */}
           <div>
             <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-              종목 유형 (Stock Type)
+              종목 유형
             </label>
             <CodeSelect
               groupId="STOCK_TYPE"
@@ -296,7 +308,7 @@ export function StockModal({
             </div>
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                상장 시장 (Market)
+                상장 시장
               </label>
               <CodeSelect
                 groupId="MARKET_TYPE"

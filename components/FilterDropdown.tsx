@@ -51,14 +51,14 @@ export function FilterDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs sm:text-sm font-bold text-[var(--fg)] shadow-xs transition-colors cursor-pointer hover:border-[var(--accent)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 ${
-          isOpen ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20' : ''
+        className={`flex items-center justify-between gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-xs transition-colors cursor-pointer hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
+          isOpen ? 'ring-2 ring-emerald-500/30 bg-emerald-500/20' : ''
         }`}
       >
         <span className="truncate">{displayLabel}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-[var(--accent)]' : ''
+          className={`h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>

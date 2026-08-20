@@ -30,19 +30,19 @@ SET code_name = EXCLUDED.code_name, sort_order = EXCLUDED.sort_order, is_active 
 -- 2-2. 거래 유형 (TRADE_TYPE)
 INSERT INTO public.common_codes (group_id, code, code_name, sort_order, is_active)
 VALUES 
-  ('TRADE_TYPE', 'BUY', '매수 (BUY)', 1, true),
-  ('TRADE_TYPE', 'SELL', '매도 (SELL)', 2, true)
+  ('TRADE_TYPE', 'BUY', '매수', 1, true),
+  ('TRADE_TYPE', 'SELL', '매도', 2, true)
 ON CONFLICT (group_id, code) DO UPDATE 
 SET code_name = EXCLUDED.code_name, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active;
 
 -- 2-3. 통화 코드 (CURRENCY_CODE)
 INSERT INTO public.common_codes (group_id, code, code_name, sort_order, is_active)
 VALUES 
-  ('CURRENCY_CODE', 'USD', '미국 달러 ($)', 1, true),
-  ('CURRENCY_CODE', 'KRW', '대한민국 원 (₩)', 2, true),
-  ('CURRENCY_CODE', 'EUR', '유로 (€)', 3, true),
-  ('CURRENCY_CODE', 'JPY', '일본 엔 (¥)', 4, true),
-  ('CURRENCY_CODE', 'CNY', '중국 위안 (¥)', 5, true)
+  ('CURRENCY_CODE', 'USD', '미국 달러', 1, true),
+  ('CURRENCY_CODE', 'KRW', '대한민국 원', 2, true),
+  ('CURRENCY_CODE', 'EUR', '유로', 3, true),
+  ('CURRENCY_CODE', 'JPY', '일본 엔', 4, true),
+  ('CURRENCY_CODE', 'CNY', '중국 위안', 5, true)
 ON CONFLICT (group_id, code) DO UPDATE 
 SET code_name = EXCLUDED.code_name, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active;
 
@@ -62,11 +62,11 @@ SET code_name = EXCLUDED.code_name, sort_order = EXCLUDED.sort_order, is_active 
 -- 2-5. 상장 시장 (MARKET_TYPE)
 INSERT INTO public.common_codes (group_id, code, code_name, sort_order, is_active)
 VALUES 
-  ('MARKET_TYPE', 'KRX', '한국거래소 (KOSPI/KOSDAQ)', 1, true),
-  ('MARKET_TYPE', 'NASDAQ', '나스닥 (NASDAQ)', 2, true),
-  ('MARKET_TYPE', 'NYSE', '뉴욕증권거래소 (NYSE)', 3, true),
-  ('MARKET_TYPE', 'NYSEARCA', 'NYSE 아카 (ETF)', 4, true),
-  ('MARKET_TYPE', 'ETR', '독일 증권거래소 (XETRA)', 5, true)
+  ('MARKET_TYPE', 'KRX', '한국거래소', 1, true),
+  ('MARKET_TYPE', 'NASDAQ', '나스닥', 2, true),
+  ('MARKET_TYPE', 'NYSE', '뉴욕증권거래소', 3, true),
+  ('MARKET_TYPE', 'NYSEARCA', 'NYSE 아카', 4, true),
+  ('MARKET_TYPE', 'ETR', '독일 증권거래소', 5, true)
 ON CONFLICT (group_id, code) DO UPDATE 
 SET code_name = EXCLUDED.code_name, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active;
 

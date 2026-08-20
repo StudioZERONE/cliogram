@@ -207,10 +207,25 @@ export default function StocksPage() {
       };
 
       if (stockModal.mode === 'create') {
-        const { data: inserted, error } = await supabase
+        let { data: inserted, error } = await supabase
           .from('stocks')
           .insert([payload])
           .select();
+
+        // Supabase 스키마 캐시 미갱신 방어 로직 (Schema Cache Fallback)
+        if (error && (error.message?.includes('is_active') || error.message?.includes('short_name') || error.code === 'PGRST204')) {
+          const fallbackPayload = {
+            user_id: user.id,
+            ticker: payload.ticker,
+            name: payload.name,
+            type: payload.type,
+            currency: payload.currency,
+            market: payload.market,
+          };
+          const fallbackRes = await supabase.from('stocks').insert([fallbackPayload]).select();
+          inserted = fallbackRes.data;
+          error = fallbackRes.error;
+        }
 
         if (error) {
           alert(`종목 등록 실패: ${error.message}`);
@@ -233,7 +248,7 @@ export default function StocksPage() {
           refreshCounts();
         }
       } else if (stockModal.mode === 'edit') {
-        const { error } = await supabase
+        let { error } = await supabase
           .from('stocks')
           .update({
             name: payload.name,
@@ -244,6 +259,20 @@ export default function StocksPage() {
             is_active: payload.is_active,
           })
           .eq('ticker', payload.ticker);
+
+        // Supabase 스키마 캐시 미갱신 방어 로직 (Schema Cache Fallback)
+        if (error && (error.message?.includes('is_active') || error.message?.includes('short_name') || error.code === 'PGRST204')) {
+          const fallbackRes = await supabase
+            .from('stocks')
+            .update({
+              name: payload.name,
+              type: payload.type,
+              currency: payload.currency,
+              market: payload.market,
+            })
+            .eq('ticker', payload.ticker);
+          error = fallbackRes.error;
+        }
 
         if (error) {
           alert(`종목 수정 실패: ${error.message}`);
@@ -440,7 +469,7 @@ export default function StocksPage() {
                     placeholder="종목명, 짧은 종목명, 티커 검색..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2 text-xs sm:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2 text-xs sm:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                   />
                 </div>
 
