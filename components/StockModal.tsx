@@ -190,7 +190,7 @@ export function StockModal({
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
             <Layers className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
             <h3 className="text-lg sm:text-xl font-bold">
-              {mode === 'create' ? '주식 종목 마스터 신규 등록' : '주식 종목 마스터 정보 수정'}
+              {mode === 'create' ? '종목 마스터 신규 등록' : '종목 마스터 정보 수정'}
             </h3>
           </div>
           <button

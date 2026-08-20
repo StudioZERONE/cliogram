@@ -12,8 +12,7 @@ import {
   ArrowDown,
   Layers,
   CheckCircle2,
-  XCircle,
-  Filter
+  XCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
@@ -21,7 +20,9 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { StockModal, StockRecordData } from '@/components/StockModal';
+import { FilterDropdown, FilterOption } from '@/components/FilterDropdown';
 import { useCounts } from '@/components/CountsProvider';
+import { getCommonCodes, CommonCode } from '@/lib/codes';
 
 export interface StockRecord {
   id?: string;
@@ -44,6 +45,10 @@ export default function StocksPage() {
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [stocks, setStocks] = useState<StockRecord[]>([]);
+
+  // Common Codes State for Display Name and Sort Order
+  const [stockTypeCodes, setStockTypeCodes] = useState<CommonCode[]>([]);
+  const [marketTypeCodes, setMarketTypeCodes] = useState<CommonCode[]>([]);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -76,8 +81,18 @@ export default function StocksPage() {
       }
       setIsAuthChecking(false);
       fetchStocks();
+      fetchCommonCodes();
     });
   }, [router]);
+
+  const fetchCommonCodes = async () => {
+    const [types, markets] = await Promise.all([
+      getCommonCodes('STOCK_TYPE'),
+      getCommonCodes('MARKET_TYPE'),
+    ]);
+    setStockTypeCodes(types);
+    setMarketTypeCodes(markets);
+  };
 
   const fetchStocks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -107,6 +122,39 @@ export default function StocksPage() {
     }
   };
 
+  // Maps for Code Name and Sort Order
+  const stockTypeCodeNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    stockTypeCodes.forEach((c) => {
+      map[c.code] = c.code_name;
+    });
+    return map;
+  }, [stockTypeCodes]);
+
+  const stockTypeSortOrderMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    stockTypeCodes.forEach((c) => {
+      map[c.code] = c.sort_order;
+    });
+    return map;
+  }, [stockTypeCodes]);
+
+  const marketTypeCodeNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    marketTypeCodes.forEach((c) => {
+      map[c.code] = c.code_name;
+    });
+    return map;
+  }, [marketTypeCodes]);
+
+  const marketTypeSortOrderMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    marketTypeCodes.forEach((c) => {
+      map[c.code] = c.sort_order;
+    });
+    return map;
+  }, [marketTypeCodes]);
+
   // Header click sort handler
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -119,77 +167,95 @@ export default function StocksPage() {
 
   // Toggle Stock Active Status directly
   const handleToggleActive = async (stock: StockRecord) => {
-    const nextStatus = !stock.is_active;
-    const { error } = await supabase
-      .from('stocks')
-      .update({ is_active: nextStatus })
-      .eq('ticker', stock.ticker);
+    try {
+      const nextStatus = !stock.is_active;
+      const { error } = await supabase
+        .from('stocks')
+        .update({ is_active: nextStatus })
+        .eq('ticker', stock.ticker);
 
-    if (!error) {
-      setStocks((prev) =>
-        prev.map((s) => (s.ticker === stock.ticker ? { ...s, is_active: nextStatus } : s))
-      );
+      if (!error) {
+        setStocks((prev) =>
+          prev.map((s) => (s.ticker === stock.ticker ? { ...s, is_active: nextStatus } : s))
+        );
+      } else {
+        alert(`종목 사용 상태 변경 중 오류가 발생했습니다: ${error.message}`);
+      }
+    } catch (err: any) {
+      alert(`오류 발생: ${err?.message || err}`);
     }
   };
 
   // Save handler for StockModal (Create / Edit)
   const handleSaveStock = async (data: StockRecordData & { short_name: string; is_active: boolean }) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.replace('/?error=unauthorized');
-      return;
-    }
-
-    const payload = {
-      user_id: user.id,
-      ticker: data.ticker.toUpperCase(),
-      name: data.name,
-      short_name: data.short_name || data.name,
-      type: data.type,
-      currency: data.currency,
-      market: data.market,
-      is_active: data.is_active ?? true,
-    };
-
-    if (stockModal.mode === 'create') {
-      const { data: inserted, error } = await supabase
-        .from('stocks')
-        .insert([payload])
-        .select();
-
-      if (!error && inserted && inserted.length > 0) {
-        const newRecord: StockRecord = {
-          id: inserted[0].id,
-          user_id: inserted[0].user_id,
-          ticker: inserted[0].ticker,
-          name: inserted[0].name,
-          short_name: inserted[0].short_name || inserted[0].name,
-          type: inserted[0].type,
-          currency: inserted[0].currency,
-          market: inserted[0].market,
-          is_active: inserted[0].is_active ?? true,
-        };
-        setStocks((prev) => [...prev, newRecord]);
-        refreshCounts();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/?error=unauthorized');
+        return;
       }
-    } else if (stockModal.mode === 'edit') {
-      const { error } = await supabase
-        .from('stocks')
-        .update({
-          name: payload.name,
-          short_name: payload.short_name,
-          type: payload.type,
-          currency: payload.currency,
-          market: payload.market,
-          is_active: payload.is_active,
-        })
-        .eq('ticker', payload.ticker);
 
-      if (!error) {
+      const payload = {
+        user_id: user.id,
+        ticker: data.ticker.toUpperCase(),
+        name: data.name,
+        short_name: data.short_name || data.name,
+        type: data.type,
+        currency: data.currency,
+        market: data.market,
+        is_active: data.is_active ?? true,
+      };
+
+      if (stockModal.mode === 'create') {
+        const { data: inserted, error } = await supabase
+          .from('stocks')
+          .insert([payload])
+          .select();
+
+        if (error) {
+          alert(`종목 등록 실패: ${error.message}`);
+          return;
+        }
+
+        if (inserted && inserted.length > 0) {
+          const newRecord: StockRecord = {
+            id: inserted[0].id,
+            user_id: inserted[0].user_id,
+            ticker: inserted[0].ticker,
+            name: inserted[0].name,
+            short_name: inserted[0].short_name || inserted[0].name,
+            type: inserted[0].type,
+            currency: inserted[0].currency,
+            market: inserted[0].market,
+            is_active: inserted[0].is_active ?? true,
+          };
+          setStocks((prev) => [...prev, newRecord]);
+          refreshCounts();
+        }
+      } else if (stockModal.mode === 'edit') {
+        const { error } = await supabase
+          .from('stocks')
+          .update({
+            name: payload.name,
+            short_name: payload.short_name,
+            type: payload.type,
+            currency: payload.currency,
+            market: payload.market,
+            is_active: payload.is_active,
+          })
+          .eq('ticker', payload.ticker);
+
+        if (error) {
+          alert(`종목 수정 실패: ${error.message}`);
+          return;
+        }
+
         setStocks((prev) =>
           prev.map((s) => (s.ticker === payload.ticker ? { ...s, ...payload } : s))
         );
       }
+    } catch (err: any) {
+      alert(`오류 발생: ${err?.message || err}`);
     }
   };
 
@@ -199,6 +265,8 @@ export default function StocksPage() {
     if (!error) {
       setStocks((prev) => prev.filter((s) => s.ticker !== deleteTargetTicker));
       refreshCounts();
+    } else {
+      alert(`종목 삭제 실패: ${error.message}`);
     }
     setDeleteTargetTicker(null);
   };
@@ -238,34 +306,70 @@ export default function StocksPage() {
 
     // Header Sort
     result.sort((a, b) => {
-      let valA: any = a[sortField];
-      let valB: any = b[sortField];
+      let cmp = 0;
 
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (sortField === 'type') {
+        const orderA = stockTypeSortOrderMap[a.type] ?? 999;
+        const orderB = stockTypeSortOrderMap[b.type] ?? 999;
+        cmp = orderA - orderB;
+      } else if (sortField === 'market') {
+        const orderA = marketTypeSortOrderMap[a.market] ?? 999;
+        const orderB = marketTypeSortOrderMap[b.market] ?? 999;
+        cmp = orderA - orderB;
+      } else {
+        let valA: any = a[sortField];
+        let valB: any = b[sortField];
 
-      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) cmp = -1;
+        else if (valA > valB) cmp = 1;
+      }
+
+      if (cmp !== 0) {
+        return sortDirection === 'asc' ? cmp : -cmp;
+      }
 
       // Secondary Tie-Breaker: Ticker ASC
       return a.ticker.localeCompare(b.ticker);
     });
 
     return result;
-  }, [stocks, searchQuery, typeFilter, marketFilter, statusFilter, sortField, sortDirection]);
+  }, [
+    stocks,
+    searchQuery,
+    typeFilter,
+    marketFilter,
+    statusFilter,
+    sortField,
+    sortDirection,
+    stockTypeSortOrderMap,
+    marketTypeSortOrderMap,
+  ]);
 
-  // Unique types and markets for filter dropdowns
-  const availableTypes = useMemo(() => {
-    const set = new Set<string>();
-    stocks.forEach((s) => { if (s.type) set.add(s.type); });
-    return Array.from(set);
-  }, [stocks]);
+  // Options for FilterDropdowns based on common_codes sort_order
+  const typeFilterOptions: FilterOption[] = useMemo(() => {
+    const options: FilterOption[] = [{ value: 'ALL', label: '전체' }];
+    stockTypeCodes.forEach((c) => {
+      options.push({ value: c.code, label: c.code_name });
+    });
+    return options;
+  }, [stockTypeCodes]);
 
-  const availableMarkets = useMemo(() => {
-    const set = new Set<string>();
-    stocks.forEach((s) => { if (s.market) set.add(s.market); });
-    return Array.from(set);
-  }, [stocks]);
+  const marketFilterOptions: FilterOption[] = useMemo(() => {
+    const options: FilterOption[] = [{ value: 'ALL', label: '전체' }];
+    marketTypeCodes.forEach((c) => {
+      options.push({ value: c.code, label: c.code_name });
+    });
+    return options;
+  }, [marketTypeCodes]);
+
+  const statusFilterOptions: FilterOption[] = [
+    { value: 'ALL', label: '전체' },
+    { value: 'ACTIVE', label: '사용중' },
+    { value: 'INACTIVE', label: '사용중지' },
+  ];
 
   if (isAuthChecking) {
     return <div className="min-h-screen bg-[var(--bg)]" />;
@@ -278,14 +382,17 @@ export default function StocksPage() {
     return <span className="text-xs sm:text-sm font-bold text-[var(--fg-muted)]">{curr}</span>;
   };
 
+  // Sort Arrow Direction Rule:
+  // asc (가나다순 / 1-9 / A-Z): ArrowDown (↓)
+  // desc (하타가순 / 9-1 / Z-A): ArrowUp (↑)
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
       return <ArrowUpDown className="h-3.5 w-3.5 text-[var(--fg-muted)] opacity-40 group-hover:opacity-100 transition-opacity" />;
     }
     return sortDirection === 'asc' ? (
-      <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 font-bold" />
-    ) : (
       <ArrowDown className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 font-bold" />
+    ) : (
+      <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 font-bold" />
     );
   };
 
@@ -302,28 +409,28 @@ export default function StocksPage() {
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
-                주식 종목 마스터 관리
+                종목 마스터 관리
               </h3>
               <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-1">
-                매매 및 배당 관리를 위한 주식 종목(티커, 짧은 종목명, 유형, 시장, 사용상태) 목록을 통합 등록하고 관리합니다.
+                매매 및 배당 관리를 위한 종목 마스터(티커, 짧은 종목명, 유형, 상장 시장, 사용상태) 목록을 통합 등록하고 관리합니다.
               </p>
             </div>
           </div>
 
           {/* Main Full-Width Section */}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs space-y-4">
-            {/* Header Toolbar: Title, Search, Filter & Add Button */}
+            {/* Header Toolbar: Title, Search, Custom Filter Comboboxes & Circular Add Button */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-[var(--border)] pb-4">
               <div className="flex items-center gap-3">
                 <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
-                  <span>주식 종목 목록</span>
+                  <span>종목 마스터 목록</span>
                   <span className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                     {filteredAndSortedStocks.length} / {stocks.length}개
                   </span>
                 </h3>
               </div>
 
-              {/* Controls: Search & Filters & Green Circular Add Button */}
+              {/* Controls: Search & Custom Filter Dropdowns & Green Circular Add Button */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {/* Search Bar */}
                 <div className="relative flex-1 min-w-[180px] sm:min-w-[220px]">
@@ -337,40 +444,29 @@ export default function StocksPage() {
                   />
                 </div>
 
-                {/* Type Filter */}
-                <select
+                {/* Stock Type Filter Combobox */}
+                <FilterDropdown
+                  labelPrefix="종목 유형"
                   value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-[var(--fg)] font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
-                >
-                  <option value="ALL">유형: 전체</option>
-                  {availableTypes.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                  options={typeFilterOptions}
+                  onChange={setTypeFilter}
+                />
 
-                {/* Market Filter */}
-                <select
+                {/* Market Type Filter Combobox (상장 시장) */}
+                <FilterDropdown
+                  labelPrefix="상장 시장"
                   value={marketFilter}
-                  onChange={(e) => setMarketFilter(e.target.value)}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-[var(--fg)] font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
-                >
-                  <option value="ALL">시장: 전체</option>
-                  {availableMarkets.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+                  options={marketFilterOptions}
+                  onChange={setMarketFilter}
+                />
 
-                {/* Status Filter */}
-                <select
+                {/* Status Filter Combobox */}
+                <FilterDropdown
+                  labelPrefix="상태"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-[var(--fg)] font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer"
-                >
-                  <option value="ALL">상태: 전체</option>
-                  <option value="ACTIVE">사용중</option>
-                  <option value="INACTIVE">사용중지</option>
-                </select>
+                  options={statusFilterOptions}
+                  onChange={setStatusFilter}
+                />
 
                 {/* Circular Green Add Button */}
                 <button
@@ -382,8 +478,8 @@ export default function StocksPage() {
                     })
                   }
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0 ml-1"
-                  title="신규 종목 추가"
-                  aria-label="신규 종목 추가"
+                  title="종목 마스터 신규 추가"
+                  aria-label="종목 마스터 신규 추가"
                 >
                   <Plus className="h-5 w-5 stroke-[2.5]" />
                 </button>
@@ -511,10 +607,10 @@ export default function StocksPage() {
                           {item.ticker}
                         </td>
 
-                        {/* Type */}
+                        {/* Type Code Name */}
                         <td className="py-3 px-3 text-center">
                           <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                            {item.type}
+                            {stockTypeCodeNameMap[item.type] || item.type}
                           </span>
                         </td>
 
@@ -523,9 +619,9 @@ export default function StocksPage() {
                           {renderFlagEmoji(item.currency)}
                         </td>
 
-                        {/* Market */}
+                        {/* Market Code Name */}
                         <td className="py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold hidden sm:table-cell">
-                          {item.market}
+                          {marketTypeCodeNameMap[item.market] || item.market}
                         </td>
 
                         {/* Status Toggle Badge */}
