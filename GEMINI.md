@@ -23,14 +23,10 @@
 - **헌법(`GEMINI.md`)의 역할**: 개발 방향성, 서비스 정체성, 에이전트 핵심 행동 수칙 등 **강력한 의지를 담은 핵심 대원칙**만을 정의하여 컨텍스트 경량화 및 실행 명확성을 유지함.
 - **옵시디언 지식 문서 최상위 루트 경로 (Obsidian Vault Root)**:
   - **경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/)
-  - **`21.Rules/`**: 코드 구현 규정, 코딩 컨벤션 및 DB 쿼리 정렬 가이드
-  - **`22.Design Rules/`**: 세부 UI/UX 컴포넌트 명세, 컬러 토큰, 사이드바 & 반응형 뷰포트 규정
-  - **`51.Journal/`**: 주차별 개발일지 및 작업 기록 문서
-- **AI 에이전트의 자율 지식 참조 원칙 (Active Knowledge Referencing)**:
-  - AI 에이전트는 새로운 대화 세션이나 작업 수행 시 위 옵시디언 루트 경로의 지식 문서를 **상시 활발히 참조**하여 기존 디자인 시스템과 코딩 컨벤션을 100% 동기화함.
-- **옵시디언 문서 작성 규정 엄수 (Strict Header & Ordering Convention)**:
-  - **최상단 H1 제목 및 붉은 소제목 블록 금지**: 최상단 `# H1` 헤더나 2번째 줄 인용문(`> ...`) 붉은 블록 표기를 전면 금지함. 파일의 첫 줄은 단일 인용구(`> ...`)로 목적을 서술한 후 구분선(`---`)과 `## 1. ...`(H2)로 즉시 진입함.
-  - **카테고리 일련번호 순정 유지**: `21.Rules/` 내 문서 작성 시 기존 일련번호(`21.01` ~ `21.06`)를 사전 확인하여 순정에 맞는 번호(`21.07`)로 중복 없이 생성함.
+  - **규정 문서 디렉토리 (`21.Rules/`) 절대 경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/21.Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/21.Rules/)
+  - **디자인 규정 디렉토리 (`22.Design Rules/`) 절대 경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/22.Design Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/22.Design Rules/)
+- **세션 시작 시 규정 문서 필수 선행 독해 의무 (Mandatory Session Pre-Read Rule)**:
+  - AI 에이전트는 새로운 대화 세션이 시작되거나 신규 기능 개발/문서 작성에 착수할 때, 미시적인 개별 규칙을 추측하지 않고 **위 절대 경로(`21.Rules/` 및 `22.Design Rules/`)에 존재하는 모든 규정 문서들을 필히 먼저 전수 읽고 정확히 숙지한 후 작업을 수행**해야 함.
 
 ---
 
