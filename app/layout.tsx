@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'KLIOGRAM',
+  title: 'CLIOGRAM',
   description: '개인자산 관리 서비스',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'KLIOGRAM',
+    title: 'CLIOGRAM',
   },
   icons: {
     icon: '/icon.svg',

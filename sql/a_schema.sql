@@ -1,5 +1,5 @@
 -- =========================================================
--- KLIOGRAM ENHANCED MULTI-TENANT DB SCHEMA (a_schema.sql)
+-- CLIOGRAM ENHANCED MULTI-TENANT DB SCHEMA (a_schema.sql)
 -- (통합 데이터베이스 스키마 및 Row Level Security 보안 정책)
 -- =========================================================
 

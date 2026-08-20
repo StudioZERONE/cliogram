@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase';
 
-export const THEME_CACHE_KEY_EXPIRE_HOURS = 'kliogram_theme_expire_hours';
-export const THEME_CACHE_KEY_OVERRIDE = 'kliogram_theme_manual_override';
-export const THEME_CACHE_KEY_EXPIRES_AT = 'kliogram_theme_override_expires_at';
+export const THEME_CACHE_KEY_EXPIRE_HOURS = 'cliogram_theme_expire_hours';
+export const THEME_CACHE_KEY_OVERRIDE = 'cliogram_theme_manual_override';
+export const THEME_CACHE_KEY_EXPIRES_AT = 'cliogram_theme_override_expires_at';
 
 export const DEFAULT_EXPIRE_HOURS = 12;
 

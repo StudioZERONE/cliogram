@@ -182,7 +182,7 @@ export function Header({ title }: HeaderProps) {
                 style={getTextColorStyle()}
                 className={`text-[10px] ${!isDev ? 'text-[var(--fg-muted)]' : 'font-bold'}`}
               >
-                {isDev ? 'kliogram-dev' : 'Google Auth'}
+                {isDev ? 'cliogram-dev' : 'Google Auth'}
               </p>
             </div>
             <ChevronDown

@@ -1,6 +1,6 @@
 {
-  "name": "kliogram-harness-hooks",
-  "description": "Antigravity Automated Test Harness Hooks for KLIOGRAM",
+  "name": "cliogram-harness-hooks",
+  "description": "Antigravity Automated Test Harness Hooks for CLIOGRAM",
   "hooks": {
     "post_file_edit": [
       {

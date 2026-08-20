@@ -36,8 +36,8 @@ describe('Auth & Session Expiry Utility (lib/auth.ts)', () => {
     });
 
     const futureExpiry = Date.now() + 1000000;
-    localStorage.setItem('kliogram_remember_me', 'true');
-    localStorage.setItem('kliogram_remember_expiry', futureExpiry.toString());
+    localStorage.setItem('cliogram_remember_me', 'true');
+    localStorage.setItem('cliogram_remember_expiry', futureExpiry.toString());
 
     const isValid = await checkSessionExpiry();
     expect(isValid).toBe(true);
@@ -57,11 +57,11 @@ describe('Auth & Session Expiry Utility (lib/auth.ts)', () => {
     });
 
     const pastExpiry = Date.now() - 5000; // 5초 전 만료
-    localStorage.setItem('kliogram_remember_me', 'true');
-    localStorage.setItem('kliogram_remember_expiry', pastExpiry.toString());
+    localStorage.setItem('cliogram_remember_me', 'true');
+    localStorage.setItem('cliogram_remember_expiry', pastExpiry.toString());
 
     const isValid = await checkSessionExpiry();
     expect(isValid).toBe(false);
-    expect(localStorage.getItem('kliogram_remember_me')).toBeNull();
+    expect(localStorage.getItem('cliogram_remember_me')).toBeNull();
   });
 });

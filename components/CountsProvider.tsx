@@ -24,7 +24,7 @@ export function CountsProvider({ children }: { children: React.ReactNode }) {
     stocksCount: number;
   }>(() => {
     if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('kliogram_counts');
+      const cached = localStorage.getItem('cliogram_counts');
       if (cached) {
         try {
           return JSON.parse(cached);
@@ -57,7 +57,7 @@ export function CountsProvider({ children }: { children: React.ReactNode }) {
 
       setCounts(newCounts);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('kliogram_counts', JSON.stringify(newCounts));
+        localStorage.setItem('cliogram_counts', JSON.stringify(newCounts));
       }
     } catch (e) {
       console.error('Error fetching counts:', e);

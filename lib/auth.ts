@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
-const REMEMBER_KEY = 'kliogram_remember_me';
-const EXPIRY_KEY = 'kliogram_remember_expiry';
+const REMEMBER_KEY = 'cliogram_remember_me';
+const EXPIRY_KEY = 'cliogram_remember_expiry';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export async function signInWithGoogle(rememberMe: boolean) {
@@ -18,7 +18,7 @@ export async function signInWithGoogle(rememberMe: boolean) {
 
   const redirectUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/dashboard`
-    : 'https://kliogram.vercel.app/dashboard';
+    : 'https://cliogram.vercel.app/dashboard';
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',

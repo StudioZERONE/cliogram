@@ -1,6 +1,6 @@
-# KLIOGRAM 프로젝트 AI 에이전트 개발 & 아키텍처 헌법 (Project Constitution)
+# CLIOGRAM 프로젝트 AI 에이전트 개발 & 아키텍처 헌법 (Project Constitution)
 
-> 본 문서는 KLIOGRAM 프로젝트의 최상위 공식 개발 헌법입니다. AI 에이전트와 개발자는 본 헌법의 핵심 대원칙을 100% 준수해야 하며, 세부 디자인 시스템, 컴포넌트 명세 및 개발 가이드라인은 옵시디언 지식 문서(Obsidian Vault)를 유기적으로 참조하여 구현합니다.
+> 본 문서는 CLIOGRAM 프로젝트의 최상위 공식 개발 헌법입니다. AI 에이전트와 개발자는 본 헌법의 핵심 대원칙을 100% 준수해야 하며, 세부 디자인 시스템, 컴포넌트 명세 및 개발 가이드라인은 옵시디언 지식 문서(Obsidian Vault)를 유기적으로 참조하여 구현합니다.
 
 ---
 
@@ -22,7 +22,7 @@
 
 - **헌법(`GEMINI.md`)의 역할**: 개발 방향성, 서비스 정체성, 에이전트 핵심 행동 수칙 등 **강력한 의지를 담은 핵심 대원칙**만을 정의하여 컨텍스트 경량화 및 실행 명확성을 유지함.
 - **옵시디언 지식 문서 최상위 루트 경로 (Obsidian Vault Root)**:
-  - **경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/kliogram/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/kliogram/)
+  - **경로**: [`/Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/)
   - **`21.Rules/`**: 코드 구현 규정, 코딩 컨벤션 및 DB 쿼리 정렬 가이드
   - **`22.Design Rules/`**: 세부 UI/UX 컴포넌트 명세, 컬러 토큰, 사이드바 & 반응형 뷰포트 규정
   - **`51.Journal/`**: 주차별 개발일지 및 작업 기록 문서
@@ -33,14 +33,14 @@
 
 ## 3. 브랜드 정체성 & 디자인 시스템 대원칙 (Brand & Design Principles)
 
-- **서비스 정체성**: **KLIOGRAM** | *"고요히 흘러 마침내 숲이 될 하루"*
+- **서비스 정체성**: **CLIOGRAM** | *"고요히 흘러 마침내 숲이 될 하루"*
 - **브랜드 컬러**: **`#057a5d`** (Light Mode) / **`#10b981`** (Dark Mode)
 - **타이포그래피 원칙 (No Monospace)**: 소스 코드 블록 표출 목적 이외에는 고정폭 폰트(`font-mono`) 사용을 금지하며, 모든 데이터/일자/숫자는 정갈한 표준 폰트(`font-semibold` / `font-bold`)로 통일함.
 - **UI 조작감 & 입체감 구분 원칙**:
   - **입력 필드 (Recessed Inset)**: 오목하게 들어간 느낌(`shadow-inner`, 짙은 필드 배경)으로 평면과 구분함.
   - **기능 버튼 및 컨트롤 (Elevated Raised Action)**: 양각으로 떠 있는 컨트롤 느낌(`bg-emerald-500/10 border-emerald-500/30 shadow-xs`)을 부여하여 조작 직관성을 높임.
   - **원장 데이터 추가 버튼 규정**: 신규 데이터 추가 버튼은 `+` 아이콘이 포함된 콤팩트 동그란 녹색 버튼(`rounded-full`)으로 단일화함.
-- **세부 레이아웃 및 뷰포트 규정**: 상세 반응형 디자인, 모바일 팝업 및 고밀도 컴팩트 스펙은 지식 문서 [`22.Design Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/kliogram/22.Design Rules/)를 참조함.
+- **세부 레이아웃 및 뷰포트 규정**: 상세 반응형 디자인, 모바일 팝업 및 고밀도 컴팩트 스펙은 지식 문서 [`22.Design Rules/`](file:///Users/zerone/Documents/_Docs/_Obsidian/StudioZERONE/cliogram/22.Design Rules/)를 참조함.
 
 ---
 

@@ -1,5 +1,5 @@
 -- =========================================================
--- KLIOGRAM SYSTEM MASTER & SEED DATA (b_data_system.sql)
+-- CLIOGRAM SYSTEM MASTER & SEED DATA (b_data_system.sql)
 -- (시스템 운용에 필요한 공통코드 그룹, 공통코드, 초기 환율 시드)
 -- =========================================================
 

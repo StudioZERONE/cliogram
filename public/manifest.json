@@ -1,6 +1,6 @@
 {
-  "name": "KLIOGRAM",
-  "short_name": "KLIOGRAM",
+  "name": "CLIOGRAM",
+  "short_name": "CLIOGRAM",
   "description": "개인자산 관리 서비스",
   "start_url": "/",
   "display": "standalone",

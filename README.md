@@ -1,4 +1,4 @@
-# KLIOGRAM
+# CLIOGRAM
 
 개인 자산 및 생활 데이터 관리 서비스
 
