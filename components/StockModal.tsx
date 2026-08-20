@@ -52,6 +52,7 @@ export function StockModal({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [autoFillNotice, setAutoFillNotice] = useState<string | null>(null);
   const [isSearchingTicker, setIsSearchingTicker] = useState<boolean>(false);
+  const [isCustomShortName, setIsCustomShortName] = useState<boolean>(false);
 
   const backdropRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +62,7 @@ export function StockModal({
         setTicker(initialData.ticker || '');
         setName(initialData.name || '');
         setShortName(initialData.short_name || initialData.name || '');
+        setIsCustomShortName(!!initialData.short_name);
         setType(initialData.type || 'Growth');
         setCurrency(initialData.currency || 'USD');
         setMarket(initialData.market || 'NASDAQ');
@@ -69,6 +71,7 @@ export function StockModal({
         setTicker('');
         setName('');
         setShortName('');
+        setIsCustomShortName(false);
         setType('Growth');
         setCurrency('USD');
         setMarket('NASDAQ');
@@ -266,7 +269,7 @@ export function StockModal({
               {isDuplicateTicker ? (
                 <p className="text-[11px] font-bold text-red-500 flex items-center gap-1">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  이미 등록된 티커입니다. 다른 티커를 입력하거나 목록에서 수정해 주세요.
+                  이미 등록된 티커입니다.
                 </p>
               ) : isSearchingTicker ? (
                 <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 animate-pulse flex items-center gap-1">
@@ -295,8 +298,11 @@ export function StockModal({
               placeholder="예: Apple Inc., 삼성전자"
               value={name}
               onChange={(e) => {
-                setName(e.target.value);
-                if (!shortName) setShortName(e.target.value);
+                const newName = e.target.value;
+                setName(newName);
+                if (!isCustomShortName) {
+                  setShortName(newName);
+                }
               }}
               className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
               required
@@ -312,7 +318,10 @@ export function StockModal({
               type="text"
               placeholder="미입력 시 종목명과 동일하게 설정됨"
               value={shortName}
-              onChange={(e) => setShortName(e.target.value)}
+              onChange={(e) => {
+                setShortName(e.target.value);
+                setIsCustomShortName(true);
+              }}
               className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
             />
             <p className="mt-1 text-[10px] text-[var(--fg-muted)]">
