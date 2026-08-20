@@ -94,22 +94,22 @@ export default function IndexPage() {
       <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-8 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden shrink-0">
-            <Image src="/icon.svg" alt="CLIOGRAM Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
+            <Image src="/icon.svg" alt="cliogram Logo" width={40} height={40} className="h-10 w-10 object-contain" priority />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-[#057a5d] dark:text-[#10b981]">CLIOGRAM</h1>
-              {isDev && (
-                <span
-                  style={getBadgeStyle()}
-                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-black shadow-xs"
-                >
-                  <Terminal className="h-3 w-3" />
-                  Dev Sys
-                </span>
-              )}
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight leading-none text-[#057a5d] dark:text-[#10b981]">cliogram</h1>
+              <p className="mt-1 text-xs font-medium text-[var(--fg-muted)]">개인자산 관리 서비스</p>
             </div>
-            <p className="text-xs font-medium text-[var(--fg-muted)]">개인자산 관리 서비스</p>
+            {isDev && (
+              <span
+                style={getBadgeStyle()}
+                className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-black shadow-xs shrink-0"
+              >
+                <Terminal className="h-3 w-3" />
+                Dev Sys
+              </span>
+            )}
           </div>
         </div>
 
@@ -138,11 +138,11 @@ export default function IndexPage() {
             </div>
             
             {/* Unified Logo Color & Enlarged Typography */}
-            <h2 className="text-3xl font-extrabold tracking-tight text-[#057a5d] dark:text-[#10b981]">
-              CLIOGRAM
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-[#057a5d] dark:text-[#10b981]">
+              cliogram
             </h2>
             {/* Slogan tightly attached to title */}
-            <p className="mt-1 text-sm font-medium text-[var(--fg-muted)]">
+            <p className="mt-3 text-sm font-medium text-[var(--fg-muted)]">
               고요히 흘러 마침내 숲이 될 하루
             </p>
           </div>

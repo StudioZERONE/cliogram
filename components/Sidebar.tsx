@@ -49,7 +49,7 @@ export function Sidebar() {
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
               <Image
                 src="/icon.svg"
-                alt="CLIOGRAM Logo"
+                alt="cliogram Logo"
                 width={36}
                 height={36}
                 className={`object-contain transition-all duration-300 ${
@@ -67,10 +67,10 @@ export function Sidebar() {
                   : 'opacity-0 max-w-0 pointer-events-none overflow-hidden'
               }`}
             >
-              <h1 className="text-lg font-bold tracking-tight text-[#057a5d] dark:text-[#10b981] leading-none">
-                CLIOGRAM
+              <h1 className="text-xl font-extrabold tracking-tight text-[#057a5d] dark:text-[#10b981] leading-none">
+                cliogram
               </h1>
-              <p className="text-[10px] font-medium text-[var(--fg-muted)] mt-1">
+              <p className="text-[10px] font-medium text-[var(--fg-muted)] mt-1.5">
                 고요히 흘러 마침내 숲이 될 하루
               </p>
             </div>
