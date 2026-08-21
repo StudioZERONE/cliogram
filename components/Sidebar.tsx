@@ -9,13 +9,14 @@ import {
   TrendingUp,
   DollarSign,
   Building2,
+  Landmark,
   Settings
 } from 'lucide-react';
 import { useCounts } from '@/components/CountsProvider';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { tradesCount, dividendsCount, stocksCount } = useCounts();
+  const { tradesCount, dividendsCount, stocksCount, accountsCount } = useCounts();
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
 
@@ -27,6 +28,7 @@ export function Sidebar() {
   const isTrades = pathname === '/trades';
   const isDividends = pathname === '/dividends';
   const isStocks = pathname === '/stocks';
+  const isAccounts = pathname === '/accounts';
   const isCodes = pathname === '/codes';
 
   return (
@@ -222,6 +224,43 @@ export function Sidebar() {
               }`}
             >
               {mounted ? stocksCount : 0}
+            </span>
+          </Link>
+
+          {/* Accounts Link (계좌 관리) */}
+          <Link
+            href="/accounts"
+            className={`group relative flex items-center h-11 rounded-xl transition-all cursor-pointer ${
+              isAccounts
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
+            }`}
+            title="계좌 관리"
+          >
+            {isAccounts && (
+              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
+            )}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+              <Landmark className={`transition-all duration-300 ${isHovered ? 'h-5 w-5' : 'h-4.5 w-4.5'}`} />
+            </div>
+            <span
+              className={`ml-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+                isHovered
+                  ? 'opacity-100 max-w-xs'
+                  : 'opacity-0 max-w-0 overflow-hidden'
+              }`}
+            >
+              계좌 관리
+            </span>
+            <span
+              suppressHydrationWarning
+              className={`ml-auto mr-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 ${
+                isHovered
+                  ? 'opacity-100 scale-100'
+                  : 'opacity-0 scale-0 w-0 p-0 overflow-hidden'
+              }`}
+            >
+              {mounted ? accountsCount : 0}
             </span>
           </Link>
 

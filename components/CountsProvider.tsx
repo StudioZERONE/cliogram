@@ -7,6 +7,7 @@ interface CountsContextType {
   tradesCount: number;
   dividendsCount: number;
   stocksCount: number;
+  accountsCount: number;
   refreshCounts: () => Promise<void>;
 }
 
@@ -14,6 +15,7 @@ const CountsContext = createContext<CountsContextType>({
   tradesCount: 0,
   dividendsCount: 0,
   stocksCount: 0,
+  accountsCount: 0,
   refreshCounts: async () => {}
 });
 
@@ -22,6 +24,7 @@ export function CountsProvider({ children }: { children: React.ReactNode }) {
     tradesCount: number;
     dividendsCount: number;
     stocksCount: number;
+    accountsCount: number;
   }>(() => {
     if (typeof window !== 'undefined') {
       const cached = localStorage.getItem('cliogram_counts');
@@ -31,28 +34,30 @@ export function CountsProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
     }
-    return { tradesCount: 0, dividendsCount: 0, stocksCount: 0 };
+    return { tradesCount: 0, dividendsCount: 0, stocksCount: 0, accountsCount: 0 };
   });
 
   const refreshCounts = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setCounts({ tradesCount: 0, dividendsCount: 0, stocksCount: 0 });
+        setCounts({ tradesCount: 0, dividendsCount: 0, stocksCount: 0, accountsCount: 0 });
         return;
       }
 
       // Explicitly filter counts by user_id
-      const [tRes, dRes, sRes] = await Promise.all([
+      const [tRes, dRes, sRes, aRes] = await Promise.all([
         supabase.from('trades').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('dividends').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('stocks').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+        supabase.from('stocks').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('accounts').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
       ]);
 
       const newCounts = {
         tradesCount: tRes.count ?? 0,
         dividendsCount: dRes.count ?? 0,
-        stocksCount: sRes.count ?? 0
+        stocksCount: sRes.count ?? 0,
+        accountsCount: aRes.count ?? 0
       };
 
       setCounts(newCounts);
