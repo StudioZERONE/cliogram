@@ -73,7 +73,7 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
         type="button"
         onClick={handleToggleOpen}
         disabled={disabled}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[var(--fg)] shadow-inner transition-colors cursor-pointer hover:border-[var(--accent)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`flex w-full h-[38px] sm:h-[40px] items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 sm:px-3.5 text-xs sm:text-sm font-semibold text-[var(--fg)] shadow-inner transition-colors cursor-pointer hover:border-[var(--accent)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 disabled:cursor-not-allowed disabled:opacity-50 ${
           isOpen ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20' : ''
         }`}
       >
@@ -84,7 +84,7 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
       {/* Smart Auto-Flip Dropdown Popover (Up / Down) */}
       {isOpen && (
         <div
-          className={`absolute left-0 z-50 min-w-[190px] w-full max-w-[280px] max-h-52 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95 ${
+          className={`absolute left-0 z-50 w-full max-h-52 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95 ${
             openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
           }`}
         >

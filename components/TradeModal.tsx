@@ -6,6 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
 import { X, Layers, Calculator, RefreshCw } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
+import { AccountSelect, AccountOption } from '@/components/AccountSelect';
 import { formatCommaString, parseCommaNumber } from '@/lib/format';
 import { lookupTickerInfo, fetchRemoteTickerInfo } from '@/lib/stock-ticker';
 
@@ -20,13 +21,7 @@ export interface StockOption {
   is_active: boolean;
 }
 
-export interface AccountOption {
-  id: string;
-  account_name: string;
-  broker_name?: string | null;
-  account_number?: string | null;
-  is_active?: boolean;
-}
+export type { AccountOption };
 
 export interface TradeRecordData {
   id?: string;
@@ -379,35 +374,18 @@ export function TradeModal({
                   selected={tradeDate}
                   onChange={(date: Date | null) => date && setTradeDate(date)}
                   dateFormat="yyyy-MM-dd"
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner"
+                  className="w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                  계좌 <span className="text-red-500">*</span>
+                  계좌
                 </label>
-                <select
+                <AccountSelect
+                  accounts={accounts as any}
                   value={accountId}
-                  onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner cursor-pointer"
-                >
-                  {accounts.length > 0 ? (
-                    <>
-                      <option value="" className="bg-[var(--surface)] text-[var(--fg-muted)]">
-                        계좌 선택 (미지정)
-                      </option>
-                      {accounts.map((acc) => (
-                        <option key={acc.id} value={acc.id} className="bg-[var(--surface)] text-[var(--fg)]">
-                          {acc.broker_name ? `${acc.broker_name} (${acc.account_name})` : acc.account_name}
-                        </option>
-                      ))}
-                    </>
-                  ) : (
-                    <option value="" className="bg-[var(--surface)] text-[var(--fg-muted)]">
-                      등록된 계좌 없음
-                    </option>
-                  )}
-                </select>
+                  onChange={setAccountId}
+                />
               </div>
             </div>
 
@@ -422,7 +400,7 @@ export function TradeModal({
                   placeholder="AAPL, 005930"
                   value={ticker}
                   onChange={(e) => handleTickerChange(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-bold uppercase text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                  className="w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-bold uppercase text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                   required
                 />
               </div>
@@ -430,7 +408,7 @@ export function TradeModal({
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                   종목명
                 </label>
-                <div className="flex items-center h-[36px] sm:h-[40px] px-2.5 sm:px-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-xs sm:text-sm font-bold text-[var(--fg)] truncate">
+                <div className="flex items-center h-[38px] sm:h-[40px] px-2.5 sm:px-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-xs sm:text-sm font-bold text-[var(--fg)] truncate">
                   {resolvedStock ? (
                     <span className="truncate text-[var(--fg)]">
                       {resolvedStock.short_name || resolvedStock.name}
@@ -467,7 +445,7 @@ export function TradeModal({
                     placeholder="185.50"
                     value={price}
                     onChange={(e) => setPrice(formatCommaString(e.target.value))}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                    className="w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                     required
                   />
                 </div>
@@ -481,7 +459,7 @@ export function TradeModal({
                     placeholder="+10"
                     value={quantity}
                     onChange={(e) => setQuantity(formatCommaString(e.target.value))}
-                    className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
+                    className={`w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
                       parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
                     }`}
                     required
