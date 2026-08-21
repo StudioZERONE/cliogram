@@ -848,37 +848,6 @@ export default function TradesPage() {
                             </div>
                           </td>
 
-                          {/* 11. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}
-                          <td
-                            onClick={() => item.notes && setSearchQuery(item.notes)}
-                            className={`hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg)] font-normal truncate ${
-                              item.notes ? 'cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors' : ''
-                            }`}
-                            title={item.notes ? `"${item.notes}" 검색` : ''}
-                          >
-                            {item.notes || '-'}
-                          </td>
-
-                          {/* 12. 작업 (Desktop) */}
-                          <td className="hidden sm:table-cell py-3 px-2 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenEditModal(item)}
-                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
-                                title="수정"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => setDeleteTargetId(item.id || null)}
-                                className="p-1 text-red-500 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
-                                title="삭제"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-
                           {/* Mobile 3-Column Cells */}
                           {/* Mobile Col 1: 매매일자(10px) + 초소형 구분 배지 (1행), 짧은 종목명 (2행: Click to search) */}
                           <td className="sm:hidden py-2.5 px-2 text-left">
