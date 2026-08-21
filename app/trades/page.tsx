@@ -751,9 +751,9 @@ export default function TradesPage() {
                   <col className="w-[60px] min-[1920px]:w-[150px]" />
                   <col />
                   <col className="w-[30px] min-[1920px]:w-[60px]" />
-                  <col className="w-[75px] min-[1920px]:w-[200px]" />
+                  <col className="w-[80px] min-[1920px]:w-[200px]" />
                   <col className="w-[50px] min-[1920px]:w-[100px]" />
-                  <col className="w-[105px] min-[1920px]:w-[200px]" />
+                  <col className="w-[90px] min-[1920px]:w-[200px]" />
                   <col className="w-[60px] min-[1920px]:w-[150px]" />
                   <col className="w-[50px] min-[1920px]:w-[100px]" />
                   <col className="w-[70px] min-[1920px]:w-[150px]" />
@@ -796,7 +796,7 @@ export default function TradesPage() {
                     <th className="hidden lg:table-cell py-2.5 px-1 text-right font-medium">수량</th>
 
                     {/* 8. 거래금액 (Sortable, No Parentheses) */}
-                    <th onClick={() => handleSort('total_amount')} className="hidden lg:table-cell py-2.5 px-1.5 text-right cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('total_amount')} className="hidden lg:table-cell py-2.5 px-1 text-right cursor-pointer hover:text-[var(--fg)] font-medium">
                       거래금액 {renderSortIcon('total_amount')}
                     </th>
 
@@ -925,7 +925,7 @@ export default function TradesPage() {
                           </td>
 
                           {/* 8. 거래금액 (Desktop: Formatted with currency symbol and commas, 매도(-)는 빨간색) */}
-                          <td className="hidden lg:table-cell py-3 px-1.5 text-right text-xs font-normal">
+                          <td className="hidden lg:table-cell py-3 px-1 text-right text-xs font-normal">
                             {isSell ? (
                               <span className="text-red-500 dark:text-red-400">
                                 - {currSymbol} {Math.round(Math.abs(displayAmount)).toLocaleString()}
