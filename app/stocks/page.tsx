@@ -463,7 +463,7 @@ export default function StocksPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title="종목 마스터" />
+        <Header title="종목 관리" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Info Banner (Hidden on Mobile, Visible on Desktop) */}
@@ -471,10 +471,10 @@ export default function StocksPage() {
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
-                종목 마스터 관리
+                종목 기준정보 관리
               </h3>
               <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-1">
-                매매 및 배당 관리를 위한 종목 마스터(티커, 짧은 종목명, 유형, 상장 시장, 사용상태) 목록을 통합 등록하고 관리합니다.
+                매매 및 배당 관리를 위한 종목 기준정보(티커, 종목명, 짧은 종목명, 유형, 상장 시장, 상태)를 통합 등록하고 관리합니다.
               </p>
             </div>
           </div>
@@ -484,7 +484,7 @@ export default function StocksPage() {
             {/* Top Section Header Row: Title & Top-Right Circular Add Button */}
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5">
               <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
-                <span>종목 마스터 목록</span>
+                <span>종목 목록</span>
                 <span className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                   {filteredAndSortedStocks.length} / {stocks.length}개
                 </span>
@@ -500,8 +500,8 @@ export default function StocksPage() {
                   })
                 }
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-                title="종목 마스터 신규 추가"
-                aria-label="종목 마스터 신규 추가"
+                title="신규 종목 등록"
+                aria-label="신규 종목 등록"
               >
                 <Plus className="h-5 w-5 stroke-[2.5]" />
               </button>
@@ -873,7 +873,7 @@ export default function StocksPage() {
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTargetTicker}
-        title="종목 마스터 삭제 확인"
+        title="종목 삭제 확인"
         message={`선택하신 종목 (${deleteTargetTicker})을 정말 삭제하시겠습니까?\n삭제 후에는 등록된 종목 정보가 제거됩니다.`}
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetTicker(null)}

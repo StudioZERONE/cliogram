@@ -149,7 +149,7 @@ export default function DividendsPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title="배당 내역" />
+        <Header title="배당 원장" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Info Banner Card (Desktop Only - Hidden on Mobile) */}
@@ -157,10 +157,10 @@ export default function DividendsPage() {
             <div>
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
-                배당 수령 내역 관리
+                배당 수령 원장
               </h3>
               <p className="text-sm text-[var(--fg-muted)] mt-1">
-                주식 종목별 배당금 지급 일자 및 지급 금액/세금 내역을 기록하고 분석합니다.
+                주식 종목별 배당금 지급 일자 및 지급 금액/세금 내역을 기록하고 관리하는 원장입니다.
               </p>
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function DividendsPage() {
               <div className="flex items-center justify-between mb-3.5 sm:mb-5">
                 <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
                   <Plus className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-emerald-500" />
-                  배당 내역 신규 등록
+                  배당 수령 신규 등록
                 </h3>
                 <button
                   type="button"
@@ -198,30 +198,34 @@ export default function DividendsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">통화</label>
-                  <CodeSelect groupId="CURRENCY_CODE" value={dividendForm.currency} onChange={(val) => setDividendForm({ ...dividendForm, currency: val as any })} />
+                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">종목 선택</label>
+                  <select
+                    value={dividendForm.stock_name}
+                    onChange={(e) => setDividendForm({ ...dividendForm, stock_name: e.target.value })}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
+                    required
+                  >
+                    <option value="" disabled>
+                      종목을 선택해 주세요
+                    </option>
+                    {activeStocks.map((stock) => (
+                      <option key={stock.ticker} value={`${stock.short_name || stock.name} (${stock.ticker})`}>
+                        {stock.short_name || stock.name} ({stock.ticker})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">종목명 / 티커 (사용중인 종목만 선택 가능)</label>
-                  <input
-                    type="text"
-                    list="active-stock-list"
-                    placeholder="예: Apple (AAPL)"
-                    value={dividendForm.stock_name}
-                    onChange={(e) => setDividendForm({ ...dividendForm, stock_name: e.target.value })}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">통화</label>
+                  <CodeSelect
+                    groupId="CURRENCY_CODE"
+                    value={dividendForm.currency}
+                    onChange={(val) => setDividendForm({ ...dividendForm, currency: val as any })}
                   />
-                  <datalist id="active-stock-list">
-                    {activeStocks.map((s) => (
-                      <option key={s.ticker} value={`${s.short_name || s.name} (${s.ticker})`}>
-                        {s.name} ({s.ticker})
-                      </option>
-                    ))}
-                  </datalist>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">배당금 (세전)</label>
                     <input
@@ -231,6 +235,7 @@ export default function DividendsPage() {
                       value={dividendForm.amount}
                       onChange={(e) => setDividendForm({ ...dividendForm, amount: e.target.value })}
                       className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
+                      required
                     />
                   </div>
                   <div>
@@ -250,7 +255,7 @@ export default function DividendsPage() {
                   type="submit"
                   className="w-full rounded-xl bg-emerald-600 py-2.5 sm:py-3.5 text-xs sm:text-base font-bold text-white transition-colors shadow-xs cursor-pointer hover:bg-emerald-500 active:scale-98"
                 >
-                  배당 내역 추가하기
+                  배당 수령 기록 추가하기
                 </button>
               </form>
             </div>
@@ -259,7 +264,7 @@ export default function DividendsPage() {
             <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs">
               <div className="flex items-center justify-between mb-3.5 sm:mb-5">
                 <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
-                  <span>전체 배당 수령 목록</span>
+                  <span>배당 수령 기록 목록</span>
                   <span className="text-xs sm:text-sm text-[var(--fg-muted)] font-normal">총 {dividends.length}건</span>
                 </h3>
 
@@ -267,8 +272,8 @@ export default function DividendsPage() {
                 <button
                   onClick={() => setIsMobileFormOpen(!isMobileFormOpen)}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-                  title="배당 내역 추가"
-                  aria-label="배당 내역 추가"
+                  title="신규 배당 수령 등록"
+                  aria-label="신규 배당 수령 등록"
                 >
                   <Plus className={`h-5 w-5 stroke-[2.5] transition-transform ${isMobileFormOpen ? 'rotate-45' : ''}`} />
                 </button>
@@ -332,8 +337,8 @@ export default function DividendsPage() {
 
       <ConfirmDeleteModal
         isOpen={!!deleteTargetId}
-        title="배당 내역 삭제 확인"
-        message={`선택하신 배당 내역을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.`}
+        title="배당 기록 삭제 확인"
+        message={`선택하신 배당 기록을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.`}
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetId(null)}
       />

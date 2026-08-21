@@ -117,7 +117,7 @@ export function Sidebar() {
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
-            title="매매 내역"
+            title="매매 원장"
           >
             {isTrades && (
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
@@ -132,7 +132,7 @@ export function Sidebar() {
                   : 'opacity-0 max-w-0 overflow-hidden'
               }`}
             >
-              매매 내역
+              매매 원장
             </span>
             <span
               suppressHydrationWarning
@@ -154,7 +154,7 @@ export function Sidebar() {
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
-            title="배당 내역"
+            title="배당 원장"
           >
             {isDividends && (
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
@@ -169,7 +169,7 @@ export function Sidebar() {
                   : 'opacity-0 max-w-0 overflow-hidden'
               }`}
             >
-              배당 내역
+              배당 원장
             </span>
             <span
               suppressHydrationWarning
@@ -196,7 +196,7 @@ export function Sidebar() {
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
-            title="종목 마스터"
+            title="종목 관리"
           >
             {isStocks && (
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
@@ -211,7 +211,7 @@ export function Sidebar() {
                   : 'opacity-0 max-w-0 overflow-hidden'
               }`}
             >
-              종목 마스터
+              종목 관리
             </span>
             <span
               suppressHydrationWarning
@@ -233,7 +233,7 @@ export function Sidebar() {
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
             }`}
-            title="공통코드"
+            title="공통코드 관리"
           >
             {isCodes && (
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#057a5d] dark:bg-emerald-500" />
@@ -248,7 +248,7 @@ export function Sidebar() {
                   : 'opacity-0 max-w-0 overflow-hidden'
               }`}
             >
-              공통코드
+              공통코드 관리
             </span>
           </Link>
         </div>

@@ -374,7 +374,7 @@ export default function TradesPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title="매매 내역" />
+        <Header title="매매 원장" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Info Banner Card (Desktop Only) */}
@@ -382,10 +382,10 @@ export default function TradesPage() {
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
-                자산 매매 내역 원장
+                자산 매매 원장
               </h3>
               <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-1">
-                원화(KRW) 및 외화(USD 등) 주식 매매 거래 내역을 기록하고 관리하는 원장 목록입니다.
+                원화(KRW) 및 외화(USD 등) 주식 매매 거래 내역을 기록하고 관리하는 원장입니다.
               </p>
               <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                 목록의 티커, 종목, 비고 텍스트를 클릭하면 해당 항목으로 즉시 자동 검색 및 필터링됩니다.
@@ -403,7 +403,7 @@ export default function TradesPage() {
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5 sm:pb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-xl font-bold text-[var(--fg)]">
-                  매매 내역 목록
+                  매매 기록 목록
                 </h2>
                 <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                   {filteredTrades.length} / {trades.length}건
@@ -413,8 +413,8 @@ export default function TradesPage() {
                 type="button"
                 onClick={handleOpenCreateModal}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-                title="신규 매매 내역 등록"
-                aria-label="신규 매매 내역 등록"
+                title="신규 매매 기록 등록"
+                aria-label="신규 매매 기록 등록"
               >
                 <Plus className="h-5 w-5 stroke-[2.5]" />
               </button>
@@ -850,10 +850,10 @@ export default function TradesPage() {
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTargetId}
-        title="매매 내역 삭제 확인"
+        title="매매 기록 삭제 확인"
         confirmText="삭제하기"
         confirmVariant="danger"
-        message="선택하신 매매 내역을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다."
+        message="선택하신 매매 기록을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다."
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetId(null)}
       />

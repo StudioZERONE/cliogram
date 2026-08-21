@@ -364,7 +364,7 @@ export default function CodesPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title="공통코드" />
+        <Header title="공통코드 관리" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Header Card (Desktop Only - Hidden on Mobile) */}
@@ -372,7 +372,7 @@ export default function CodesPage() {
             <div>
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
-                시스템 공통 코드 관리
+                시스템 공통코드 관리
               </h3>
               <p className="text-sm text-[var(--fg-muted)] mt-1">
                 통화, 거래 유형, 종목 유형 등 시스템 전반에서 활용되는 마스터 코드를 등록하고 관리합니다.

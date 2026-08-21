@@ -98,7 +98,7 @@ export default function DashboardPage() {
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-[var(--fg-muted)]">보유 종목 마스터</p>
+                  <p className="text-sm font-bold text-[var(--fg-muted)]">등록 종목</p>
                   <h3 className="text-3xl font-bold mt-1.5">{stocks.length}<span className="text-sm font-normal text-[var(--fg-muted)] ml-1">개</span></h3>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500">
@@ -110,7 +110,7 @@ export default function DashboardPage() {
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-[var(--fg-muted)]">총 매매 내역 기록</p>
+                  <p className="text-sm font-bold text-[var(--fg-muted)]">총 매매 기록</p>
                   <h3 className="text-3xl font-bold mt-1.5">{trades.length}<span className="text-sm font-normal text-[var(--fg-muted)] ml-1">건</span></h3>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500">
@@ -148,7 +148,7 @@ export default function DashboardPage() {
             {/* Recent Trades Table */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">최근 매매 내역</h3>
+                <h3 className="text-lg font-bold">최근 매매 기록</h3>
                 <Link href="/trades" className="text-sm font-semibold text-emerald-500 hover:underline cursor-pointer">전체보기 →</Link>
               </div>
               <div className="overflow-x-auto">
@@ -182,7 +182,7 @@ export default function DashboardPage() {
             {/* Recent Dividends Table */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">최근 배당 내역</h3>
+                <h3 className="text-lg font-bold">최근 배당 수령 기록</h3>
                 <Link href="/dividends" className="text-sm font-semibold text-emerald-500 hover:underline cursor-pointer">전체보기 →</Link>
               </div>
               <div className="overflow-x-auto">
