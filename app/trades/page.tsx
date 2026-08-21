@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MoreVertical, Edit2, Trash2, Layers, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, MoreVertical, Edit2, Trash2, Layers, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
 import { Sidebar } from '@/components/Sidebar';
@@ -423,14 +423,25 @@ export default function TradesPage() {
             {/* Filter Toolbar Section */}
             {/* Desktop Toolbar: 1-Row Flex with Year, Type, Currency Filters */}
             <div className="hidden sm:flex items-center justify-between gap-3">
-              <div className="flex-1 max-w-sm">
+              <div className="flex-1 max-w-sm relative">
                 <input
                   type="text"
                   placeholder="종목, 짧은 종목명, 티커, 비고 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-3.5 pr-8 py-2 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                 />
+                {searchQuery.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-400/20 hover:bg-gray-400/40 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+                    title="검색어 지우기"
+                    aria-label="검색어 지우기"
+                  >
+                    <X className="h-3 w-3 stroke-[2.5]" />
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2.5">
                 <FilterDropdown
@@ -458,13 +469,26 @@ export default function TradesPage() {
             <div className="sm:hidden space-y-2">
               {/* Row 1: Search & Currency Toggle */}
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="종목, 티커 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
-                />
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="종목, 티커 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-3 pr-7 py-2 text-xs text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                  />
+                  {searchQuery.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-400/20 hover:bg-gray-400/40 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+                      title="검색어 지우기"
+                      aria-label="검색어 지우기"
+                    >
+                      <X className="h-2.5 w-2.5 stroke-[2.5]" />
+                    </button>
+                  )}
+                </div>
                 <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} />
               </div>
               {/* Row 2: 3 Equal Columns Filter Comboboxes (년도, 구분, 통화) */}
