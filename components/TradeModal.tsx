@@ -374,9 +374,9 @@ export function TradeModal({
                   selected={tradeDate}
                   onChange={(date: Date | null) => date && setTradeDate(date)}
                   dateFormat="yyyy-MM-dd"
-                  readOnly
+                  onKeyDown={(e) => e.preventDefault()}
                   popperPlacement="bottom-start"
-                  className="w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner select-none"
+                  className="w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner"
                 />
               </div>
               <div>
