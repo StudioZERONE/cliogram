@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
@@ -31,6 +31,7 @@ export interface TradeRecordData {
   ticker: string;
   trade_type: 'BUY' | 'SELL';
   quantity: number;
+  remaining_quantity?: number;
   price: number;
   currency: 'KRW' | 'USD' | 'EUR' | 'JPY' | 'CNY';
   exchange_rate?: number;
@@ -62,6 +63,7 @@ export interface TradeModalProps {
   initialData?: TradeRecordData | null;
   stocks: StockOption[];
   accounts?: AccountOption[];
+  allTrades?: TradeRecordData[];
   onClose: () => void;
   onSave: (data: TradeRecordData) => Promise<void>;
 }
@@ -72,6 +74,7 @@ export function TradeModal({
   initialData,
   stocks = [],
   accounts = [],
+  allTrades = [],
   onClose,
   onSave,
 }: TradeModalProps) {
@@ -294,18 +297,42 @@ export function TradeModal({
   // Automated trade type: positive -> BUY, negative -> SELL
   const tradeType: 'BUY' | 'SELL' = parsedQty < 0 ? 'SELL' : 'BUY';
 
+  // Calculate current available holding quantity for this account + ticker
+  const currentHoldingQty = useMemo(() => {
+    if (!accountId || !ticker.trim()) return 0;
+    const cleanTicker = ticker.trim().toUpperCase();
+    return (allTrades || [])
+      .filter((t) => {
+        if (mode === 'edit' && initialData && t.id === initialData.id) {
+          return false;
+        }
+        return t.account_id === accountId && t.ticker?.trim()?.toUpperCase() === cleanTicker;
+      })
+      .reduce((sum, t) => sum + (t.quantity || 0), 0);
+  }, [allTrades, accountId, ticker, mode, initialData]);
+
+  const isSellExceeded = tradeType === 'SELL' && Math.abs(parsedQty) > currentHoldingQty;
+
   const rawTotal = parsedQty * parsedPrice;
   const krwTotal = currency === 'KRW' ? rawTotal : rawTotal * parsedRate;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!accountId) {
+      alert('계좌를 선택해 주세요.');
+      return;
+    }
     if (!ticker.trim() || parsedQty === 0 || parsedPrice <= 0) return;
+    if (isSellExceeded) {
+      alert(`매도 수량(${Math.abs(parsedQty)}주)이 현재 보유 잔여수량(${currentHoldingQty}주)을 초과하여 저장할 수 없습니다.`);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       await onSave({
         id: initialData?.id,
-        account_id: accountId || undefined,
+        account_id: accountId,
         trade_date: format(tradeDate, 'yyyy-MM-dd'),
         ticker: ticker.trim().toUpperCase(),
         trade_type: tradeType,
@@ -331,7 +358,7 @@ export function TradeModal({
     }
   };
 
-  const isSubmitDisabled = isSubmitting || !ticker.trim() || parsedQty === 0 || parsedPrice <= 0;
+  const isSubmitDisabled = isSubmitting || !accountId || !ticker.trim() || parsedQty === 0 || parsedPrice <= 0 || isSellExceeded;
 
   return (
     <div
@@ -361,7 +388,7 @@ export function TradeModal({
         </div>
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 sm:space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           {/* 구역 1: 기본 거래 정보 및 환율/금액 통합 블록 (매매일자, 계좌, 티커, 종목명, 통화, 단가, 수량, 환율&거래금액) */}
           <div className="space-y-3 sm:space-y-3.5">
             {/* 행 1: [매매 일자 (50%)] | [계좌 (50%)] */}
@@ -381,7 +408,7 @@ export function TradeModal({
               </div>
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                  계좌
+                  계좌 <span className="text-red-500">*</span>
                 </label>
                 <AccountSelect
                   accounts={accounts as any}
@@ -457,18 +484,34 @@ export function TradeModal({
                   </label>
                   <input
                     type="text"
-                    inputMode="numeric"
+                    inputMode="decimal"
                     placeholder="+10"
                     value={quantity}
                     onChange={(e) => setQuantity(formatCommaString(e.target.value))}
                     className={`w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
-                      parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
+                      parsedQty < 0 ? (isSellExceeded ? 'text-red-500 border-red-500 ring-2 ring-red-500/20' : 'text-red-500') : 'text-[var(--fg)]'
                     }`}
                     required
                   />
                 </div>
               </div>
             </div>
+
+            {/* 매도 수량 및 잔여수량 가이드 배지 */}
+            {tradeType === 'SELL' && ticker.trim() && accountId && (
+              <div className={`text-[11px] flex items-center justify-between px-3 py-1.5 rounded-xl transition-colors ${
+                isSellExceeded
+                  ? 'bg-red-500/10 text-red-500 font-bold border border-red-500/30'
+                  : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-500/20'
+              }`}>
+                <span>현재 계좌 보유 잔여수량: <strong className="font-bold">{currentHoldingQty.toLocaleString(undefined, { maximumFractionDigits: 6 })}주</strong></span>
+                {isSellExceeded ? (
+                  <span className="text-red-500 font-bold">보유 잔고 초과 불가</span>
+                ) : (
+                  <span className="font-semibold">매도 가능</span>
+                )}
+              </div>
+            )}
 
             {/* 환율 및 거래금액 요약 카드 (은은한 틴트 배경 & 픽셀 단위 완전 일치 고정 3단 구조) */}
             <div className="rounded-xl border border-emerald-500/20 dark:border-emerald-500/30 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08] p-3 sm:p-3.5 space-y-2 shadow-2xs">

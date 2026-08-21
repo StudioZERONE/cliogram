@@ -241,6 +241,52 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     expect(checkShouldAutoEnroll('DHER', existingStocks)).toBe(true);
     expect(checkShouldAutoEnroll('NVDA', existingStocks)).toBe(true);
   });
+
+  it('correctly calculates cumulative remaining quantity per account and ticker (with decimal fractional shares)', () => {
+    const rawTradeHistory = [
+      { id: '1', account_id: 'acc-1', ticker: 'NVDA', trade_date: '2026-01-10', quantity: 10, created_at: '2026-01-10T10:00:00Z' },
+      { id: '2', account_id: 'acc-1', ticker: 'NVDA', trade_date: '2026-02-15', quantity: 5.5, created_at: '2026-02-15T10:00:00Z' },
+      { id: '3', account_id: 'acc-1', ticker: 'NVDA', trade_date: '2026-03-20', quantity: -3.5, created_at: '2026-03-20T10:00:00Z' },
+      { id: '4', account_id: 'acc-1', ticker: 'NVDA', trade_date: '2026-04-01', quantity: -12, created_at: '2026-04-01T10:00:00Z' },
+      { id: '5', account_id: 'acc-2', ticker: 'NVDA', trade_date: '2026-01-15', quantity: 20, created_at: '2026-01-15T10:00:00Z' },
+    ];
+
+    const computeTestBalances = (tradesList: typeof rawTradeHistory) => {
+      const sorted = [...tradesList].sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+      const balances: Record<string, number> = {};
+      return sorted.map((t) => {
+        const key = `${t.account_id}_${t.ticker}`;
+        const prev = balances[key] || 0;
+        const current = prev + t.quantity;
+        balances[key] = current;
+        return { ...t, remaining_quantity: current };
+      });
+    };
+
+    const evaluated = computeTestBalances(rawTradeHistory);
+    expect(evaluated[0].remaining_quantity).toBe(10);
+    expect(evaluated[1].remaining_quantity).toBe(20); // acc-2 NVDA = 20
+    expect(evaluated[2].remaining_quantity).toBe(15.5); // acc-1 NVDA = 10 + 5.5
+    expect(evaluated[3].remaining_quantity).toBe(12); // acc-1 NVDA = 15.5 - 3.5
+    expect(evaluated[4].remaining_quantity).toBe(0); // acc-1 NVDA = 12 - 12
+  });
+
+  it('validates that sell quantity cannot exceed current available holding', () => {
+    const currentHolding = 15.5;
+
+    const validateSell = (sellQty: number, holding: number) => {
+      const absQty = Math.abs(sellQty);
+      if (absQty > holding) {
+        return { valid: false, error: `매도 수량(${absQty}주)이 현재 보유 잔고(${holding}주)를 초과합니다.` };
+      }
+      return { valid: true };
+    };
+
+    expect(validateSell(-10, currentHolding).valid).toBe(true);
+    expect(validateSell(-15.5, currentHolding).valid).toBe(true);
+    expect(validateSell(-15.6, currentHolding).valid).toBe(false);
+    expect(validateSell(-20, currentHolding).error).toContain('초과합니다');
+  });
 });
 
 

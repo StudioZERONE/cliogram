@@ -16,6 +16,35 @@ import { useCounts } from '@/components/CountsProvider';
 type SortField = 'trade_date' | 'ticker' | 'stock_name' | 'total_amount';
 type SortDirection = 'asc' | 'desc';
 
+// Helper to compute cumulative remaining quantity per (account_id, ticker) chronologically
+export function computeRemainingQuantities(rawTrades: TradeRecordData[]): TradeRecordData[] {
+  const sortedAsc = [...rawTrades].sort((a, b) => {
+    const dateDiff = new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return (a.created_at || '').localeCompare(b.created_at || '');
+  });
+
+  const balances: Record<string, number> = {};
+  const calculatedMap = new Map<string, number>();
+
+  for (const t of sortedAsc) {
+    const accId = t.account_id || 'no_account';
+    const tickerKey = t.ticker?.trim()?.toUpperCase() || '';
+    const key = `${accId}_${tickerKey}`;
+    const prev = balances[key] || 0;
+    const current = prev + (t.quantity || 0);
+    balances[key] = current;
+    if (t.id) {
+      calculatedMap.set(t.id, current);
+    }
+  }
+
+  return rawTrades.map((t) => ({
+    ...t,
+    remaining_quantity: t.id && calculatedMap.has(t.id) ? calculatedMap.get(t.id) : (t.remaining_quantity || 0),
+  }));
+}
+
 export default function TradesPage() {
   const router = useRouter();
   const { refreshCounts } = useCounts();
@@ -128,7 +157,8 @@ export default function TradesPage() {
           return t;
         });
 
-        setTrades(normalizedTrades as TradeRecordData[]);
+        const withRemaining = computeRemainingQuantities(normalizedTrades as TradeRecordData[]);
+        setTrades(withRemaining);
 
         setYearFilter((prev) => {
           if (prev !== 'ALL') return prev;
@@ -222,7 +252,8 @@ export default function TradesPage() {
           }
           return t;
         });
-        setTrades(normalizedTrades as TradeRecordData[]);
+        const withRemaining = computeRemainingQuantities(normalizedTrades as TradeRecordData[]);
+        setTrades(withRemaining);
       }
     } finally {
       setIsLoadingTrades(false);
@@ -439,7 +470,7 @@ export default function TradesPage() {
 
     const payload: any = {
       user_id: user.id,
-      account_id: tradeData.account_id && !tradeData.account_id.startsWith('default') ? tradeData.account_id : null,
+      account_id: tradeData.account_id,
       trade_date: tradeData.trade_date,
       ticker: cleanTicker,
       trade_type: tradeData.trade_type,
@@ -457,14 +488,26 @@ export default function TradesPage() {
     };
 
     if (modalMode === 'edit' && tradeData.id) {
-      let { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
-      if (error && error.code === 'PGRST204') {
-        await supabase.from('trades').update(payload).eq('id', tradeData.id);
-      }
+      await supabase.from('trades').update(payload).eq('id', tradeData.id);
     } else {
-      let { error } = await supabase.from('trades').insert([payload]);
-      if (error && error.code === 'PGRST204') {
-        await supabase.from('trades').insert([payload]);
+      await supabase.from('trades').insert([payload]);
+    }
+
+    // Recalculate remaining quantities for all trades of this account + ticker
+    const { data: updatedAllTrades } = await supabase
+      .from('trades')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('trade_date', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (updatedAllTrades) {
+      const withRem = computeRemainingQuantities(updatedAllTrades as TradeRecordData[]);
+      // Batch sync remaining_quantity in DB for changed records
+      for (const t of withRem) {
+        if (t.id && t.account_id === tradeData.account_id && t.ticker?.toUpperCase() === cleanTicker) {
+          await supabase.from('trades').update({ remaining_quantity: t.remaining_quantity }).eq('id', t.id);
+        }
       }
     }
 
@@ -476,9 +519,28 @@ export default function TradesPage() {
   const executeDelete = async () => {
     if (!deleteTargetId) return;
 
+    const { data: { user } } = await supabase.auth.getUser();
+    const deletedTrade = trades.find((t) => t.id === deleteTargetId);
+
     const { error } = await supabase.from('trades').delete().eq('id', deleteTargetId);
-    if (!error) {
-      setTrades((prev) => prev.filter((t) => t.id !== deleteTargetId));
+    if (!error && user && deletedTrade) {
+      // Recalculate and update remaining quantities after deletion
+      const { data: remainingTrades } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('trade_date', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (remainingTrades) {
+        const withRem = computeRemainingQuantities(remainingTrades as TradeRecordData[]);
+        for (const t of withRem) {
+          if (t.id && t.account_id === deletedTrade.account_id && t.ticker?.toUpperCase() === deletedTrade.ticker?.toUpperCase()) {
+            await supabase.from('trades').update({ remaining_quantity: t.remaining_quantity }).eq('id', t.id);
+          }
+        }
+      }
+      await fetchTrades();
       refreshCounts();
     }
     setDeleteTargetId(null);
@@ -691,14 +753,15 @@ export default function TradesPage() {
                   <col className="w-[95px] min-[1920px]:w-[105px]" />
                   <col className="w-[135px] min-[1920px]:w-[145px]" />
                   <col className="w-[110px] min-[1920px]:w-[120px]" />
+                  <col className="w-[95px] min-[1920px]:w-[105px]" />
                   <col className="w-[110px] min-[1920px]:w-[300px]" />
                   <col />
                   <col className="w-[75px] min-[1920px]:w-[85px]" />
                 </colgroup>
                 <colgroup className="sm:hidden">
-                  <col className="w-[54%]" />
-                  <col className="w-[38%]" />
-                  <col className="w-[8%]" />
+                  <col className="w-[52%]" />
+                  <col className="w-[36%]" />
+                  <col className="w-[12%]" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
@@ -738,25 +801,28 @@ export default function TradesPage() {
                     {/* 9. 환율 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-right font-medium">환율</th>
 
-                    {/* 10. 계좌 */}
+                    {/* 10. 잔여수량 */}
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right font-medium">잔여수량</th>
+
+                    {/* 11. 계좌 */}
                     <th className="hidden lg:table-cell py-2.5 px-2 text-center font-medium">계좌</th>
 
-                    {/* 11. 비고 (Desktop Only) */}
+                    {/* 12. 비고 (Desktop Only) */}
                     <th className="hidden lg:table-cell py-2.5 px-3 text-left font-medium">비고</th>
 
-                    {/* 12. 작업 */}
+                    {/* 13. 작업 */}
                     <th className="hidden sm:table-cell py-2.5 px-2 text-center font-medium">작업</th>
 
                     {/* Mobile 3-Column Headers (Single Line with whitespace-nowrap) */}
                     <th className="sm:hidden py-2 px-2 text-left font-medium text-[10.5px] whitespace-nowrap">매매일자 / 종목</th>
                     <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px] whitespace-nowrap">단가·수량 / 거래금액</th>
-                    <th className="sm:hidden py-2 px-1 text-left font-medium text-[10.5px] whitespace-nowrap">작업</th>
+                    <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px] whitespace-nowrap">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {isLoadingTrades ? (
                     <tr>
-                      <td colSpan={12} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                      <td colSpan={13} className="py-12 text-center text-xs text-[var(--fg-muted)]">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
                           <span>매매 내역을 불러오는 중입니다...</span>
@@ -765,7 +831,7 @@ export default function TradesPage() {
                     </tr>
                   ) : filteredTrades.length === 0 ? (
                     <tr>
-                      <td colSpan={12} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                      <td colSpan={13} className="py-12 text-center text-xs text-[var(--fg-muted)]">
                         등록된 매매 내역이 없습니다. 오른쪽 상단 &quot;+&quot; 버튼을 눌러 추가해 주세요.
                       </td>
                     </tr>
@@ -796,10 +862,10 @@ export default function TradesPage() {
                             {item.trade_date}
                           </td>
 
-                          {/* 2. 구분 (Desktop: Normal non-bold badge) */}
+                          {/* 2. 구분 (Desktop: 매도(-)는 빨간색, 매수는 녹색) */}
                           <td className="hidden sm:table-cell py-3 px-2 text-center">
                             <span
-                              className={`inline-block rounded-full px-2 py-0.5 text-xs font-normal border ${
+                              className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold border whitespace-nowrap ${
                                 isSell
                                   ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
                                   : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
@@ -809,41 +875,42 @@ export default function TradesPage() {
                             </span>
                           </td>
 
-                          {/* 3. 티커 (Desktop: Click to search) */}
+                          {/* 3. 티커 (Desktop: 클릭 시 필터 검색 연동) */}
                           <td
                             onClick={() => setSearchQuery(item.ticker)}
-                            className="hidden sm:table-cell py-3 px-2.5 text-center text-xs text-[var(--fg)] font-normal cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
+                            className="hidden sm:table-cell py-3 px-2.5 text-center text-xs font-semibold text-[var(--fg)] cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
                             title={`"${item.ticker}" 검색`}
                           >
                             {item.ticker}
                           </td>
 
-                          {/* 4. 종목 (Desktop: Stock master list typography, Click to search) */}
+                          {/* 4. 종목 (Desktop: Joined Stock Master Name, Click to search) */}
                           <td
-                            onClick={() => setSearchQuery(fullName)}
-                            className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
+                            onClick={() => setSearchQuery(shortName)}
+                            className="hidden sm:table-cell py-3 px-3 text-left text-xs font-semibold text-[var(--fg)] truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
                             title={`"${fullName}" 검색`}
                           >
-                            <span className="hidden lg:inline">{fullName}</span>
-                            <span className="inline lg:hidden">{shortName}</span>
+                            {shortName}
                           </td>
 
-                          {/* 5. 통화 (Desktop: Flag icon only) */}
-                          <td className="hidden sm:table-cell py-3 px-2 text-center">
-                            {renderFlagEmoji(item.currency)}
+                          {/* 5. 통화 (Desktop: Standard Flag & Text) */}
+                          <td className="hidden sm:table-cell py-3 px-2 text-center text-xs font-normal text-[var(--fg)]">
+                            <div className="flex items-center justify-center gap-1">
+                              {renderFlagEmoji(item.currency)}
+                              <span>{item.currency}</span>
+                            </div>
                           </td>
 
-                          {/* 6. 단가 (Desktop: Dynamically converted with currency symbol and commas) */}
+                          {/* 6. 단가 (Desktop: Formatted with currency symbol and commas) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg)] font-normal">
                             {currSymbol} {currencyViewMode === 'KRW'
                               ? Math.round(displayPrice).toLocaleString()
                               : displayPrice.toLocaleString(undefined, {
                                   minimumFractionDigits: item.currency === 'KRW' ? 0 : 2,
-                                  maximumFractionDigits: 4,
                                 })}
                           </td>
 
-                          {/* 7. 수량 (Desktop: Formatted with commas, 매도(-)는 빨간색, 매수(+)는 또렷한 텍스트) */}
+                          {/* 7. 수량 (Desktop: 매도(-)는 빨간색) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right text-xs font-normal">
                             {isSell ? (
                               <span className="text-red-500 dark:text-red-400">
@@ -874,7 +941,12 @@ export default function TradesPage() {
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 계좌 (Desktop: 계좌명 우선 표출, 1920px+ 300px 공간 활용) */}
+                          {/* 10. 잔여수량 (Desktop: 수량과 동일 폭, 소수점 지원) */}
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg)] font-medium">
+                            {(item.remaining_quantity !== undefined ? item.remaining_quantity : 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}주
+                          </td>
+
+                          {/* 11. 계좌 (Desktop: 계좌명 우선 표출, 1920px+ 300px 공간 활용) */}
                           <td className="hidden lg:table-cell py-3 px-2 text-center">
                             {(() => {
                               const linkedAccount = item.account_id ? accountsMap[item.account_id] : item.accounts;
@@ -889,7 +961,7 @@ export default function TradesPage() {
                             })()}
                           </td>
 
-                          {/* 11. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}
+                          {/* 12. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}
                           <td
                             onClick={() => item.notes && setSearchQuery(item.notes)}
                             className={`hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg)] font-normal truncate ${
@@ -900,7 +972,7 @@ export default function TradesPage() {
                             {item.notes || '-'}
                           </td>
 
-                          {/* 12. 작업 (Desktop) */}
+                          {/* 13. 작업 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-2 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
@@ -1027,6 +1099,7 @@ export default function TradesPage() {
         initialData={editingTrade}
         stocks={stocks}
         accounts={accounts}
+        allTrades={trades}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveTrade}
       />

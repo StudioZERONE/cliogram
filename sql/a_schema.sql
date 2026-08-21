@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.trades (
   ticker TEXT NOT NULL,
   trade_type TEXT NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
   quantity NUMERIC NOT NULL CHECK (quantity != 0),
+  remaining_quantity NUMERIC,
   price NUMERIC NOT NULL CHECK (price >= 0),
   currency TEXT NOT NULL CHECK (currency IN ('KRW', 'USD', 'EUR', 'JPY', 'CNY')),
   exchange_rate NUMERIC DEFAULT 1,

@@ -57,7 +57,7 @@ export function AccountSelect({ accounts, value, onChange, className = '', disab
   const selectedAccount = accounts.find((a) => a.id === value);
   const displayLabel = selectedAccount
     ? formatAccountLabel(selectedAccount)
-    : accounts.length > 0 ? '계좌 선택 (미지정)' : '등록된 계좌 없음';
+    : accounts.length > 0 ? '계좌를 선택해 주세요' : '등록된 계좌 없음';
 
   const handleSelect = (id: string) => {
     onChange(id);
@@ -97,18 +97,6 @@ export function AccountSelect({ accounts, value, onChange, className = '', disab
             </div>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={() => handleSelect('')}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs sm:text-sm transition-colors cursor-pointer ${
-                  value === ''
-                    ? 'bg-[var(--accent)]/10 font-bold text-[var(--accent)]'
-                    : 'text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]'
-                }`}
-              >
-                <span>계좌 선택 (미지정)</span>
-                {value === '' && <Check className="h-3.5 w-3.5 text-[var(--accent)]" />}
-              </button>
               {accounts.map((item) => {
                 const isSelected = item.id === value;
                 const label = formatAccountLabel(item);
