@@ -449,9 +449,10 @@ export default function TradesPage() {
     // 1. Auto-insert/upsert into stocks master table if ticker is new
     const cleanTicker = tradeData.ticker?.trim().toUpperCase();
     const existingStock = stocks.find((s) => s.ticker?.toUpperCase() === cleanTicker);
+    const stockName = tradeData.resolvedStock?.name || existingStock?.name || cleanTicker;
+    const stockShortName = tradeData.resolvedStock?.short_name || existingStock?.short_name || stockName;
+
     if (!existingStock && cleanTicker) {
-      const stockName = tradeData.resolvedStock?.name || cleanTicker;
-      const stockShortName = tradeData.resolvedStock?.short_name || stockName;
       const stockType = tradeData.resolvedStock?.type || 'Growth';
       const stockCurrency = tradeData.currency || 'USD';
       const stockMarket = tradeData.resolvedStock?.market || '';
@@ -477,6 +478,7 @@ export default function TradesPage() {
       account_id: tradeData.account_id ? tradeData.account_id : null,
       trade_date: tradeData.trade_date,
       ticker: cleanTicker,
+      stock_name: stockName,
       trade_type: tradeData.trade_type,
       quantity: tradeData.quantity,
       price: tradeData.price,
@@ -494,11 +496,16 @@ export default function TradesPage() {
     if (modalMode === 'edit' && tradeData.id) {
       let { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
 
-      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee columns
-      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee or stock_name columns in cache
+      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('stock_name') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
         const fallbackPayload = { ...payload };
-        delete fallbackPayload.foreign_fee;
-        delete fallbackPayload.foreign_tax;
+        if (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204') {
+          delete fallbackPayload.foreign_fee;
+          delete fallbackPayload.foreign_tax;
+        }
+        if (error.message?.includes('stock_name') && error.code === 'PGRST204') {
+          delete fallbackPayload.stock_name;
+        }
         const fallbackRes = await supabase.from('trades').update(fallbackPayload).eq('id', tradeData.id);
         error = fallbackRes.error;
       }
@@ -510,11 +517,16 @@ export default function TradesPage() {
     } else {
       let { error } = await supabase.from('trades').insert([payload]);
 
-      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee columns
-      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee or stock_name columns in cache
+      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('stock_name') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
         const fallbackPayload = { ...payload };
-        delete fallbackPayload.foreign_fee;
-        delete fallbackPayload.foreign_tax;
+        if (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204') {
+          delete fallbackPayload.foreign_fee;
+          delete fallbackPayload.foreign_tax;
+        }
+        if (error.message?.includes('stock_name') && error.code === 'PGRST204') {
+          delete fallbackPayload.stock_name;
+        }
         const fallbackRes = await supabase.from('trades').insert([fallbackPayload]);
         error = fallbackRes.error;
       }

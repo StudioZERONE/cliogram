@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS public.trades (
   account_id UUID REFERENCES public.accounts(id) ON DELETE SET NULL,
   trade_date DATE NOT NULL,
   ticker TEXT NOT NULL,
+  stock_name TEXT,
   trade_type TEXT NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
   quantity NUMERIC NOT NULL CHECK (quantity != 0),
   remaining_quantity NUMERIC,

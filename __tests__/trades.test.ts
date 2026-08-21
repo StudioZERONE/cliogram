@@ -442,6 +442,39 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     expect(res.payload.foreign_fee).toBeUndefined();
     expect(res.payload.ticker).toBe('AAPL');
   });
+
+  it('ensures stock_name is always populated from resolved stock or ticker in trade payload', () => {
+    const buildTradePayload = (tradeData: any, stocks: any[]) => {
+      const cleanTicker = tradeData.ticker?.trim().toUpperCase();
+      const existingStock = stocks.find((s) => s.ticker?.toUpperCase() === cleanTicker);
+      const stockName = tradeData.resolvedStock?.name || existingStock?.name || cleanTicker;
+      return {
+        ticker: cleanTicker,
+        stock_name: stockName,
+        quantity: tradeData.quantity,
+        price: tradeData.price,
+      };
+    };
+
+    const payload1 = buildTradePayload(
+      { ticker: '005380', quantity: 2, price: 4000, resolvedStock: { name: '현대차' } },
+      []
+    );
+    expect(payload1.stock_name).toBe('현대차');
+    expect(payload1.ticker).toBe('005380');
+
+    const payload2 = buildTradePayload(
+      { ticker: 'TSLA', quantity: 5, price: 200 },
+      [{ ticker: 'TSLA', name: '테슬라' }]
+    );
+    expect(payload2.stock_name).toBe('테슬라');
+
+    const payload3 = buildTradePayload(
+      { ticker: 'UNKNOWN', quantity: 1, price: 100 },
+      []
+    );
+    expect(payload3.stock_name).toBe('UNKNOWN');
+  });
 });
 
 
