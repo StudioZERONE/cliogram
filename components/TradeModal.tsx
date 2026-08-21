@@ -77,7 +77,7 @@ export function TradeModal({
       if (mode === 'edit' && initialData) {
         setTradeDate(initialData.trade_date ? new Date(initialData.trade_date) : new Date());
         setTicker(initialData.ticker || '');
-        
+
         // If SELL, make sure quantity reflects negative sign
         const rawQty = initialData.quantity || 0;
         const signedQty = initialData.trade_type === 'SELL' ? -Math.abs(rawQty) : Math.abs(rawQty);
@@ -343,9 +343,8 @@ export function TradeModal({
                 placeholder="+10 또는 -10"
                 value={quantity}
                 onChange={(e) => setQuantity(formatCommaString(e.target.value))}
-                className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
-                  parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
-                }`}
+                className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
+                  }`}
                 required
               />
             </div>

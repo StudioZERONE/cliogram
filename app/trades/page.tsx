@@ -155,6 +155,16 @@ export default function TradesPage() {
     return { fullName: itemTicker, shortName: itemTicker };
   };
 
+  // Universal Currency Symbol Helper (Always outputs appropriate symbol for every currency)
+  const getCurrencySymbol = (mode: CurrencyViewMode, curr?: string) => {
+    if (mode === 'KRW') return '₩';
+    if (curr === 'USD') return '$';
+    if (curr === 'KRW') return '₩';
+    if (curr === 'EUR') return '€';
+    if (curr === 'JPY' || curr === 'CNY') return '¥';
+    return curr || '$';
+  };
+
   const typeFilterOptions: FilterOption[] = useMemo(() => [
     { value: 'ALL', label: '전체' },
     { value: 'BUY', label: '매수' },
@@ -433,26 +443,26 @@ export default function TradesPage() {
               </div>
             </div>
 
-            {/* Data Table View (Fixed Layout with Explicit Dynamic Auto-Width for Stock & Notes) */}
+            {/* Data Table View (Proportional Responsive Column Layout for All Screens up to 5K Ultra-wide) */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
-                {/* Explicit Column Width Groups for Stability */}
+                {/* Proportional Column Width Distribution for Perfect Scaling across 1080p, 4K, and 5120px Ultra-wide */}
                 <colgroup className="hidden sm:table-column-group">
-                  <col className="w-[105px]" /> {/* 1. 매매일자 */}
-                  <col className="w-[65px]" />  {/* 2. 구분 */}
-                  <col className="w-[85px]" />  {/* 3. 티커 */}
-                  <col />                       {/* 4. 종목 (자동 가변 폭) */}
-                  <col className="w-[55px]" />  {/* 5. 통화 */}
-                  <col className="w-[110px]" /> {/* 6. 단가 */}
-                  <col className="w-[95px]" />  {/* 7. 수량 */}
-                  <col className="w-[135px]" /> {/* 8. 거래금액 */}
-                  <col className="w-[110px]" /> {/* 9. 환율 */}
-                  <col />                       {/* 10. 비고 (자동 가변 폭) */}
-                  <col className="w-[75px]" />  {/* 11. 작업 */}
+                  <col className="w-[8%]" />  {/* 1. 매매일자 */}
+                  <col className="w-[5%]" />  {/* 2. 구분 */}
+                  <col className="w-[7%]" />  {/* 3. 티커 */}
+                  <col className="w-[20%]" /> {/* 4. 종목 */}
+                  <col className="w-[5%]" />  {/* 5. 통화 */}
+                  <col className="w-[10%]" /> {/* 6. 단가 */}
+                  <col className="w-[9%]" />  {/* 7. 수량 */}
+                  <col className="w-[13%]" /> {/* 8. 거래금액 */}
+                  <col className="w-[9%]" />  {/* 9. 환율 */}
+                  <col className="w-[18%]" /> {/* 10. 비고 */}
+                  <col className="w-[6%]" />  {/* 11. 작업 */}
                 </colgroup>
                 <colgroup className="sm:hidden">
-                  <col className="w-[52%]" /> {/* 1. 매매일자 / 종목 */}
-                  <col className="w-[38%]" /> {/* 2. 단가·수량 / 거래금액 */}
+                  <col className="w-[50%]" /> {/* 1. 매매일자 / 종목 */}
+                  <col className="w-[40%]" /> {/* 2. 단가·수량 / 거래금액 */}
                   <col className="w-[10%]" /> {/* 3. 작업 */}
                 </colgroup>
 
@@ -530,7 +540,7 @@ export default function TradesPage() {
                         : rawAmount;
 
                       const { fullName, shortName } = resolveStockDisplayName(item.ticker, (item as any).stock_name);
-                      const currSymbol = currencyViewMode === 'KRW' ? '₩' : item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '';
+                      const currSymbol = getCurrencySymbol(currencyViewMode, item.currency);
 
                       return (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
@@ -568,9 +578,9 @@ export default function TradesPage() {
                             {renderFlagEmoji(item.currency)}
                           </td>
 
-                          {/* 6. 단가 (Desktop: Dynamically converted with commas on KRW toggle) */}
+                          {/* 6. 단가 (Desktop: Dynamically converted with currency symbol and commas) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg)] font-normal">
-                            {currencyViewMode === 'KRW'
+                            {currSymbol} {currencyViewMode === 'KRW'
                               ? Math.round(displayPrice).toLocaleString()
                               : displayPrice.toLocaleString(undefined, {
                                   minimumFractionDigits: item.currency === 'KRW' ? 0 : 2,
@@ -591,7 +601,7 @@ export default function TradesPage() {
                             )}
                           </td>
 
-                          {/* 8. 거래금액 (Desktop: Formatted with commas, 매도(-)는 빨간색, 매수(+)는 또렷한 텍스트) */}
+                          {/* 8. 거래금액 (Desktop: Formatted with currency symbol and commas, 매도(-)는 빨간색) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-right text-xs font-normal">
                             {isSell ? (
                               <span className="text-red-500 dark:text-red-400">
@@ -599,7 +609,7 @@ export default function TradesPage() {
                               </span>
                             ) : (
                               <span className="text-[var(--fg)]">
-                                {currSymbol} {Math.round(Math.abs(displayAmount)).toLocaleString()}
+                                {currSymbol} {Math.round(displayAmount).toLocaleString()}
                               </span>
                             )}
                           </td>
@@ -635,10 +645,10 @@ export default function TradesPage() {
                           </td>
 
                           {/* Mobile 3-Column Cells */}
-                          {/* Mobile Col 1: 매매일자(크기 확대) + 구분 배지 (1행), 줄간격 확대 + 짧은 종목명 (2행) */}
+                          {/* Mobile Col 1: 매매일자(non-bold) + 구분 배지 (1행), 줄간격 확대 + 짧은 종목명 (2행) */}
                           <td className="sm:hidden py-3 px-3 text-left">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-[var(--fg)] font-bold">{item.trade_date}</span>
+                              <span className="text-xs text-[var(--fg)] font-normal">{item.trade_date}</span>
                               <span
                                 className={`inline-block rounded-full px-1.5 py-0.5 text-[10px] font-bold border ${
                                   isSell
@@ -654,18 +664,18 @@ export default function TradesPage() {
                             </p>
                           </td>
 
-                          {/* Mobile Col 2: 단가·수량(@ 제거, 환산 반영) (1행), 거래금액 (2행) */}
+                          {/* Mobile Col 2: 단가(통화기호 포함, non-bold) x 수량(non-bold) (1행), 거래금액(통화기호 포함) (2행) */}
                           <td className="sm:hidden py-3 px-3 text-right">
-                            <div className="text-xs font-medium text-[var(--fg)] flex items-center justify-end gap-1">
+                            <div className="text-xs font-normal text-[var(--fg)] flex items-center justify-end">
                               <span>
-                                {currencyViewMode === 'KRW'
+                                {currSymbol} {currencyViewMode === 'KRW'
                                   ? Math.round(displayPrice).toLocaleString()
                                   : displayPrice.toLocaleString(undefined, {
                                       minimumFractionDigits: item.currency === 'KRW' ? 0 : 2,
                                     })}
                               </span>
-                              <span className="text-[var(--fg-muted)]">·</span>
-                              <span className={isSell ? 'text-red-500 font-bold' : 'text-[var(--fg)] font-semibold'}>
+                              <span className="text-[var(--fg-muted)] font-normal mx-1">x</span>
+                              <span className={isSell ? 'text-red-500 font-normal' : 'text-[var(--fg)] font-normal'}>
                                 {displayQty.toLocaleString()}주
                               </span>
                             </div>
