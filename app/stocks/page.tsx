@@ -26,6 +26,7 @@ import { FilterDropdown, FilterOption } from '@/components/FilterDropdown';
 import { useCounts } from '@/components/CountsProvider';
 import { useToast } from '@/components/ToastProvider';
 import { getCommonCodes, CommonCode } from '@/lib/codes';
+import { lookupTickerInfo } from '@/lib/stock-ticker';
 
 export interface StockRecord {
   id?: string;
@@ -58,6 +59,7 @@ export default function StocksPage() {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('ALL');
   const [marketFilter, setMarketFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
@@ -116,21 +118,69 @@ export default function StocksPage() {
         .order('name', { ascending: true })
         .order('ticker', { ascending: true });
 
-      if (data) {
-        const normalizedData: StockRecord[] = data.map((item: any) => ({
-          id: item.id,
-          user_id: item.user_id,
-          ticker: item.ticker,
-          name: item.name,
-          short_name: item.short_name || item.name,
-          type: item.type || 'Growth',
-          currency: item.currency || 'USD',
-          market: item.market || 'NASDAQ',
-          is_active: item.is_active ?? true,
-          created_at: item.created_at,
-        }));
-        setStocks(normalizedData);
+      let currentStocks = data || [];
+
+      // Auto-sync missing trade tickers into stocks master
+      const { data: userTrades } = await supabase
+        .from('trades')
+        .select('ticker, stock_name, currency')
+        .eq('user_id', user.id);
+
+      if (userTrades && userTrades.length > 0) {
+        const existingTickerSet = new Set(currentStocks.map((s: any) => s.ticker?.toUpperCase()));
+        const missingTrades = userTrades.filter(
+          (t: any) => t.ticker && !existingTickerSet.has(t.ticker.toUpperCase())
+        );
+
+        if (missingTrades.length > 0) {
+          const addedTickers = new Set<string>();
+          for (const t of missingTrades) {
+            const tick = t.ticker.toUpperCase().trim();
+            if (addedTickers.has(tick)) continue;
+            addedTickers.add(tick);
+
+            const preset = lookupTickerInfo(tick);
+            const stockName = t.stock_name || preset?.name || tick;
+            const stockShortName = preset?.short_name || stockName;
+            const stockCurrency = t.currency || preset?.currency || 'USD';
+            const stockMarket = preset?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
+
+            await supabase.from('stocks').insert([{
+              user_id: user.id,
+              ticker: tick,
+              name: stockName,
+              short_name: stockShortName,
+              type: 'Growth',
+              currency: stockCurrency,
+              market: stockMarket,
+              is_active: true,
+            }]);
+          }
+
+          const { data: refetched } = await supabase
+            .from('stocks')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('name', { ascending: true })
+            .order('ticker', { ascending: true });
+
+          if (refetched) currentStocks = refetched;
+        }
       }
+
+      const normalizedData: StockRecord[] = currentStocks.map((item: any) => ({
+        id: item.id,
+        user_id: item.user_id,
+        ticker: item.ticker,
+        name: item.name,
+        short_name: item.short_name || item.name,
+        type: item.type || 'Growth',
+        currency: item.currency || 'USD',
+        market: item.market || 'NASDAQ',
+        is_active: item.is_active ?? true,
+        created_at: item.created_at,
+      }));
+      setStocks(normalizedData);
     } finally {
       setIsLoadingStocks(false);
     }

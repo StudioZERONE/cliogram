@@ -13,6 +13,7 @@ import { TradeModal, TradeRecordData, StockOption, AccountOption } from '@/compo
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
 import { useToast } from '@/components/ToastProvider';
+import { lookupTickerInfo } from '@/lib/stock-ticker';
 
 type SortField = 'trade_date' | 'ticker' | 'stock_name' | 'total_amount';
 type SortDirection = 'asc' | 'desc';
@@ -128,22 +129,74 @@ export default function TradesPage() {
         );
       }
 
+      let loadedStocks: StockOption[] = [];
       if (stocksRes.data) {
-        setStocks(
-          stocksRes.data.map((s: any) => ({
-            id: s.id,
-            ticker: s.ticker,
-            name: s.name,
-            short_name: s.short_name || s.name,
-            currency: s.currency || 'USD',
-            market: s.market || '',
-            is_active: s.is_active ?? true,
-          }))
-        );
+        loadedStocks = stocksRes.data.map((s: any) => ({
+          id: s.id,
+          ticker: s.ticker,
+          name: s.name,
+          short_name: s.short_name || s.name,
+          currency: s.currency || 'USD',
+          market: s.market || '',
+          is_active: s.is_active ?? true,
+        }));
       }
 
       if (tradesRes.data) {
-        const normalizedTrades = tradesRes.data.map((t: any) => {
+        const rawTrades = tradesRes.data;
+        // Auto-sync missing trade tickers into stocks master
+        const existingTickerSet = new Set(loadedStocks.map((s) => s.ticker?.toUpperCase()));
+        const missingTrades = rawTrades.filter(
+          (t: any) => t.ticker && !existingTickerSet.has(t.ticker.toUpperCase())
+        );
+
+        if (missingTrades.length > 0) {
+          const addedTickers = new Set<string>();
+          for (const t of missingTrades) {
+            const tick = t.ticker.toUpperCase().trim();
+            if (addedTickers.has(tick)) continue;
+            addedTickers.add(tick);
+
+            const preset = lookupTickerInfo(tick);
+            const stockName = t.stock_name || preset?.name || tick;
+            const stockShortName = preset?.short_name || stockName;
+            const stockCurrency = t.currency || preset?.currency || 'USD';
+            const stockMarket = preset?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
+
+            await supabase.from('stocks').insert([{
+              user_id: user.id,
+              ticker: tick,
+              name: stockName,
+              short_name: stockShortName,
+              type: 'Growth',
+              currency: stockCurrency,
+              market: stockMarket,
+              is_active: true,
+            }]);
+          }
+
+          const { data: refetched } = await supabase
+            .from('stocks')
+            .select('id, ticker, name, short_name, currency, market, is_active')
+            .eq('user_id', user.id)
+            .order('name', { ascending: true });
+
+          if (refetched) {
+            loadedStocks = refetched.map((s: any) => ({
+              id: s.id,
+              ticker: s.ticker,
+              name: s.name,
+              short_name: s.short_name || s.name,
+              currency: s.currency || 'USD',
+              market: s.market || '',
+              is_active: s.is_active ?? true,
+            }));
+          }
+        }
+
+        setStocks(loadedStocks);
+
+        const normalizedTrades = rawTrades.map((t: any) => {
           if (t.trade_type === 'SELL' && t.quantity > 0) {
             const negQty = -Math.abs(t.quantity);
             const negAmount = -Math.abs(t.total_amount || t.quantity * t.price);
@@ -174,6 +227,8 @@ export default function TradesPage() {
 
           return distinctYears.length > 0 ? distinctYears[0] : 'ALL';
         });
+      } else {
+        setStocks(loadedStocks);
       }
     } finally {
       setIsLoadingTrades(false);
@@ -446,30 +501,40 @@ export default function TradesPage() {
       throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
     }
 
-    // 1. Auto-insert/upsert into stocks master table if ticker is new
+    // 1. Auto-insert into stocks master table if ticker is new
     const cleanTicker = tradeData.ticker?.trim().toUpperCase();
     const existingStock = stocks.find((s) => s.ticker?.toUpperCase() === cleanTicker);
     const stockName = tradeData.resolvedStock?.name || existingStock?.name || cleanTicker;
     const stockShortName = tradeData.resolvedStock?.short_name || existingStock?.short_name || stockName;
 
     if (!existingStock && cleanTicker) {
-      const stockType = tradeData.resolvedStock?.type || 'Growth';
-      const stockCurrency = tradeData.currency || 'USD';
-      const stockMarket = tradeData.resolvedStock?.market || '';
+      const { data: dbExisting } = await supabase
+        .from('stocks')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('ticker', cleanTicker)
+        .maybeSingle();
 
-      const { error: stockErr } = await supabase.from('stocks').upsert([{
-        user_id: user.id,
-        ticker: cleanTicker,
-        name: stockName,
-        short_name: stockShortName,
-        type: stockType,
-        currency: stockCurrency,
-        market: stockMarket,
-        is_active: true,
-      }], { onConflict: 'user_id, ticker' });
+      if (!dbExisting) {
+        const stockCurrency = tradeData.currency || (tradeData.resolvedStock?.currency || 'USD');
+        const stockMarket = tradeData.resolvedStock?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
 
-      if (!stockErr) {
-        await fetchStocks();
+        const { error: stockErr } = await supabase.from('stocks').insert([{
+          user_id: user.id,
+          ticker: cleanTicker,
+          name: stockName,
+          short_name: stockShortName,
+          type: 'Growth', // 고정값: 성장주 (Growth)
+          currency: stockCurrency,
+          market: stockMarket,
+          is_active: true,
+        }]);
+
+        if (!stockErr) {
+          await fetchStocks();
+        } else {
+          console.error('Failed to auto-insert into stocks master:', stockErr);
+        }
       }
     }
 
@@ -496,16 +561,11 @@ export default function TradesPage() {
     if (modalMode === 'edit' && tradeData.id) {
       let { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
 
-      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee or stock_name columns in cache
-      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('stock_name') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      // Schema Cache Fallback: Only if remote DB table lacks foreign_tax or foreign_fee columns
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache')) && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee'))) {
         const fallbackPayload = { ...payload };
-        if (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204') {
-          delete fallbackPayload.foreign_fee;
-          delete fallbackPayload.foreign_tax;
-        }
-        if (error.message?.includes('stock_name') && error.code === 'PGRST204') {
-          delete fallbackPayload.stock_name;
-        }
+        delete fallbackPayload.foreign_fee;
+        delete fallbackPayload.foreign_tax;
         const fallbackRes = await supabase.from('trades').update(fallbackPayload).eq('id', tradeData.id);
         error = fallbackRes.error;
       }
@@ -517,16 +577,11 @@ export default function TradesPage() {
     } else {
       let { error } = await supabase.from('trades').insert([payload]);
 
-      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee or stock_name columns in cache
-      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('stock_name') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      // Schema Cache Fallback: Only if remote DB table lacks foreign_tax or foreign_fee columns
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache')) && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee'))) {
         const fallbackPayload = { ...payload };
-        if (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204') {
-          delete fallbackPayload.foreign_fee;
-          delete fallbackPayload.foreign_tax;
-        }
-        if (error.message?.includes('stock_name') && error.code === 'PGRST204') {
-          delete fallbackPayload.stock_name;
-        }
+        delete fallbackPayload.foreign_fee;
+        delete fallbackPayload.foreign_tax;
         const fallbackRes = await supabase.from('trades').insert([fallbackPayload]);
         error = fallbackRes.error;
       }

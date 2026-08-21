@@ -475,6 +475,37 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     );
     expect(payload3.stock_name).toBe('UNKNOWN');
   });
+
+  it('assigns Growth as the fixed default type for auto-registered stocks from trades', () => {
+    const buildAutoRegisteredStock = (ticker: string, tradeCurrency: string, resolved?: any) => {
+      const cleanTicker = ticker.trim().toUpperCase();
+      const stockName = resolved?.name || cleanTicker;
+      const stockShortName = resolved?.short_name || stockName;
+      const stockCurrency = tradeCurrency || resolved?.currency || 'USD';
+      const stockMarket = resolved?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
+
+      return {
+        ticker: cleanTicker,
+        name: stockName,
+        short_name: stockShortName,
+        type: 'Growth', // 고정값: 성장주 (Growth)
+        currency: stockCurrency,
+        market: stockMarket,
+        is_active: true,
+      };
+    };
+
+    const newStock1 = buildAutoRegisteredStock('005380', 'KRW', { name: '현대차', short_name: '현대차', market: 'KRX' });
+    expect(newStock1.type).toBe('Growth');
+    expect(newStock1.name).toBe('현대차');
+    expect(newStock1.market).toBe('KRX');
+    expect(newStock1.currency).toBe('KRW');
+
+    const newStock2 = buildAutoRegisteredStock('NVDA', 'USD');
+    expect(newStock2.type).toBe('Growth');
+    expect(newStock2.market).toBe('NASDAQ');
+    expect(newStock2.currency).toBe('USD');
+  });
 });
 
 
