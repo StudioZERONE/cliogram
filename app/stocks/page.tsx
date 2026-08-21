@@ -144,13 +144,24 @@ function StocksContent() {
         const existingTickerSet = new Set(
           currentStocks.map((s: any) => s.ticker?.trim()?.toUpperCase()).filter(Boolean)
         );
-        const missingTickers = Array.from(
+        let missingTickers = Array.from(
           new Set(
             userTrades
               .map((t: any) => t.ticker?.trim()?.toUpperCase())
               .filter((tick: string) => tick && !existingTickerSet.has(tick))
           )
         );
+
+        // If user navigated with action=create or is already in the create modal, do not show toast for that ticker
+        const actionParam = searchParams.get('action');
+        const tickerParam = searchParams.get('ticker')?.trim()?.toUpperCase();
+        if (actionParam === 'create') {
+          if (tickerParam) {
+            missingTickers = missingTickers.filter((t) => t !== tickerParam);
+          } else {
+            missingTickers = [];
+          }
+        }
 
         if (missingTickers.length > 0) {
           const primaryTicker = missingTickers[0];
@@ -372,6 +383,10 @@ function StocksContent() {
       setStocks((prev) =>
         prev.map((s) => (s.ticker === payload.ticker ? { ...s, ...payload } : s))
       );
+    }
+
+    if (searchParams.get('action') === 'create') {
+      router.replace('/stocks');
     }
   };
 
@@ -930,7 +945,12 @@ function StocksContent() {
         mode={stockModal.mode}
         initialData={stockModal.initialData}
         existingTickers={stocks.map((s) => s.ticker)}
-        onClose={() => setStockModal({ ...stockModal, isOpen: false })}
+        onClose={() => {
+          setStockModal({ ...stockModal, isOpen: false });
+          if (searchParams.get('action') === 'create') {
+            router.replace('/stocks');
+          }
+        }}
         onSave={handleSaveStock}
       />
 
