@@ -1,66 +1,46 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { format } from 'date-fns';
-import { Plus, Trash2, Layers, ChevronUp } from 'lucide-react';
+import { Plus, MoreVertical, Edit2, Trash2, Layers, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
-import { CodeSelect } from '@/components/CodeSelect';
+import { FilterDropdown } from '@/components/FilterDropdown';
+import { CurrencyViewToggle, CurrencyViewMode } from '@/components/CurrencyViewToggle';
+import { TradeModal, TradeRecordData, StockOption } from '@/components/TradeModal';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
-
-interface TradeRecord {
-  id?: string;
-  user_id?: string;
-  trade_date: string;
-  stock_name: string;
-  trade_type: 'BUY' | 'SELL';
-  quantity: number;
-  price: number;
-  currency: 'KRW' | 'USD' | 'EUR';
-  fee: number;
-  tax: number;
-  notes?: string;
-}
 
 export default function TradesPage() {
   const router = useRouter();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
-  const [trades, setTrades] = useState<TradeRecord[]>([]);
+
+  // Core Data
+  const [trades, setTrades] = useState<TradeRecordData[]>([]);
+  const [stocks, setStocks] = useState<StockOption[]>([]);
+
+  // Toolbar & Filter States
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('ALL');
+  const [stockFilter, setStockFilter] = useState<string>('ALL');
+  const [currencyViewMode, setCurrencyViewMode] = useState<CurrencyViewMode>('ORIGINAL');
+
+  // Sorting
+  const [sortField, setSortField] = useState<'trade_date' | 'stock_name' | 'total_amount'>('trade_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Modals & Action States
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [editingTrade, setEditingTrade] = useState<TradeRecordData | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // Mobile Form Collapsible Toggle State
-  const [isMobileFormOpen, setIsMobileFormOpen] = useState<boolean>(false);
-
-  const [tradeForm, setTradeForm] = useState<{
-    trade_date: Date;
-    stock_name: string;
-    trade_type: 'BUY' | 'SELL';
-    quantity: string;
-    price: string;
-    currency: 'KRW' | 'USD' | 'EUR';
-    fee: string;
-    tax: string;
-    notes: string;
-  }>({
-    trade_date: new Date(),
-    stock_name: '',
-    trade_type: 'BUY',
-    quantity: '',
-    price: '',
-    currency: 'USD',
-    fee: '0',
-    tax: '0',
-    notes: ''
-  });
-
-  const [allStocks, setAllStocks] = useState<{ ticker: string; name: string; short_name: string; is_active: boolean }[]>([]);
+  // Mobile Action Popover
+  const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
 
   useEffect(() => {
     checkSessionExpiry().then((valid) => {
@@ -70,27 +50,31 @@ export default function TradesPage() {
       }
       setIsAuthChecking(false);
       fetchTrades();
-      fetchAllStocks();
+      fetchStocks();
     });
   }, [router]);
 
-  const fetchAllStocks = async () => {
+  const fetchStocks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data } = await supabase
       .from('stocks')
-      .select('ticker, name, short_name, is_active')
+      .select('id, ticker, name, short_name, currency, is_active')
       .eq('user_id', user.id)
       .order('name', { ascending: true });
 
     if (data) {
-      setAllStocks(data.map((s: any) => ({
-        ticker: s.ticker,
-        name: s.name,
-        short_name: s.short_name || s.name,
-        is_active: s.is_active ?? true,
-      })));
+      setStocks(
+        data.map((s: any) => ({
+          id: s.id,
+          ticker: s.ticker,
+          name: s.name,
+          short_name: s.short_name || s.name,
+          currency: s.currency || 'USD',
+          is_active: s.is_active ?? true,
+        }))
+      );
     }
   };
 
@@ -98,55 +82,188 @@ export default function TradesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('trades')
       .select('*')
       .eq('user_id', user.id)
       .order('trade_date', { ascending: false })
       .order('created_at', { ascending: false });
-    if (data) setTrades(data as TradeRecord[]);
+
+    if (!error && data) {
+      setTrades(data as TradeRecordData[]);
+    }
   };
 
-  const handleAddTrade = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tradeForm.stock_name || !tradeForm.quantity || !tradeForm.price) return;
+  const typeFilterOptions = useMemo(() => [
+    { value: 'ALL', label: '전체' },
+    { value: 'BUY', label: '매수' },
+    { value: 'SELL', label: '매도' },
+  ], []);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.replace('/?error=unauthorized');
-      return;
+  const currencyFilterOptions = useMemo(() => [
+    { value: 'ALL', label: '전체' },
+    { value: 'USD', label: 'USD' },
+    { value: 'KRW', label: 'KRW' },
+    { value: 'EUR', label: 'EUR' },
+  ], []);
+
+  const stockFilterOptions = useMemo(() => {
+    const unique = new Set<string>();
+    trades.forEach((t) => {
+      if (t.stock_name) unique.add(t.stock_name);
+    });
+    return [
+      { value: 'ALL', label: '전체' },
+      ...Array.from(unique).map((name) => ({ value: name, label: name })),
+    ];
+  }, [trades]);
+
+
+
+  // Handle Sort
+  const handleSort = (field: 'trade_date' | 'stock_name' | 'total_amount') => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
     }
+  };
 
-    const newRecord: Partial<TradeRecord> = {
+  // Filter & Sort Trades List
+  const filteredTrades = useMemo(() => {
+    return trades
+      .filter((item) => {
+        // Search Query (ticker, stock_name, notes)
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const matchTicker = item.ticker?.toLowerCase().includes(q);
+          const matchName = item.stock_name?.toLowerCase().includes(q);
+          const matchNotes = item.notes?.toLowerCase().includes(q);
+          if (!matchTicker && !matchName && !matchNotes) return false;
+        }
+
+        // Type Filter
+        if (typeFilter !== 'ALL' && item.trade_type !== typeFilter) return false;
+
+        // Currency Filter
+        if (currencyFilter !== 'ALL' && item.currency !== currencyFilter) return false;
+
+        // Stock Filter
+        if (stockFilter !== 'ALL' && item.stock_name !== stockFilter) return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        let valA: any = a[sortField];
+        let valB: any = b[sortField];
+
+        if (sortField === 'total_amount') {
+          valA = currencyViewMode === 'KRW' ? a.total_amount_krw || a.quantity * a.price * (a.exchange_rate || 1) : a.quantity * a.price;
+          valB = currencyViewMode === 'KRW' ? b.total_amount_krw || b.quantity * b.price * (b.exchange_rate || 1) : b.quantity * b.price;
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+
+        // Secondary tie-breaker: trade_date
+        return new Date(b.trade_date).getTime() - new Date(a.trade_date).getTime();
+      });
+  }, [trades, searchQuery, typeFilter, currencyFilter, stockFilter, sortField, sortDirection, currencyViewMode]);
+
+  // Trade Summary Totals
+  const tradeSummary = useMemo(() => {
+    let buyKrw = 0;
+    let sellKrw = 0;
+    let buyUsd = 0;
+    let sellUsd = 0;
+
+    filteredTrades.forEach((t) => {
+      const amount = t.quantity * t.price;
+      const rate = t.exchange_rate || (t.currency === 'KRW' ? 1 : 1450);
+      const krwAmount = t.total_amount_krw || amount * rate;
+
+      if (t.trade_type === 'BUY') {
+        buyKrw += krwAmount;
+        if (t.currency === 'USD') buyUsd += amount;
+      } else {
+        sellKrw += krwAmount;
+        if (t.currency === 'USD') sellUsd += amount;
+      }
+    });
+
+    return {
+      buyKrw,
+      sellKrw,
+      netKrw: buyKrw - sellKrw,
+      buyUsd,
+      sellUsd,
+      netUsd: buyUsd - sellUsd,
+    };
+  }, [filteredTrades]);
+
+  // Handlers for Save and Delete
+  const handleOpenCreateModal = () => {
+    setModalMode('create');
+    setEditingTrade(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (trade: TradeRecordData) => {
+    setModalMode('edit');
+    setEditingTrade(trade);
+    setIsModalOpen(true);
+    setActivePopoverId(null);
+  };
+
+  const handleSaveTrade = async (tradeData: TradeRecordData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const payload = {
       user_id: user.id,
-      trade_date: format(tradeForm.trade_date, 'yyyy-MM-dd'),
-      stock_name: tradeForm.stock_name,
-      trade_type: tradeForm.trade_type,
-      quantity: parseFloat(tradeForm.quantity),
-      price: parseFloat(tradeForm.price),
-      currency: tradeForm.currency,
-      fee: parseFloat(tradeForm.fee || '0'),
-      tax: parseFloat(tradeForm.tax || '0'),
-      notes: tradeForm.notes
+      trade_date: tradeData.trade_date,
+      ticker: tradeData.ticker,
+      stock_name: tradeData.stock_name,
+      trade_type: tradeData.trade_type,
+      quantity: tradeData.quantity,
+      price: tradeData.price,
+      currency: tradeData.currency,
+      exchange_rate: tradeData.exchange_rate,
+      total_amount: tradeData.total_amount,
+      total_amount_krw: tradeData.total_amount_krw,
+      fee: tradeData.fee,
+      tax: tradeData.tax,
+      notes: tradeData.notes,
     };
 
-    const { data, error } = await supabase.from('trades').insert([newRecord]).select();
-    if (!error && data) {
-      setTrades([data[0] as TradeRecord, ...trades]);
-      setTradeForm({ ...tradeForm, stock_name: '', quantity: '', price: '', notes: '' });
-      setIsMobileFormOpen(false);
-      refreshCounts();
+    if (modalMode === 'edit' && tradeData.id) {
+      let { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
+      if (error && error.code === 'PGRST204') {
+        // Fallback for schema cache
+        await supabase.from('trades').update(payload).eq('id', tradeData.id);
+      }
+    } else {
+      let { error } = await supabase.from('trades').insert([payload]);
+      if (error && error.code === 'PGRST204') {
+        // Fallback for schema cache
+        await supabase.from('trades').insert([payload]);
+      }
     }
+
+    await fetchTrades();
+    refreshCounts();
   };
 
   const executeDelete = async () => {
     if (!deleteTargetId) return;
     const { error } = await supabase.from('trades').delete().eq('id', deleteTargetId);
     if (!error) {
-      setTrades(trades.filter((t) => t.id !== deleteTargetId));
+      setTrades((prev) => prev.filter((t) => t.id !== deleteTargetId));
       refreshCounts();
     }
     setDeleteTargetId(null);
+    setActivePopoverId(null);
   };
 
   if (isAuthChecking) {
@@ -154,10 +271,21 @@ export default function TradesPage() {
   }
 
   const renderFlagEmoji = (curr: string) => {
-    if (curr === 'USD') return <span className="text-xl sm:text-2xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;
-    if (curr === 'KRW') return <span className="text-xl sm:text-2xl leading-none inline-block align-middle" title="대한민국 원 (KRW)">🇰🇷</span>;
-    if (curr === 'EUR') return <span className="text-xl sm:text-2xl leading-none inline-block align-middle" title="유로화 (EUR)">🇪🇺</span>;
-    return <span className="text-xs sm:text-sm font-bold text-[var(--fg-muted)]">{curr}</span>;
+    if (curr === 'USD') return <span className="text-lg leading-none align-middle" title="미국 달러">🇺🇸</span>;
+    if (curr === 'KRW') return <span className="text-lg leading-none align-middle" title="대한민국 원">🇰🇷</span>;
+    if (curr === 'EUR') return <span className="text-lg leading-none align-middle" title="유로화">🇪🇺</span>;
+    if (curr === 'JPY') return <span className="text-lg leading-none align-middle" title="일본 엔화">🇯🇵</span>;
+    if (curr === 'CNY') return <span className="text-lg leading-none align-middle" title="중국 위안화">🇨🇳</span>;
+    return <span className="text-xs font-bold text-[var(--fg-muted)]">{curr}</span>;
+  };
+
+  const renderSortIcon = (field: 'trade_date' | 'stock_name' | 'total_amount') => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 opacity-40 inline ml-1" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 text-emerald-500 inline ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 text-emerald-500 inline ml-1" />
+    );
   };
 
   return (
@@ -168,206 +296,337 @@ export default function TradesPage() {
         <Header title="매매 내역" />
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
-          {/* Top Info Banner Card (Desktop Only - Hidden on Mobile) */}
+          {/* Top Info Banner Card (Desktop Only) */}
           <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
-                주식 매매 내역 관리
+                자산 매매 내역 관제
               </h3>
               <p className="text-sm text-[var(--fg-muted)] mt-1">
-                매수/매도 거래 일자, 수량 및 단가 내역을 기록하고 분석합니다.
+                원화(KRW) 및 외화(USD 등) 주식 매매 거래 내역을 기록하고 실시간 환율을 반영하여 관리합니다.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} />
+            </div>
+          </div>
+
+          {/* Trade Summary Stat Cards */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-5 shadow-xs text-center sm:text-left">
+              <p className="text-[10px] sm:text-xs font-bold text-[var(--fg-muted)]">총 매수 금액</p>
+              <p className="text-xs sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                {currencyViewMode === 'KRW'
+                  ? `₩ ${Math.round(tradeSummary.buyKrw).toLocaleString()}`
+                  : `$ ${tradeSummary.buyUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-5 shadow-xs text-center sm:text-left">
+              <p className="text-[10px] sm:text-xs font-bold text-[var(--fg-muted)]">총 매도 금액</p>
+              <p className="text-xs sm:text-lg font-bold text-red-500 mt-1">
+                {currencyViewMode === 'KRW'
+                  ? `₩ ${Math.round(tradeSummary.sellKrw).toLocaleString()}`
+                  : `$ ${tradeSummary.sellUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-5 shadow-xs text-center sm:text-left">
+              <p className="text-[10px] sm:text-xs font-bold text-[var(--fg-muted)]">순 투자 금액</p>
+              <p className="text-xs sm:text-lg font-bold text-[var(--fg)] mt-1">
+                {currencyViewMode === 'KRW'
+                  ? `₩ ${Math.round(tradeSummary.netKrw).toLocaleString()}`
+                  : `$ ${tradeSummary.netUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
-            {/* Left Panel: Registration Form */}
-            <div
-              className={`lg:col-span-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs h-fit ${
-                isMobileFormOpen ? 'block' : 'hidden lg:block'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3.5 sm:mb-5">
-                <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
-                  <Plus className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-emerald-500" />
-                  매매 내역 신규 등록
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsMobileFormOpen(false)}
-                  className="lg:hidden text-xs text-[var(--fg-muted)] hover:text-[var(--fg)] p-1"
-                >
-                  <ChevronUp className="h-4 w-4" />
-                </button>
+          {/* Section Main Card */}
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs space-y-4">
+            {/* Header Title & Circular Top-Right Add Button */}
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5 sm:pb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-xl font-bold text-[var(--fg)]">
+                  매매 내역 목록
+                </h2>
+                <span className="text-xs sm:text-sm font-bold text-[var(--fg-muted)]">
+                  [{filteredTrades.length} / {trades.length}건]
+                </span>
               </div>
-
-              <form onSubmit={handleAddTrade} className="space-y-3.5 sm:space-y-5">
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">거래 일자</label>
-                  <DatePicker
-                    selected={tradeForm.trade_date}
-                    onChange={(date: Date | null) => date && setTradeForm({ ...tradeForm, trade_date: date })}
-                    dateFormat="yyyy-MM-dd"
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer font-semibold"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">거래 유형</label>
-                    <CodeSelect groupId="TRADE_TYPE" value={tradeForm.trade_type} onChange={(val) => setTradeForm({ ...tradeForm, trade_type: val as any })} />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">통화</label>
-                    <CodeSelect groupId="CURRENCY_CODE" value={tradeForm.currency} onChange={(val) => setTradeForm({ ...tradeForm, currency: val as any })} />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">종목명 / 티커 (사용중지 종목 선택 가능)</label>
-                  <input
-                    type="text"
-                    list="all-stock-list"
-                    placeholder="예: Apple (AAPL)"
-                    value={tradeForm.stock_name}
-                    onChange={(e) => setTradeForm({ ...tradeForm, stock_name: e.target.value })}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
-                  />
-                  <datalist id="all-stock-list">
-                    {allStocks.map((s) => (
-                      <option key={s.ticker} value={`${s.short_name || s.name} (${s.ticker})`}>
-                        {s.name} ({s.ticker}){!s.is_active ? ' [사용중지]' : ''}
-                      </option>
-                    ))}
-                  </datalist>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">거래 수량</label>
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="10"
-                      value={tradeForm.quantity}
-                      onChange={(e) => setTradeForm({ ...tradeForm, quantity: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">거래 단가</label>
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="180.5"
-                      value={tradeForm.price}
-                      onChange={(e) => setTradeForm({ ...tradeForm, price: e.target.value })}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 font-semibold"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--fg-muted)] mb-1 sm:mb-1.5">비고 (선택)</label>
-                  <input
-                    type="text"
-                    placeholder="손절, 해외대체입고 등"
-                    value={tradeForm.notes}
-                    onChange={(e) => setTradeForm({ ...tradeForm, notes: e.target.value })}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-left text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-emerald-600 py-2.5 sm:py-3.5 text-xs sm:text-base font-bold text-white transition-colors shadow-xs cursor-pointer hover:bg-emerald-500 active:scale-98"
-                >
-                  매매 내역 추가하기
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={handleOpenCreateModal}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
+                title="신규 매매 내역 등록"
+                aria-label="신규 매매 내역 등록"
+              >
+                <Plus className="h-5 w-5 stroke-[2.5]" />
+              </button>
             </div>
 
-            {/* Right Panel: High Density Trade List */}
-            <div className="lg:col-span-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-6 shadow-xs">
-              <div className="flex items-center justify-between mb-3.5 sm:mb-5">
-                <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
-                  <span>전체 매매 내역 목록</span>
-                  <span className="text-xs sm:text-sm text-[var(--fg-muted)] font-normal">총 {trades.length}건</span>
-                </h3>
-
-                {/* Circular Green Add Button for Mobile & Desktop List Header */}
-                <button
-                  onClick={() => setIsMobileFormOpen(!isMobileFormOpen)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-                  title="매매 내역 추가"
-                  aria-label="매매 내역 추가"
-                >
-                  <Plus className={`h-5 w-5 stroke-[2.5] transition-transform ${isMobileFormOpen ? 'rotate-45' : ''}`} />
-                </button>
+            {/* Filter Toolbar Section */}
+            {/* Desktop Toolbar: 1-Row Flex */}
+            <div className="hidden sm:flex items-center justify-between gap-3">
+              <div className="flex-1 max-w-sm">
+                <input
+                  type="text"
+                  placeholder="종목명, 티커, 비고 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                />
               </div>
+              <div className="flex items-center gap-2">
+                <FilterDropdown
+                  labelPrefix="구분"
+                  options={typeFilterOptions}
+                  value={typeFilter}
+                  onChange={setTypeFilter}
+                />
+                <FilterDropdown
+                  labelPrefix="통화"
+                  options={currencyFilterOptions}
+                  value={currencyFilter}
+                  onChange={setCurrencyFilter}
+                />
+                <FilterDropdown
+                  labelPrefix="종목"
+                  options={stockFilterOptions}
+                  value={stockFilter}
+                  onChange={setStockFilter}
+                />
+              </div>
+            </div>
 
-              <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-                <table className="w-full text-xs sm:text-sm">
-                  <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
+            {/* Mobile Toolbar: 2-Row Structured Grid */}
+            <div className="sm:hidden space-y-2">
+              {/* Row 1: Search & Currency Toggle */}
+              <div className="flex flex-col gap-2">
+                <input
+                  type="text"
+                  placeholder="종목명, 티커 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                />
+                <div className="flex justify-center w-full">
+                  <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} className="w-full justify-center" />
+                </div>
+              </div>
+              {/* Row 2: 3 Equal Columns Filter Comboboxes */}
+              <div className="grid grid-cols-3 gap-1.5 w-full">
+                <FilterDropdown
+                  labelPrefix="구분"
+                  mobileLabelPrefix="구분"
+                  options={typeFilterOptions}
+                  value={typeFilter}
+                  onChange={setTypeFilter}
+                />
+                <FilterDropdown
+                  labelPrefix="통화"
+                  mobileLabelPrefix="통화"
+                  options={currencyFilterOptions}
+                  value={currencyFilter}
+                  onChange={setCurrencyFilter}
+                />
+                <FilterDropdown
+                  labelPrefix="종목"
+                  mobileLabelPrefix="종목"
+                  options={stockFilterOptions}
+                  value={stockFilter}
+                  onChange={setStockFilter}
+                />
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+              <table className="w-full text-xs sm:text-sm">
+                <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
+                  <tr>
+                    {/* Desktop Headers */}
+                    <th onClick={() => handleSort('trade_date')} className="hidden sm:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)]">
+                      거래일자 {renderSortIcon('trade_date')}
+                    </th>
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-center">구분</th>
+                    <th onClick={() => handleSort('stock_name')} className="hidden sm:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)]">
+                      종목명 (티커) {renderSortIcon('stock_name')}
+                    </th>
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-center">통화</th>
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">수량</th>
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">단가</th>
+                    <th onClick={() => handleSort('total_amount')} className="hidden sm:table-cell py-2.5 px-3 text-right cursor-pointer hover:text-[var(--fg)] font-bold">
+                      총 거래금액 ({currencyViewMode === 'KRW' ? '원화 환산' : '원본 통화'}) {renderSortIcon('total_amount')}
+                    </th>
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">환율</th>
+                    <th className="hidden sm:table-cell py-2.5 px-3 text-center w-24">작업</th>
+
+                    {/* Mobile 3-Column Headers */}
+                    <th className="sm:hidden py-2.5 px-3 text-left">거래일자 / 종목</th>
+                    <th className="sm:hidden py-2.5 px-2 text-center w-28">구분 / 금액</th>
+                    <th className="sm:hidden py-2.5 px-2 text-center w-12">작업</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)] font-medium">
+                  {filteredTrades.length === 0 ? (
                     <tr>
-                      <th className="py-2.5 px-3 text-center">날짜</th>
-                      <th className="py-2.5 px-2.5 text-center">구분</th>
-                      <th className="py-2.5 px-2.5 text-center">통화</th>
-                      <th className="py-2.5 px-3 text-left">종목명</th>
-                      <th className="py-2.5 px-2.5 text-right">수량</th>
-                      <th className="py-2.5 px-2.5 text-right">단가</th>
-                      <th className="py-2.5 px-3 text-right font-bold">총 금액</th>
-                      <th className="py-2.5 px-2 text-center w-12">삭제</th>
+                      <td colSpan={9} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                        등록된 매매 내역이 없습니다. 오른쪽 상단 "+" 버튼을 눌러 추가해 주세요.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border)] font-medium">
-                    {trades.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-10 text-center text-xs text-[var(--fg-muted)]">
-                          등록된 매매 내역이 없습니다. "+ 버튼"을 눌러 거래를 기록해 주세요.
-                        </td>
-                      </tr>
-                    ) : (
-                      trades.map((item) => (
+                  ) : (
+                    filteredTrades.map((item) => {
+                      const amount = item.quantity * item.price;
+                      const rate = item.exchange_rate || (item.currency === 'KRW' ? 1 : 1450);
+                      const displayAmount =
+                        currencyViewMode === 'KRW'
+                          ? item.total_amount_krw || amount * rate
+                          : amount;
+
+                      return (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
-                          <td className="py-2.5 px-3 text-center text-[11px] sm:text-xs text-[var(--fg-muted)] font-semibold">{item.trade_date}</td>
-                          <td className="py-2.5 px-2.5 text-center">
-                            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-bold border ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'}`}>
-                              {item.trade_type}
+                          {/* Desktop Columns */}
+                          <td className="hidden sm:table-cell py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
+                            {item.trade_date}
+                          </td>
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-center">
+                            <span
+                              className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold border ${
+                                item.trade_type === 'BUY'
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                  : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+                              }`}
+                            >
+                              {item.trade_type === 'BUY' ? '매수' : '매도'}
                             </span>
                           </td>
-                          <td className="py-2.5 px-2.5 text-center">{renderFlagEmoji(item.currency)}</td>
-                          <td className="py-2.5 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm">{item.stock_name}</td>
-                          <td className="py-2.5 px-2.5 text-right text-xs sm:text-sm font-semibold">{item.quantity.toLocaleString()}</td>
-                          <td className="py-2.5 px-2.5 text-right text-xs sm:text-sm font-semibold">{item.price.toLocaleString()}</td>
-                          <td className="py-2.5 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
-                            {(item.quantity * item.price).toLocaleString()}
+                          <td className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)]">
+                            {item.stock_name}{' '}
+                            {item.ticker && <span className="text-xs text-[var(--fg-muted)] font-mono">({item.ticker})</span>}
                           </td>
-                          <td className="py-2.5 px-2 text-center">
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-center">
+                            {renderFlagEmoji(item.currency)} <span className="text-xs font-bold">{item.currency}</span>
+                          </td>
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-right font-semibold">
+                            {item.quantity.toLocaleString()}
+                          </td>
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-right font-semibold">
+                            {item.price.toLocaleString(undefined, { minimumFractionDigits: item.currency === 'KRW' ? 0 : 2 })}
+                          </td>
+                          <td className="hidden sm:table-cell py-3 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            {currencyViewMode === 'KRW' ? '₩ ' : item.currency === 'USD' ? '$ ' : item.currency === 'EUR' ? '€ ' : ''}
+                            {Math.round(displayAmount).toLocaleString()}
+                          </td>
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg-muted)] font-semibold">
+                            {item.currency === 'KRW' ? '-' : `${rate.toLocaleString()} 원`}
+                          </td>
+                          <td className="hidden sm:table-cell py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleOpenEditModal(item)}
+                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
+                                title="수정"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTargetId(item.id || null)}
+                                className="p-1 text-red-500 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
+                                title="삭제"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Mobile 3-Column Cells */}
+                          {/* Column 1: Key Identifier (Date + Stock Name / Ticker) */}
+                          <td className="sm:hidden py-2.5 px-3 text-left">
+                            <p className="text-[10px] text-[var(--fg-muted)] font-bold">{item.trade_date}</p>
+                            <p className="font-bold text-xs text-[var(--fg)] mt-0.5">
+                              {item.stock_name}{' '}
+                              {item.ticker && <span className="text-[10px] text-[var(--fg-muted)]">({item.ticker})</span>}
+                            </p>
+                          </td>
+
+                          {/* Column 2: Key Attribute Badge (Type + Flag + Amount) */}
+                          <td className="sm:hidden py-2.5 px-2 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <span
+                                className={`inline-block rounded-full px-1.5 py-0.2 text-[9px] font-bold border ${
+                                  item.trade_type === 'BUY'
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                    : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+                                }`}
+                              >
+                                {item.trade_type === 'BUY' ? '매수' : '매도'}
+                              </span>
+                              {renderFlagEmoji(item.currency)}
+                            </div>
+                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                              {currencyViewMode === 'KRW' ? '₩ ' : item.currency === 'USD' ? '$ ' : ''}
+                              {Math.round(displayAmount).toLocaleString()}
+                            </p>
+                          </td>
+
+                          {/* Column 3: Action Menu Button */}
+                          <td className="sm:hidden py-2.5 px-2 text-center relative">
                             <button
-                              onClick={() => setDeleteTargetId(item.id || null)}
-                              className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-[var(--bg)] transition-colors cursor-pointer"
-                              title="삭제"
+                              onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id || null)}
+                              className="p-1.5 rounded-lg text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] cursor-pointer"
+                              aria-label="작업 메뉴"
                             >
-                              <Trash2 className="h-4 w-4 mx-auto" />
+                              <MoreVertical className="h-4 w-4" />
                             </button>
+
+                            {/* Floating Touch Popover Menu */}
+                            {activePopoverId === item.id && (
+                              <div className="absolute right-2 top-8 z-30 w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] overflow-hidden text-left animate-in zoom-in-95">
+                                <button
+                                  onClick={() => handleOpenEditModal(item)}
+                                  className="w-full min-h-[42px] px-3 py-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                  정보 수정
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setDeleteTargetId(item.id || null);
+                                    setActivePopoverId(null);
+                                  }}
+                                  className="w-full min-h-[42px] px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-[var(--bg)] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  삭제하기
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </main>
       </div>
 
+      {/* Trade Create & Edit Modal */}
+      <TradeModal
+        isOpen={isModalOpen}
+        mode={modalMode}
+        initialData={editingTrade}
+        stocks={stocks}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveTrade}
+      />
+
+      {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTargetId}
         title="매매 내역 삭제 확인"
-        message={`선택하신 매매 내역을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다.`}
+        confirmText="삭제하기"
+        confirmVariant="danger"
+        message="선택하신 매매 내역을 정말 삭제하시겠습니까?\n삭제 후에는 다시 복구할 수 없습니다."
         onConfirm={executeDelete}
         onClose={() => setDeleteTargetId(null)}
       />
