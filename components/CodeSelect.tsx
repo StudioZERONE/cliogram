@@ -84,7 +84,7 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
       {/* Smart Auto-Flip Dropdown Popover (Up / Down) */}
       {isOpen && (
         <div
-          className={`absolute left-0 right-0 z-50 max-h-52 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95 ${
+          className={`absolute left-0 z-50 min-w-[190px] w-full max-w-[280px] max-h-52 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-50 zoom-in-95 ${
             openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
           }`}
         >
@@ -106,7 +106,7 @@ export function CodeSelect({ groupId, value, onChange, className = '', disabled 
                       : 'text-[var(--fg)] hover:bg-[var(--bg)]'
                   }`}
                 >
-                  <span className="text-left w-full">{item.code_name}</span>
+                  <span className="text-left whitespace-nowrap">{item.code_name}</span>
                   {isSelected && <Check className="h-4 w-4 text-emerald-500 shrink-0 ml-2" />}
                 </button>
               );

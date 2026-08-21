@@ -309,8 +309,8 @@ export function TradeModal({
               </div>
             </div>
 
-            {/* 통화, 단가, 수량 순서 */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* 통화(1.3fr), 단가(1fr), 수량(1fr) 순서로 콤보박스 여유 공간 확보 */}
+            <div className="grid grid-cols-[1.35fr_1fr_1fr] gap-2.5 sm:gap-3">
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                   통화
@@ -353,79 +353,107 @@ export function TradeModal({
               </div>
             </div>
 
-            {/* 환율 및 거래금액 요약 카드 (찌그러짐 방지 반응형 레이아웃) */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3.5 space-y-2.5 transition-all">
-              {currency === 'KRW' ? (
-                /* 원화(KRW) 전용 간결한 금액 카드 */
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-xs font-bold text-[var(--fg-muted)] flex items-center gap-1.5">
-                    <Calculator className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    총 거래금액 (KRW)
-                  </span>
-                  <span className={`font-extrabold text-base sm:text-lg ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                    {rawTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString() : '0'}
-                  </span>
-                </div>
-              ) : (
-                /* 외화(USD, EUR, JPY 등) 전용 환율 및 환산 금액 카드 */
-                <div className="space-y-2.5">
-                  {/* 1열: 적용 환율 설정 및 기준시각/새로고침 */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
-                        <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                        적용 환율
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] text-[var(--fg-muted)]">
-                        {rateFetchedAt && <span>({format(rateFetchedAt, 'HH:mm:ss')} 기준)</span>}
-                        <button
-                          type="button"
-                          onClick={() => fetchRate()}
-                          disabled={isFetchingRate}
-                          className="p-1 rounded-md hover:bg-[var(--bg)] text-[var(--fg-muted)] hover:text-emerald-600 transition-colors cursor-pointer"
-                          title="환율 새로고침"
-                          aria-label="환율 새로고침"
-                        >
-                          <RefreshCw className={`h-3 w-3 ${isFetchingRate ? 'animate-spin text-emerald-600' : ''}`} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={exchangeRate}
-                        onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
-                        className="w-24 sm:w-28 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
-                        placeholder="1,450.00"
-                      />
-                      <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
+            {/* 환율 및 거래금액 요약 카드 (모달 꿈지럭거림 방지 고정 3단 구조) */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3.5 space-y-2.5">
+              {/* 1단: 기준 정보 행 (외화: 환율 및 갱신버튼 / 원화: 국내 원화 직결제 & 단가×수량 산출식) */}
+              {currency !== 'KRW' ? (
+                <div className="flex items-center justify-between gap-2 min-h-[28px]">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
+                      <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      적용 환율
+                    </span>
+                    <div className="flex items-center gap-1 text-[11px] text-[var(--fg-muted)]">
+                      {rateFetchedAt && <span>({format(rateFetchedAt, 'HH:mm:ss')} 기준)</span>}
+                      <button
+                        type="button"
+                        onClick={() => fetchRate()}
+                        disabled={isFetchingRate}
+                        className="p-1 rounded-md hover:bg-[var(--bg)] text-[var(--fg-muted)] hover:text-emerald-600 transition-colors cursor-pointer"
+                        title="환율 새로고침"
+                        aria-label="환율 새로고침"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isFetchingRate ? 'animate-spin text-emerald-600' : ''}`} />
+                      </button>
                     </div>
                   </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={exchangeRate}
+                      onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
+                      className="w-24 sm:w-28 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                      placeholder="1,450.00"
+                    />
+                    <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 min-h-[28px]">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
+                      <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      거래 기준
+                    </span>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                      국내 원화(KRW) 직결제
+                    </span>
+                  </div>
+                  <div className="text-right text-xs font-bold text-[var(--fg-muted)]">
+                    {parsedQty !== 0 && parsedPrice > 0 ? (
+                      <span className="text-[var(--fg)]">
+                        단가 ₩ {parsedPrice.toLocaleString()} × {Math.abs(parsedQty).toLocaleString()}주
+                      </span>
+                    ) : (
+                      <span>환율 미적용 (1.00)</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                  {/* 2열: 외화 총 거래금액 및 원화 환산 금액 */}
-                  <div className="grid grid-cols-2 gap-3 border-t border-[var(--border)]/60 pt-2 text-xs">
+              {/* 2단: 총 거래금액 및 결제액 행 (외화: 외화총액+원화환산 / 원화: 큼직한 총 거래금액+원화결제총액) */}
+              <div className="grid grid-cols-2 gap-3 border-t border-[var(--border)]/60 pt-2 text-xs">
+                {currency !== 'KRW' ? (
+                  <>
                     <div className="flex flex-col">
                       <span className="text-[11px] text-[var(--fg-muted)] font-medium">총 거래금액 ({currency})</span>
-                      <span className={`font-bold text-sm truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <span className={`font-bold text-sm sm:text-base truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {rawTotal < 0 ? '- ' : ''}{currency === 'USD' ? '$ ' : `${currency} `}
                         {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00'}
                       </span>
                     </div>
                     <div className="flex flex-col text-right">
                       <span className="text-[11px] text-[var(--fg-muted)] font-medium">원화 환산 금액 (KRW)</span>
-                      <span className={`font-bold text-sm truncate ${krwTotal < 0 ? 'text-red-500' : 'text-[var(--fg)]'}`}>
+                      <span className={`font-bold text-sm sm:text-base truncate ${krwTotal < 0 ? 'text-red-500' : 'text-[var(--fg)]'}`}>
                         {krwTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.round(Math.abs(krwTotal)).toLocaleString() : '0'}
                       </span>
                     </div>
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-col">
+                      <span className="text-[11px] text-[var(--fg-muted)] font-medium">총 거래금액 (KRW)</span>
+                      <span className={`font-extrabold text-base sm:text-lg truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {rawTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString() : '0'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col text-right justify-center">
+                      <span className="text-[11px] text-[var(--fg-muted)] font-medium">원화 결제 총액</span>
+                      <span className={`font-bold text-sm sm:text-base text-[var(--fg)] truncate`}>
+                        {rawTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString() : '0'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
 
-                  {/* 안내 문구 */}
-                  <p className="text-[10.5px] text-[var(--fg-muted)] pt-1 border-t border-[var(--border)]/40 leading-relaxed">
-                    * 환율은 시간에 따라 변하고, 예측치이므로 실제 환산금액은 다를 수 있습니다.
-                  </p>
-                </div>
-              )}
+              {/* 3단: 하단 안내 문구 (외화: 변동 안내 / 원화: 수수료 미발생 안내) */}
+              <p className="text-[10.5px] text-[var(--fg-muted)] pt-1 border-t border-[var(--border)]/40 leading-relaxed">
+                {currency !== 'KRW'
+                  ? '* 환율은 시간에 따라 변하고, 예측치이므로 실제 환산금액은 다를 수 있습니다.'
+                  : '* 원화(KRW) 결제 종목으로 별도의 외화 환전 수수료 및 환율 변동이 발생하지 않습니다.'}
+              </p>
             </div>
           </div>
 
