@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { X, Layers, Calculator, RefreshCw } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
 import { formatCommaString, parseCommaNumber } from '@/lib/format';
+import { lookupTickerInfo, fetchRemoteTickerInfo } from '@/lib/stock-ticker';
 
 export interface StockOption {
   id?: string;
@@ -61,6 +62,7 @@ export function TradeModal({
   const [quantity, setQuantity] = useState<string>('');
   const [exchangeRate, setExchangeRate] = useState<string>('1');
   const [rateFetchedAt, setRateFetchedAt] = useState<Date | null>(null);
+  const [resolvedStock, setResolvedStock] = useState<{ name: string; short_name: string; currency: string } | null>(null);
   const [fee, setFee] = useState<string>('0');
   const [tax, setTax] = useState<string>('0');
   const [foreignFee, setForeignFee] = useState<string>('0');
@@ -76,7 +78,27 @@ export function TradeModal({
     if (isOpen) {
       if (mode === 'edit' && initialData) {
         setTradeDate(initialData.trade_date ? new Date(initialData.trade_date) : new Date());
-        setTicker(initialData.ticker || '');
+        const initTicker = initialData.ticker || '';
+        setTicker(initTicker);
+
+        // Resolve stock name
+        const dbMatch = stocks.find((s) => s.ticker.toUpperCase() === initTicker.toUpperCase());
+        const preset = lookupTickerInfo(initTicker);
+        if (dbMatch) {
+          setResolvedStock({
+            name: dbMatch.name,
+            short_name: dbMatch.short_name || dbMatch.name,
+            currency: dbMatch.currency || initialData.currency || 'USD',
+          });
+        } else if (preset) {
+          setResolvedStock({
+            name: preset.name,
+            short_name: preset.short_name || preset.name,
+            currency: preset.currency || initialData.currency || 'USD',
+          });
+        } else {
+          setResolvedStock(null);
+        }
 
         // If SELL, make sure quantity reflects negative sign
         const rawQty = initialData.quantity || 0;
@@ -95,6 +117,7 @@ export function TradeModal({
       } else {
         setTradeDate(new Date());
         setTicker('');
+        setResolvedStock(null);
         setCurrency('USD');
         setPrice('');
         setQuantity('');
@@ -107,7 +130,7 @@ export function TradeModal({
         setNotes('');
       }
     }
-  }, [isOpen, mode, initialData]);
+  }, [isOpen, mode, initialData, stocks]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -166,22 +189,65 @@ export function TradeModal({
     }
   };
 
-  // Handle ticker change and auto-sync currency
-  const handleTickerChange = (val: string) => {
+  // Handle ticker change and multi-source auto-resolution (DB -> Preset -> Remote API)
+  const handleTickerChange = async (val: string) => {
     const upper = val.toUpperCase();
     setTicker(upper);
     const trimmed = upper.trim();
+
     if (!trimmed) {
-      // Nothing searched -> forced reset to first code (USD)
+      setResolvedStock(null);
       setCurrency('USD');
       return;
     }
-    const matched = stocks.find((s) => s.ticker.toUpperCase() === trimmed);
-    if (matched && matched.currency) {
-      setCurrency(matched.currency as any);
-    } else {
-      setCurrency('USD');
+
+    // 1. Check user DB registered stocks
+    const dbMatch = stocks.find((s) => s.ticker.toUpperCase() === trimmed);
+    if (dbMatch) {
+      setResolvedStock({
+        name: dbMatch.name,
+        short_name: dbMatch.short_name || dbMatch.name,
+        currency: dbMatch.currency || 'USD',
+      });
+      if (dbMatch.currency) {
+        setCurrency(dbMatch.currency as any);
+      }
+      return;
     }
+
+    // 2. Check local popular stock preset dictionary (AAPL, 005930, MSFT, etc.)
+    const preset = lookupTickerInfo(trimmed);
+    if (preset) {
+      setResolvedStock({
+        name: preset.name,
+        short_name: preset.short_name || preset.name,
+        currency: preset.currency || 'USD',
+      });
+      if (preset.currency) {
+        setCurrency(preset.currency as any);
+      }
+      return;
+    }
+
+    // 3. Fallback: Query remote Yahoo/stock-lookup API
+    try {
+      const remote = await fetchRemoteTickerInfo(trimmed);
+      if (remote) {
+        setResolvedStock({
+          name: remote.name,
+          short_name: remote.short_name || remote.name,
+          currency: remote.currency || 'USD',
+        });
+        if (remote.currency) {
+          setCurrency(remote.currency as any);
+        }
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
+    setResolvedStock(null);
   };
 
   const parsedQty = parseCommaNumber(quantity);
@@ -197,8 +263,6 @@ export function TradeModal({
 
   const rawTotal = parsedQty * parsedPrice;
   const krwTotal = currency === 'KRW' ? rawTotal : rawTotal * parsedRate;
-
-  const matchedStock = stocks.find((s) => s.ticker.toUpperCase() === ticker.trim().toUpperCase());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,6 +341,7 @@ export function TradeModal({
               />
             </div>
 
+            {/* 행 2: [티커 (50%)] | [종목명 (50%)] */}
             <div className="grid grid-cols-2 gap-3 items-start">
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
@@ -296,9 +361,9 @@ export function TradeModal({
                   종목명
                 </label>
                 <div className="flex items-center h-[42px] px-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-sm font-bold text-[var(--fg)] truncate">
-                  {matchedStock ? (
+                  {resolvedStock ? (
                     <span className="truncate text-[var(--fg)]">
-                      {matchedStock.short_name || matchedStock.name}
+                      {resolvedStock.short_name || resolvedStock.name}
                     </span>
                   ) : ticker.trim() ? (
                     <span className="text-[var(--fg-muted)] text-xs font-normal">미등록 종목</span>
@@ -309,8 +374,8 @@ export function TradeModal({
               </div>
             </div>
 
-            {/* 통화(1.3fr), 단가(1fr), 수량(1fr) 순서로 콤보박스 여유 공간 확보 */}
-            <div className="grid grid-cols-[1.35fr_1fr_1fr] gap-2.5 sm:gap-3">
+            {/* 행 3: [통화 (50%)] | [단가(25%) + 수량(25%)] - 상단 그리드와 50:50 수직선 완전 일치 */}
+            <div className="grid grid-cols-2 gap-3 items-start">
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                   통화
@@ -321,43 +386,45 @@ export function TradeModal({
                   onChange={(val) => setCurrency(val as any)}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                  단가 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="185.50"
-                  value={price}
-                  onChange={(e) => setPrice(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                  수량 (+매수 / -매도) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="+10 또는 -10"
-                  value={quantity}
-                  onChange={(e) => setQuantity(formatCommaString(e.target.value))}
-                  className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
-                    parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
-                  }`}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                    단가 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="185.50"
+                    value={price}
+                    onChange={(e) => setPrice(formatCommaString(e.target.value))}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2.5 text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                    수량 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="+10"
+                    value={quantity}
+                    onChange={(e) => setQuantity(formatCommaString(e.target.value))}
+                    className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
+                      parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
+                    }`}
+                    required
+                  />
+                </div>
               </div>
             </div>
 
-            {/* 환율 및 거래금액 요약 카드 (모달 꿈지럭거림 방지 고정 3단 구조) */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3.5 space-y-2.5">
-              {/* 1단: 기준 정보 행 (외화: 환율 및 갱신버튼 / 원화: 국내 원화 직결제 & 단가×수량 산출식) */}
+            {/* 환율 및 거래금액 요약 카드 (은은한 틴트 배경 & 픽셀 단위 완전 일치 고정 3단 구조) */}
+            <div className="rounded-xl border border-emerald-500/20 dark:border-emerald-500/30 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08] p-3.5 space-y-2 shadow-2xs">
+              {/* 1단: 기준 정보 행 (h-7 고정 높이) */}
               {currency !== 'KRW' ? (
-                <div className="flex items-center justify-between gap-2 min-h-[28px]">
+                <div className="flex items-center justify-between gap-2 h-7">
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
                       <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -383,14 +450,14 @@ export function TradeModal({
                       inputMode="decimal"
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
-                      className="w-24 sm:w-28 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                      className="w-24 sm:w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                       placeholder="1,450.00"
                     />
                     <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between gap-2 min-h-[28px]">
+                <div className="flex items-center justify-between gap-2 h-7">
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
                       <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -400,7 +467,7 @@ export function TradeModal({
                       국내 원화(KRW) 직결제
                     </span>
                   </div>
-                  <div className="text-right text-xs font-bold text-[var(--fg-muted)]">
+                  <div className="text-right text-xs font-semibold text-[var(--fg-muted)] truncate">
                     {parsedQty !== 0 && parsedPrice > 0 ? (
                       <span className="text-[var(--fg)]">
                         단가 ₩ {parsedPrice.toLocaleString()} × {Math.abs(parsedQty).toLocaleString()}주
@@ -412,8 +479,8 @@ export function TradeModal({
                 </div>
               )}
 
-              {/* 2단: 총 거래금액 및 결제액 행 (외화: 외화총액+원화환산 / 원화: 큼직한 총 거래금액+원화결제총액) */}
-              <div className="grid grid-cols-2 gap-3 border-t border-[var(--border)]/60 pt-2 text-xs">
+              {/* 2단: 총 거래금액 및 결제액 행 (h-10 완전 일치 2열 그리드) */}
+              <div className="grid grid-cols-2 gap-3 border-t border-emerald-500/15 dark:border-emerald-500/25 pt-2 text-xs">
                 {currency !== 'KRW' ? (
                   <>
                     <div className="flex flex-col">
@@ -434,11 +501,11 @@ export function TradeModal({
                   <>
                     <div className="flex flex-col">
                       <span className="text-[11px] text-[var(--fg-muted)] font-medium">총 거래금액 (KRW)</span>
-                      <span className={`font-extrabold text-base sm:text-lg truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <span className={`font-bold text-sm sm:text-base truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {rawTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString() : '0'}
                       </span>
                     </div>
-                    <div className="flex flex-col text-right justify-center">
+                    <div className="flex flex-col text-right">
                       <span className="text-[11px] text-[var(--fg-muted)] font-medium">원화 결제 총액</span>
                       <span className={`font-bold text-sm sm:text-base text-[var(--fg)] truncate`}>
                         {rawTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString() : '0'}
@@ -448,8 +515,8 @@ export function TradeModal({
                 )}
               </div>
 
-              {/* 3단: 하단 안내 문구 (외화: 변동 안내 / 원화: 수수료 미발생 안내) */}
-              <p className="text-[10.5px] text-[var(--fg-muted)] pt-1 border-t border-[var(--border)]/40 leading-relaxed">
+              {/* 3단: 하단 안내 문구 (한 줄 높이 leading-tight 완전 일치) */}
+              <p className="text-[10.5px] text-[var(--fg-muted)] pt-1 border-t border-emerald-500/15 dark:border-emerald-500/25 leading-tight truncate sm:whitespace-normal">
                 {currency !== 'KRW'
                   ? '* 환율은 시간에 따라 변하고, 예측치이므로 실제 환산금액은 다를 수 있습니다.'
                   : '* 원화(KRW) 결제 종목으로 별도의 외화 환전 수수료 및 환율 변동이 발생하지 않습니다.'}
