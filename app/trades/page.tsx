@@ -119,6 +119,20 @@ export default function TradesPage() {
       });
 
       setTrades(normalizedTrades as TradeRecordData[]);
+
+      // Set initial yearFilter to the latest recorded trade year in DB
+      setYearFilter((prev) => {
+        if (prev !== 'ALL') return prev; // If user already selected a year, keep it
+        const distinctYears = Array.from(
+          new Set(
+            normalizedTrades
+              .map((t: any) => t.trade_date?.substring(0, 4))
+              .filter((y: any): y is string => Boolean(y && y.length === 4))
+          )
+        ).sort((a, b) => b.localeCompare(a));
+
+        return distinctYears.length > 0 ? distinctYears[0] : 'ALL';
+      });
     }
   };
 
@@ -166,19 +180,19 @@ export default function TradesPage() {
     return curr || '$';
   };
 
-  // Dynamic Year Filter Options extracted from recorded trade dates
+  // Dynamic Distinct Year Filter Options extracted purely from recorded trade dates
   const yearFilterOptions: FilterOption[] = useMemo(() => {
-    const yearsSet = new Set<string>();
-    trades.forEach((t) => {
-      if (t.trade_date && t.trade_date.length >= 4) {
-        yearsSet.add(t.trade_date.substring(0, 4));
-      }
-    });
-    yearsSet.add(new Date().getFullYear().toString());
-    const sortedYears = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    const distinctYears = Array.from(
+      new Set(
+        trades
+          .map((t) => t.trade_date?.substring(0, 4))
+          .filter((y): y is string => Boolean(y && y.length === 4))
+      )
+    ).sort((a, b) => b.localeCompare(a));
+
     return [
       { value: 'ALL', label: '전체' },
-      ...sortedYears.map((y) => ({ value: y, label: `${y}년` })),
+      ...distinctYears.map((y) => ({ value: y, label: `${y}년` })),
     ];
   }, [trades]);
 

@@ -166,7 +166,21 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     expect(krwTrade.totalKrw).toBe(3500000);
   });
 
-  it('filters trades by trade year correctly', () => {
+  it('filters trades by trade year and extracts distinct recorded years dynamically', () => {
+    const extractDistinctYears = (items: typeof mockTrades) => {
+      return Array.from(
+        new Set(
+          items
+            .map((t) => t.trade_date?.substring(0, 4))
+            .filter((y): y is string => Boolean(y && y.length === 4))
+        )
+      ).sort((a, b) => b.localeCompare(a));
+    };
+
+    const distinctYears = extractDistinctYears(mockTrades);
+    expect(distinctYears).toEqual(['2026']);
+    expect(distinctYears[0]).toBe('2026'); // Latest recorded year in DB
+
     const filterByYear = (items: typeof mockTrades, year: string) => {
       if (year === 'ALL') return items;
       return items.filter((item) => item.trade_date.startsWith(year));
