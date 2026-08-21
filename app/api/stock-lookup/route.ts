@@ -31,13 +31,14 @@ export async function GET(request: NextRequest) {
       searchSymbol = `${cleanTicker}.KS`;
     }
 
-    const yahooUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
+    const yahooUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
       searchSymbol
     )}&quotesCount=5&newsCount=0`;
 
     const res = await fetch(yahooUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'application/json, text/plain, */*',
       },
       next: { revalidate: 3600 }, // 1-hour cache
     });
@@ -64,7 +65,8 @@ export async function GET(request: NextRequest) {
       quotes.find(
         (q: any) =>
           q.symbol?.toUpperCase() === cleanTicker ||
-          q.symbol?.toUpperCase() === searchSymbol
+          q.symbol?.toUpperCase() === searchSymbol ||
+          q.symbol?.toUpperCase().startsWith(cleanTicker + '.')
       ) || quotes[0];
 
     const longName = matched.longname || matched.shortname || matched.name || cleanTicker;
@@ -72,11 +74,13 @@ export async function GET(request: NextRequest) {
 
     // Detect Currency and Market
     let currency = 'USD';
-    let market = matched.exchange || 'NASDAQ';
+    let market = matched.exchDisp || matched.exchange || 'NASDAQ';
     let type = 'Growth';
 
     const exchangeUpper = (matched.exchange || '').toUpperCase();
+    const exchDispUpper = (matched.exchDisp || '').toUpperCase();
     const quoteTypeUpper = (matched.quoteType || '').toUpperCase();
+    const symbolUpper = (matched.symbol || '').toUpperCase();
 
     if (quoteTypeUpper.includes('ETF')) {
       type = 'ETF';
@@ -86,18 +90,35 @@ export async function GET(request: NextRequest) {
       exchangeUpper.includes('KOSPI') ||
       exchangeUpper.includes('KOSDAQ') ||
       exchangeUpper.includes('KRX') ||
-      matched.symbol?.endsWith('.KS') ||
-      matched.symbol?.endsWith('.KQ')
+      symbolUpper.endsWith('.KS') ||
+      symbolUpper.endsWith('.KQ')
     ) {
       currency = 'KRW';
       market = exchangeUpper.includes('KOSDAQ') ? 'KOSDAQ' : 'KOSPI';
+    } else if (
+      exchangeUpper.includes('GER') ||
+      exchangeUpper.includes('ETR') ||
+      exchangeUpper.includes('FRA') ||
+      exchangeUpper.includes('PAR') ||
+      exchangeUpper.includes('AMS') ||
+      exchDispUpper.includes('XETRA') ||
+      exchDispUpper.includes('FRANKFURT') ||
+      exchDispUpper.includes('EURONEXT') ||
+      symbolUpper.endsWith('.DE') ||
+      symbolUpper.endsWith('.PA')
+    ) {
+      currency = 'EUR';
+      market = exchDispUpper || 'XETRA';
+    } else if (exchangeUpper.includes('TYO') || symbolUpper.endsWith('.T')) {
+      currency = 'JPY';
+      market = 'Tokyo';
+    } else if (exchangeUpper.includes('LSE') || symbolUpper.endsWith('.L')) {
+      currency = 'GBP';
+      market = 'LSE';
     } else if (exchangeUpper.includes('NYSE')) {
       market = 'NYSE';
     } else if (exchangeUpper.includes('NASDAQ')) {
       market = 'NASDAQ';
-    } else if (exchangeUpper.includes('GER') || exchangeUpper.includes('ETR')) {
-      currency = 'EUR';
-      market = 'XETRA';
     }
 
     return NextResponse.json({

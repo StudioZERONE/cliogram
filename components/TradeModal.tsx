@@ -326,9 +326,9 @@ export function TradeModal({
         </div>
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 sm:space-y-4">
           {/* 구역 1: 기본 거래 정보 및 환율/금액 통합 블록 (매매일자, 티커, 종목명, 통화, 단가, 수량, 환율&거래금액) */}
-          <div className="space-y-3.5">
+          <div className="space-y-3 sm:space-y-3.5">
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                 매매 일자 <span className="text-red-500">*</span>
@@ -337,22 +337,22 @@ export function TradeModal({
                 selected={tradeDate}
                 onChange={(date: Date | null) => date && setTradeDate(date)}
                 dateFormat="yyyy-MM-dd"
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner"
               />
             </div>
 
             {/* 행 2: [티커 (50%)] | [종목명 (50%)] */}
-            <div className="grid grid-cols-2 gap-3 items-start">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 items-start">
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                   티커 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="예: AAPL, 005930"
+                  placeholder="AAPL, 005930"
                   value={ticker}
                   onChange={(e) => handleTickerChange(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold uppercase text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-bold uppercase text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                   required
                 />
               </div>
@@ -360,13 +360,13 @@ export function TradeModal({
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                   종목명
                 </label>
-                <div className="flex items-center h-[42px] px-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-sm font-bold text-[var(--fg)] truncate">
+                <div className="flex items-center h-[36px] sm:h-[40px] px-2.5 sm:px-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-xs sm:text-sm font-bold text-[var(--fg)] truncate">
                   {resolvedStock ? (
                     <span className="truncate text-[var(--fg)]">
                       {resolvedStock.short_name || resolvedStock.name}
                     </span>
                   ) : ticker.trim() ? (
-                    <span className="text-[var(--fg-muted)] text-xs font-normal">미등록 종목</span>
+                    <span className="text-[var(--fg-muted)] text-[11px] sm:text-xs font-normal">미등록 종목</span>
                   ) : (
                     <span className="text-[var(--fg-muted)] text-xs font-normal"></span>
                   )}
@@ -375,7 +375,7 @@ export function TradeModal({
             </div>
 
             {/* 행 3: [통화 (50%)] | [단가(25%) + 수량(25%)] - 상단 그리드와 50:50 수직선 완전 일치 */}
-            <div className="grid grid-cols-2 gap-3 items-start">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 items-start">
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                   통화
@@ -386,9 +386,9 @@ export function TradeModal({
                   onChange={(val) => setCurrency(val as any)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                  <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1 truncate">
                     단가 <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -397,12 +397,12 @@ export function TradeModal({
                     placeholder="185.50"
                     value={price}
                     onChange={(e) => setPrice(formatCommaString(e.target.value))}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2.5 text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                  <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1 truncate">
                     수량 <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -411,7 +411,7 @@ export function TradeModal({
                     placeholder="+10"
                     value={quantity}
                     onChange={(e) => setQuantity(formatCommaString(e.target.value))}
-                    className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
+                    className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
                       parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
                     }`}
                     required
@@ -421,22 +421,22 @@ export function TradeModal({
             </div>
 
             {/* 환율 및 거래금액 요약 카드 (은은한 틴트 배경 & 픽셀 단위 완전 일치 고정 3단 구조) */}
-            <div className="rounded-xl border border-emerald-500/20 dark:border-emerald-500/30 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08] p-3.5 space-y-2 shadow-2xs">
+            <div className="rounded-xl border border-emerald-500/20 dark:border-emerald-500/30 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08] p-3 sm:p-3.5 space-y-2 shadow-2xs">
               {/* 1단: 기준 정보 행 (h-7 고정 높이) */}
               {currency !== 'KRW' ? (
-                <div className="flex items-center justify-between gap-2 h-7">
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
-                      <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex items-center justify-between gap-1.5 h-7">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[11px] sm:text-xs font-bold text-[var(--fg)] flex items-center gap-1">
+                      <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       적용 환율
                     </span>
-                    <div className="flex items-center gap-1 text-[11px] text-[var(--fg-muted)]">
-                      {rateFetchedAt && <span>({format(rateFetchedAt, 'HH:mm:ss')} 기준)</span>}
+                    <div className="flex items-center gap-0.5 text-[10px] sm:text-[11px] text-[var(--fg-muted)]">
+                      {rateFetchedAt && <span>({format(rateFetchedAt, 'HH:mm')})</span>}
                       <button
                         type="button"
                         onClick={() => fetchRate()}
                         disabled={isFetchingRate}
-                        className="p-1 rounded-md hover:bg-[var(--bg)] text-[var(--fg-muted)] hover:text-emerald-600 transition-colors cursor-pointer"
+                        className="p-0.5 rounded hover:bg-[var(--bg)] text-[var(--fg-muted)] hover:text-emerald-600 transition-colors cursor-pointer"
                         title="환율 새로고침"
                         aria-label="환율 새로고침"
                       >
@@ -444,33 +444,33 @@ export function TradeModal({
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
                     <input
                       type="text"
                       inputMode="decimal"
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
-                      className="w-24 sm:w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                      className="w-18 sm:w-24 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                       placeholder="1,450.00"
                     />
-                    <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
+                    <span className="text-[10.5px] sm:text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between gap-2 h-7">
+                <div className="flex items-center justify-between gap-1.5 h-7">
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
-                      <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-[11px] sm:text-xs font-bold text-[var(--fg)] flex items-center gap-1">
+                      <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       거래 기준
                     </span>
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                      국내 원화(KRW) 직결제
+                    <span className="text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                      국내 원화 직결제
                     </span>
                   </div>
-                  <div className="text-right text-xs font-semibold text-[var(--fg-muted)] truncate">
+                  <div className="text-right text-[11px] sm:text-xs font-semibold text-[var(--fg-muted)] truncate">
                     {parsedQty !== 0 && parsedPrice > 0 ? (
                       <span className="text-[var(--fg)]">
-                        단가 ₩ {parsedPrice.toLocaleString()} × {Math.abs(parsedQty).toLocaleString()}주
+                        ₩ {parsedPrice.toLocaleString()} × {Math.abs(parsedQty).toLocaleString()}주
                       </span>
                     ) : (
                       <span>환율 미적용 (1.00)</span>
@@ -480,19 +480,19 @@ export function TradeModal({
               )}
 
               {/* 2단: 총 거래금액 및 결제액 행 (h-10 완전 일치 2열 그리드) */}
-              <div className="grid grid-cols-2 gap-3 border-t border-emerald-500/15 dark:border-emerald-500/25 pt-2 text-xs">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 border-t border-emerald-500/15 dark:border-emerald-500/25 pt-1.5 sm:pt-2 text-xs">
                 {currency !== 'KRW' ? (
                   <>
                     <div className="flex flex-col">
-                      <span className="text-[11px] text-[var(--fg-muted)] font-medium">총 거래금액 ({currency})</span>
-                      <span className={`font-bold text-sm sm:text-base truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <span className="text-[10px] sm:text-[11px] text-[var(--fg-muted)] font-medium">총 거래금액 ({currency})</span>
+                      <span className={`font-bold text-xs sm:text-sm truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {rawTotal < 0 ? '- ' : ''}{currency === 'USD' ? '$ ' : `${currency} `}
                         {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00'}
                       </span>
                     </div>
                     <div className="flex flex-col text-right">
-                      <span className="text-[11px] text-[var(--fg-muted)] font-medium">원화 환산 금액 (KRW)</span>
-                      <span className={`font-bold text-sm sm:text-base truncate ${krwTotal < 0 ? 'text-red-500' : 'text-[var(--fg)]'}`}>
+                      <span className="text-[10px] sm:text-[11px] text-[var(--fg-muted)] font-medium">원화 환산 금액 (KRW)</span>
+                      <span className={`font-bold text-xs sm:text-sm truncate ${krwTotal < 0 ? 'text-red-500' : 'text-[var(--fg)]'}`}>
                         {krwTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.round(Math.abs(krwTotal)).toLocaleString() : '0'}
                       </span>
                     </div>
@@ -500,14 +500,14 @@ export function TradeModal({
                 ) : (
                   <>
                     <div className="flex flex-col">
-                      <span className="text-[11px] text-[var(--fg-muted)] font-medium">총 거래금액 (KRW)</span>
-                      <span className={`font-bold text-sm sm:text-base truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <span className="text-[10px] sm:text-[11px] text-[var(--fg-muted)] font-medium">총 거래금액 (KRW)</span>
+                      <span className={`font-bold text-xs sm:text-sm truncate ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {rawTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString() : '0'}
                       </span>
                     </div>
                     <div className="flex flex-col text-right">
-                      <span className="text-[11px] text-[var(--fg-muted)] font-medium">원화 결제 총액</span>
-                      <span className={`font-bold text-sm sm:text-base text-[var(--fg)] truncate`}>
+                      <span className="text-[10px] sm:text-[11px] text-[var(--fg-muted)] font-medium">원화 결제 총액</span>
+                      <span className={`font-bold text-xs sm:text-sm text-[var(--fg)] truncate`}>
                         {rawTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString() : '0'}
                       </span>
                     </div>
@@ -516,7 +516,7 @@ export function TradeModal({
               </div>
 
               {/* 3단: 하단 안내 문구 (한 줄 높이 leading-tight 완전 일치) */}
-              <p className="text-[10.5px] text-[var(--fg-muted)] pt-1 border-t border-emerald-500/15 dark:border-emerald-500/25 leading-tight truncate sm:whitespace-normal">
+              <p className="text-[9.5px] sm:text-[10.5px] text-[var(--fg-muted)] pt-1 border-t border-emerald-500/15 dark:border-emerald-500/25 leading-tight truncate sm:whitespace-normal">
                 {currency !== 'KRW'
                   ? '* 환율은 시간에 따라 변하고, 예측치이므로 실제 환산금액은 다를 수 있습니다.'
                   : '* 원화(KRW) 결제 종목으로 별도의 외화 환전 수수료 및 환율 변동이 발생하지 않습니다.'}
@@ -528,11 +528,11 @@ export function TradeModal({
           <div className="border-t border-[var(--border)]" />
 
           {/* 구역 2: 수수료 및 제세금 */}
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             <label className="block text-xs font-bold text-[var(--fg-muted)]">
               수수료 및 제세금
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div>
                 <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
                   수수료
@@ -542,7 +542,7 @@ export function TradeModal({
                   inputMode="decimal"
                   value={fee}
                   onChange={(e) => setFee(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                 />
               </div>
               <div>
@@ -554,7 +554,7 @@ export function TradeModal({
                   inputMode="decimal"
                   value={tax}
                   onChange={(e) => setTax(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                 />
               </div>
               <div>
@@ -566,7 +566,7 @@ export function TradeModal({
                   inputMode="decimal"
                   value={foreignFee}
                   onChange={(e) => setForeignFee(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                 />
               </div>
               <div>
@@ -578,7 +578,7 @@ export function TradeModal({
                   inputMode="decimal"
                   value={foreignTax}
                   onChange={(e) => setForeignTax(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                 />
               </div>
             </div>
@@ -597,23 +597,23 @@ export function TradeModal({
               placeholder="예: ISA 계좌 매매, 분할 매수 등"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
             />
           </div>
 
           {/* Footer Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border)]">
+          <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-[var(--border)]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs sm:text-sm font-bold text-[var(--fg-muted)] hover:bg-[var(--bg)] rounded-xl transition-colors cursor-pointer"
+              className="px-3.5 py-2 text-xs sm:text-sm font-bold text-[var(--fg-muted)] hover:bg-[var(--bg)] rounded-xl transition-colors cursor-pointer"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isSubmitDisabled}
-              className="px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              className="px-4.5 py-2 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
               {isSubmitting ? '저장 중...' : mode === 'create' ? '신규 등록' : '수정 완료'}
             </button>

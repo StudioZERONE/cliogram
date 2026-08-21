@@ -32,6 +32,9 @@ export const POPULAR_STOCKS_PRESETS: Record<string, PresetStockInfo> = {
   JEPI: { ticker: 'JEPI', name: 'JPMorgan Equity Premium Income ETF', short_name: 'JEPI', type: 'Dividend', currency: 'USD', market: 'NYSE' },
   JEPQ: { ticker: 'JEPQ', name: 'JPMorgan Nasdaq Equity Premium Income ETF', short_name: 'JEPQ', type: 'Dividend', currency: 'USD', market: 'NASDAQ' },
 
+  // European & Global Major Stocks
+  DHER: { ticker: 'DHER', name: 'Delivery Hero SE', short_name: '딜리버리히어로', type: 'Growth', currency: 'EUR', market: 'XETRA' },
+
   // KR Major Stocks & ETFs
   '005930': { ticker: '005930', name: '삼성전자', short_name: '삼성전자', type: 'Dividend', currency: 'KRW', market: 'KOSPI' },
   '005935': { ticker: '005935', name: '삼성전자우', short_name: '삼성전자우', type: 'Dividend', currency: 'KRW', market: 'KOSPI' },
