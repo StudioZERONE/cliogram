@@ -33,7 +33,20 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   user_level INTEGER DEFAULT NULL
 );
 
--- 4. stocks (종목 마스터 - 회원별 1:N 연결)
+-- 4. accounts (계좌 마스터 - 회원별 1:N 연결)
+CREATE TABLE IF NOT EXISTS public.accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  account_name TEXT NOT NULL,
+  broker_name TEXT,
+  account_number TEXT,
+  currency TEXT DEFAULT 'KRW',
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 5. stocks (종목 마스터 - 회원별 1:N 연결)
 CREATE TABLE IF NOT EXISTS public.stocks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -49,10 +62,11 @@ CREATE TABLE IF NOT EXISTS public.stocks (
   UNIQUE(user_id, ticker)
 );
 
--- 5. trades (매매 내역 - 회원별 1:N 필수 연결)
+-- 6. trades (매매 내역 - 회원별 1:N 필수 연결)
 CREATE TABLE IF NOT EXISTS public.trades (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  account_id UUID REFERENCES public.accounts(id) ON DELETE SET NULL,
   trade_date DATE NOT NULL,
   ticker TEXT NOT NULL,
   trade_type TEXT NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
@@ -70,7 +84,7 @@ CREATE TABLE IF NOT EXISTS public.trades (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 6. dividends (배당 내역 - 회원별 1:N 필수 연결)
+-- 7. dividends (배당 내역 - 회원별 1:N 필수 연결)
 CREATE TABLE IF NOT EXISTS public.dividends (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -85,7 +99,7 @@ CREATE TABLE IF NOT EXISTS public.dividends (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 7. exchange_rates (환율 정보 - 통화코드 다변화 지원)
+-- 8. exchange_rates (환율 정보 - 통화코드 다변화 지원)
 CREATE TABLE IF NOT EXISTS public.exchange_rates (
   rate_date DATE NOT NULL,
   currency VARCHAR(10) NOT NULL DEFAULT 'USD',
@@ -102,6 +116,7 @@ CREATE TABLE IF NOT EXISTS public.exchange_rates (
 ALTER TABLE public.common_code_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.common_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dividends ENABLE ROW LEVEL SECURITY;
@@ -112,6 +127,7 @@ DROP POLICY IF EXISTS "Public common_code_groups policy" ON public.common_code_g
 DROP POLICY IF EXISTS "Public common_codes policy" ON public.common_codes;
 DROP POLICY IF EXISTS "Public exchange_rates policy" ON public.exchange_rates;
 DROP POLICY IF EXISTS "User profiles policy" ON public.profiles;
+DROP POLICY IF EXISTS "User accounts policy" ON public.accounts;
 DROP POLICY IF EXISTS "User stocks policy" ON public.stocks;
 DROP POLICY IF EXISTS "User trades policy" ON public.trades;
 DROP POLICY IF EXISTS "User dividends policy" ON public.dividends;
@@ -123,6 +139,7 @@ CREATE POLICY "Public exchange_rates policy" ON public.exchange_rates FOR ALL US
 
 -- 2) 회원 본인 데이터 격리 RLS 정책 (Multi-Tenant User Data Isolation)
 CREATE POLICY "User profiles policy" ON public.profiles FOR ALL USING (auth.uid() = id);
+CREATE POLICY "User accounts policy" ON public.accounts FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "User stocks policy" ON public.stocks FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "User trades policy" ON public.trades FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "User dividends policy" ON public.dividends FOR ALL USING (auth.uid() = user_id);

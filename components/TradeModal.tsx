@@ -16,11 +16,22 @@ export interface StockOption {
   short_name: string;
   currency: string;
   market?: string;
+  type?: string;
   is_active: boolean;
+}
+
+export interface AccountOption {
+  id: string;
+  account_name: string;
+  broker_name?: string | null;
+  currency?: string;
+  is_active?: boolean;
 }
 
 export interface TradeRecordData {
   id?: string;
+  user_id?: string;
+  account_id?: string;
   trade_date: string;
   ticker: string;
   trade_type: 'BUY' | 'SELL';
@@ -36,6 +47,18 @@ export interface TradeRecordData {
   foreign_tax?: number;
   notes?: string;
   created_at?: string;
+  accounts?: {
+    id: string;
+    account_name: string;
+    broker_name?: string | null;
+  };
+  resolvedStock?: {
+    name: string;
+    short_name: string;
+    type?: string;
+    currency?: string;
+    market?: string;
+  } | null;
 }
 
 export interface TradeModalProps {
@@ -43,6 +66,7 @@ export interface TradeModalProps {
   mode: 'create' | 'edit';
   initialData?: TradeRecordData | null;
   stocks: StockOption[];
+  accounts?: AccountOption[];
   onClose: () => void;
   onSave: (data: TradeRecordData) => Promise<void>;
 }
@@ -52,17 +76,19 @@ export function TradeModal({
   mode,
   initialData,
   stocks = [],
+  accounts = [],
   onClose,
   onSave,
 }: TradeModalProps) {
   const [tradeDate, setTradeDate] = useState<Date>(new Date());
+  const [accountId, setAccountId] = useState<string>('');
   const [ticker, setTicker] = useState<string>('');
   const [currency, setCurrency] = useState<'KRW' | 'USD' | 'EUR' | 'JPY' | 'CNY'>('USD');
   const [price, setPrice] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('');
   const [exchangeRate, setExchangeRate] = useState<string>('1');
   const [rateFetchedAt, setRateFetchedAt] = useState<Date | null>(null);
-  const [resolvedStock, setResolvedStock] = useState<{ name: string; short_name: string; currency: string } | null>(null);
+  const [resolvedStock, setResolvedStock] = useState<{ name: string; short_name: string; currency: string; type?: string; market?: string } | null>(null);
   const [fee, setFee] = useState<string>('0');
   const [tax, setTax] = useState<string>('0');
   const [foreignFee, setForeignFee] = useState<string>('0');
@@ -78,6 +104,7 @@ export function TradeModal({
     if (isOpen) {
       if (mode === 'edit' && initialData) {
         setTradeDate(initialData.trade_date ? new Date(initialData.trade_date) : new Date());
+        setAccountId(initialData.account_id || (accounts[0]?.id || ''));
         const initTicker = initialData.ticker || '';
         setTicker(initTicker);
 
@@ -89,12 +116,16 @@ export function TradeModal({
             name: dbMatch.name,
             short_name: dbMatch.short_name || dbMatch.name,
             currency: dbMatch.currency || initialData.currency || 'USD',
+            type: dbMatch.type || 'Growth',
+            market: dbMatch.market || '',
           });
         } else if (preset) {
           setResolvedStock({
             name: preset.name,
             short_name: preset.short_name || preset.name,
             currency: preset.currency || initialData.currency || 'USD',
+            type: preset.type || 'Growth',
+            market: preset.market || '',
           });
         } else {
           setResolvedStock(null);
@@ -116,6 +147,7 @@ export function TradeModal({
         setNotes(initialData.notes || '');
       } else {
         setTradeDate(new Date());
+        setAccountId(accounts[0]?.id || '');
         setTicker('');
         setResolvedStock(null);
         setCurrency('USD');
@@ -130,7 +162,7 @@ export function TradeModal({
         setNotes('');
       }
     }
-  }, [isOpen, mode, initialData, stocks]);
+  }, [isOpen, mode, initialData, stocks, accounts]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -208,6 +240,8 @@ export function TradeModal({
         name: dbMatch.name,
         short_name: dbMatch.short_name || dbMatch.name,
         currency: dbMatch.currency || 'USD',
+        type: dbMatch.type || 'Growth',
+        market: dbMatch.market || '',
       });
       if (dbMatch.currency) {
         setCurrency(dbMatch.currency as any);
@@ -222,6 +256,8 @@ export function TradeModal({
         name: preset.name,
         short_name: preset.short_name || preset.name,
         currency: preset.currency || 'USD',
+        type: preset.type || 'Growth',
+        market: preset.market || '',
       });
       if (preset.currency) {
         setCurrency(preset.currency as any);
@@ -237,6 +273,8 @@ export function TradeModal({
           name: remote.name,
           short_name: remote.short_name || remote.name,
           currency: remote.currency || 'USD',
+          type: remote.type || 'Growth',
+          market: remote.market || '',
         });
         if (remote.currency) {
           setCurrency(remote.currency as any);
@@ -272,6 +310,7 @@ export function TradeModal({
     try {
       await onSave({
         id: initialData?.id,
+        account_id: accountId || undefined,
         trade_date: format(tradeDate, 'yyyy-MM-dd'),
         ticker: ticker.trim().toUpperCase(),
         trade_type: tradeType,
@@ -286,6 +325,7 @@ export function TradeModal({
         foreign_fee: parsedForeignFee,
         foreign_tax: parsedForeignTax,
         notes: notes.trim(),
+        resolvedStock,
       });
       onClose();
     } catch (err: any) {
@@ -327,18 +367,42 @@ export function TradeModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 sm:space-y-4">
-          {/* 구역 1: 기본 거래 정보 및 환율/금액 통합 블록 (매매일자, 티커, 종목명, 통화, 단가, 수량, 환율&거래금액) */}
+          {/* 구역 1: 기본 거래 정보 및 환율/금액 통합 블록 (매매일자, 계좌, 티커, 종목명, 통화, 단가, 수량, 환율&거래금액) */}
           <div className="space-y-3 sm:space-y-3.5">
-            <div>
-              <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                매매 일자 <span className="text-red-500">*</span>
-              </label>
-              <DatePicker
-                selected={tradeDate}
-                onChange={(date: Date | null) => date && setTradeDate(date)}
-                dateFormat="yyyy-MM-dd"
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner"
-              />
+            {/* 행 1: [매매 일자 (50%)] | [계좌 (50%)] */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 items-start">
+              <div>
+                <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                  매매 일자 <span className="text-red-500">*</span>
+                </label>
+                <DatePicker
+                  selected={tradeDate}
+                  onChange={(date: Date | null) => date && setTradeDate(date)}
+                  dateFormat="yyyy-MM-dd"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm text-center font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer shadow-inner"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                  계좌 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner cursor-pointer"
+                >
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id} className="bg-[var(--surface)] text-[var(--fg)]">
+                      {acc.broker_name ? `${acc.broker_name} (${acc.account_name})` : acc.account_name}
+                    </option>
+                  ))}
+                  {accounts.length === 0 && (
+                    <option value="" className="bg-[var(--surface)] text-[var(--fg)]">
+                      기본 투자계좌
+                    </option>
+                  )}
+                </select>
+              </div>
             </div>
 
             {/* 행 2: [티커 (50%)] | [종목명 (50%)] */}

@@ -195,5 +195,52 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     const all = filterByYear(mockTrades, 'ALL');
     expect(all.length).toBe(3);
   });
+
+  it('filters trades by account_id and associates account master information', () => {
+    interface AccountMaster {
+      id: string;
+      account_name: string;
+      broker_name: string;
+    }
+
+    const mockAccounts: AccountMaster[] = [
+      { id: 'acc-1', account_name: '종합위탁(해외)', broker_name: 'KB증권' },
+      { id: 'acc-2', account_name: 'CMA계좌', broker_name: '미래에셋' },
+    ];
+
+    const tradesWithAccounts = [
+      { ...mockTrades[0], account_id: 'acc-1', accounts: mockAccounts[0] },
+      { ...mockTrades[1], account_id: 'acc-1', accounts: mockAccounts[0] },
+      { ...mockTrades[2], account_id: 'acc-2', accounts: mockAccounts[1] },
+    ];
+
+    const filterByAccount = (items: typeof tradesWithAccounts, accId: string) => {
+      if (accId === 'ALL') return items;
+      return items.filter((item) => item.account_id === accId);
+    };
+
+    const acc1Trades = filterByAccount(tradesWithAccounts, 'acc-1');
+    expect(acc1Trades.length).toBe(2);
+    expect(acc1Trades[0].accounts.broker_name).toBe('KB증권');
+
+    const acc2Trades = filterByAccount(tradesWithAccounts, 'acc-2');
+    expect(acc2Trades.length).toBe(1);
+    expect(acc2Trades[0].accounts.broker_name).toBe('미래에셋');
+  });
+
+  it('verifies stock auto-enrollment condition when a trade with a new ticker is saved', () => {
+    const existingStocks = [{ ticker: 'AAPL' }, { ticker: '005930' }];
+
+    const checkShouldAutoEnroll = (tradeTicker: string, stocksList: { ticker: string }[]) => {
+      const cleanTicker = tradeTicker.trim().toUpperCase();
+      const exists = stocksList.some((s) => s.ticker.toUpperCase() === cleanTicker);
+      return !exists;
+    };
+
+    expect(checkShouldAutoEnroll('AAPL', existingStocks)).toBe(false);
+    expect(checkShouldAutoEnroll('DHER', existingStocks)).toBe(true);
+    expect(checkShouldAutoEnroll('NVDA', existingStocks)).toBe(true);
+  });
 });
+
 

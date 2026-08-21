@@ -9,7 +9,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { FilterDropdown, FilterOption } from '@/components/FilterDropdown';
 import { CurrencyViewToggle, CurrencyViewMode } from '@/components/CurrencyViewToggle';
-import { TradeModal, TradeRecordData, StockOption } from '@/components/TradeModal';
+import { TradeModal, TradeRecordData, StockOption, AccountOption } from '@/components/TradeModal';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
 
@@ -24,9 +24,11 @@ export default function TradesPage() {
   // Core Data
   const [trades, setTrades] = useState<TradeRecordData[]>([]);
   const [stocks, setStocks] = useState<StockOption[]>([]);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
 
   // Toolbar & Filter States
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [accountFilter, setAccountFilter] = useState<string>('ALL');
   const [yearFilter, setYearFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [currencyFilter, setCurrencyFilter] = useState<string>('ALL');
@@ -52,10 +54,58 @@ export default function TradesPage() {
         return;
       }
       setIsAuthChecking(false);
+      fetchAccounts();
       fetchStocks();
       fetchTrades();
     });
   }, [router]);
+
+  const fetchAccounts = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('id, account_name, broker_name, currency, is_active')
+        .eq('user_id', user.id)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setAccounts(
+          data.map((a: any) => ({
+            id: a.id,
+            account_name: a.account_name,
+            broker_name: a.broker_name || a.account_name,
+            currency: a.currency || 'KRW',
+            is_active: a.is_active ?? true,
+          }))
+        );
+      } else {
+        // Fallback default sample account
+        setAccounts([
+          {
+            id: 'default-acc',
+            account_name: 'KB증권 종합위탁',
+            broker_name: 'KB증권',
+            currency: 'KRW',
+            is_active: true,
+          },
+        ]);
+      }
+    } catch {
+      setAccounts([
+        {
+          id: 'default-acc',
+          account_name: 'KB증권 종합위탁',
+          broker_name: 'KB증권',
+          currency: 'KRW',
+          is_active: true,
+        },
+      ]);
+    }
+  };
 
   const fetchStocks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -86,15 +136,25 @@ export default function TradesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
+    let res = await supabase
       .from('trades')
-      .select('*')
+      .select('*, accounts(id, account_name, broker_name)')
       .eq('user_id', user.id)
       .order('trade_date', { ascending: false })
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      const normalizedTrades = data.map((t: any) => {
+    // Fallback if accounts relation query fails
+    if (res.error) {
+      res = await supabase
+        .from('trades')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('trade_date', { ascending: false })
+        .order('created_at', { ascending: false });
+    }
+
+    if (!res.error && res.data) {
+      const normalizedTrades = res.data.map((t: any) => {
         // If SELL and quantity is positive in DB, normalize to negative
         if (t.trade_type === 'SELL' && t.quantity > 0) {
           const negQty = -Math.abs(t.quantity);
@@ -180,6 +240,17 @@ export default function TradesPage() {
     return curr || '$';
   };
 
+  // Dynamic Account Filter Options
+  const accountFilterOptions: FilterOption[] = useMemo(() => {
+    return [
+      { value: 'ALL', label: '전체' },
+      ...accounts.map((acc) => ({
+        value: acc.id,
+        label: acc.broker_name || acc.account_name,
+      })),
+    ];
+  }, [accounts]);
+
   // Dynamic Distinct Year Filter Options extracted purely from recorded trade dates
   const yearFilterOptions: FilterOption[] = useMemo(() => {
     const distinctYears = Array.from(
@@ -219,21 +290,25 @@ export default function TradesPage() {
     }
   };
 
-  // Filter & Sort Trades List with Stock Master JOIN
+  // Filter & Sort Trades List with Stock Master JOIN & Account Filter
   const filteredTrades = useMemo(() => {
     return trades
       .filter((item) => {
         const { fullName, shortName } = resolveStockDisplayName(item.ticker, (item as any).stock_name);
 
-        // Search Query (ticker, stock name, short name, notes)
+        // Search Query (ticker, stock name, short name, notes, broker name)
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
           const matchTicker = item.ticker?.toLowerCase().includes(q);
           const matchName = fullName.toLowerCase().includes(q);
           const matchShortName = shortName.toLowerCase().includes(q);
           const matchNotes = item.notes?.toLowerCase().includes(q);
-          if (!matchTicker && !matchName && !matchShortName && !matchNotes) return false;
+          const matchAccount = item.accounts?.account_name?.toLowerCase().includes(q) || item.accounts?.broker_name?.toLowerCase().includes(q);
+          if (!matchTicker && !matchName && !matchShortName && !matchNotes && !matchAccount) return false;
         }
+
+        // Account Filter
+        if (accountFilter !== 'ALL' && item.account_id !== accountFilter) return false;
 
         // Year Filter
         if (yearFilter !== 'ALL' && !item.trade_date?.startsWith(yearFilter)) return false;
@@ -274,7 +349,7 @@ export default function TradesPage() {
         // Tertiary Tie-breaker: created_at DESC
         return (b.created_at || '').localeCompare(a.created_at || '');
       });
-  }, [trades, searchQuery, yearFilter, typeFilter, currencyFilter, sortField, sortDirection, currencyViewMode, stocksMap]);
+  }, [trades, searchQuery, accountFilter, yearFilter, typeFilter, currencyFilter, sortField, sortDirection, currencyViewMode, stocksMap]);
 
   // Handlers for Save and Delete
   const handleOpenCreateModal = () => {
@@ -294,10 +369,37 @@ export default function TradesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // 1. Auto-insert into stocks master table if ticker is new
+    const cleanTicker = tradeData.ticker?.trim().toUpperCase();
+    const existingStock = stocks.find((s) => s.ticker?.toUpperCase() === cleanTicker);
+    if (!existingStock && cleanTicker) {
+      const stockName = tradeData.resolvedStock?.name || cleanTicker;
+      const stockShortName = tradeData.resolvedStock?.short_name || stockName;
+      const stockType = tradeData.resolvedStock?.type || 'Growth';
+      const stockCurrency = tradeData.currency || 'USD';
+      const stockMarket = tradeData.resolvedStock?.market || '';
+
+      const { error: stockErr } = await supabase.from('stocks').insert([{
+        user_id: user.id,
+        ticker: cleanTicker,
+        name: stockName,
+        short_name: stockShortName,
+        type: stockType,
+        currency: stockCurrency,
+        market: stockMarket,
+        is_active: true,
+      }]);
+
+      if (!stockErr) {
+        await fetchStocks();
+      }
+    }
+
     const payload: any = {
       user_id: user.id,
+      account_id: tradeData.account_id && !tradeData.account_id.startsWith('default') ? tradeData.account_id : null,
       trade_date: tradeData.trade_date,
-      ticker: tradeData.ticker,
+      ticker: cleanTicker,
       trade_type: tradeData.trade_type,
       quantity: tradeData.quantity,
       price: tradeData.price,
@@ -445,6 +547,12 @@ export default function TradesPage() {
               </div>
               <div className="flex items-center gap-2.5">
                 <FilterDropdown
+                  labelPrefix="계좌"
+                  options={accountFilterOptions}
+                  value={accountFilter}
+                  onChange={setAccountFilter}
+                />
+                <FilterDropdown
                   labelPrefix="년도"
                   options={yearFilterOptions}
                   value={yearFilter}
@@ -465,7 +573,7 @@ export default function TradesPage() {
               </div>
             </div>
 
-            {/* Mobile Toolbar: 2-Row Structured Grid with 3 Filters */}
+            {/* Mobile Toolbar: 2-Row Structured Grid with 4 Filters in 2x2 Grid */}
             <div className="sm:hidden space-y-2">
               {/* Row 1: Search & Currency Toggle */}
               <div className="flex items-center gap-2">
@@ -491,8 +599,15 @@ export default function TradesPage() {
                 </div>
                 <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} />
               </div>
-              {/* Row 2: 3 Equal Columns Filter Comboboxes (년도, 구분, 통화) */}
-              <div className="grid grid-cols-3 gap-1.5 w-full">
+              {/* Row 2: 2x2 Grid Filter Comboboxes (계좌, 년도, 구분, 통화) */}
+              <div className="grid grid-cols-2 gap-1.5 w-full">
+                <FilterDropdown
+                  labelPrefix="계좌"
+                  mobileLabelPrefix="계좌"
+                  options={accountFilterOptions}
+                  value={accountFilter}
+                  onChange={setAccountFilter}
+                />
                 <FilterDropdown
                   labelPrefix="년도"
                   mobileLabelPrefix="년도"
@@ -517,7 +632,7 @@ export default function TradesPage() {
               </div>
             </div>
 
-            {/* Data Table View (Tightly Clustered Numbers with Intentional Spacer Column between 환율 and 비고) */}
+            {/* Data Table View (Tightly Clustered Numbers with Iconic 계좌 Column before 비고) */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
                 {/* Fixed tight column widths for standard metrics & auto-expansion for 종목 and 비고 */}
@@ -532,8 +647,8 @@ export default function TradesPage() {
                   <col className="w-[95px] min-[1920px]:w-[105px]" />  {/* 7. 수량 */}
                   <col className="w-[135px] min-[1920px]:w-[145px]" /> {/* 8. 거래금액 */}
                   <col className="w-[110px] min-[1920px]:w-[120px]" /> {/* 9. 환율 */}
-                  {/* 10. 환율-비고 완충 분리 영역 (1920px 이상에서 150px로 시원하게 확장) */}
-                  <col className="w-[24px] min-[1920px]:w-[150px]" />
+                  {/* 10. 계좌 배지 영역 */}
+                  <col className="w-[105px] min-[1920px]:w-[120px]" />
                   <col />                                              {/* 11. 비고 (가변 폭) */}
                   <col className="w-[75px] min-[1920px]:w-[85px]" />   {/* 12. 작업 */}
                 </colgroup>
@@ -580,8 +695,8 @@ export default function TradesPage() {
                     {/* 9. 환율 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-right font-medium">환율</th>
 
-                    {/* 10. 환율과 비고 사이 완충 스페이서 컬럼 */}
-                    <th className="hidden lg:table-cell p-0" aria-hidden="true" />
+                    {/* 10. 계좌 */}
+                    <th className="hidden lg:table-cell py-2.5 px-2 text-center font-medium">계좌</th>
 
                     {/* 11. 비고 (Desktop Only) */}
                     <th className="hidden lg:table-cell py-2.5 px-3 text-left font-medium">비고</th>
@@ -707,8 +822,12 @@ export default function TradesPage() {
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 환율과 비고 사이 완충 스페이서 셀 (우측 정렬 환율과 좌측 정렬 비고가 붙지 않도록 분리) */}
-                          <td className="hidden lg:table-cell p-0 pointer-events-none" aria-hidden="true" />
+                          {/* 10. 계좌 (Desktop: 아이코닉 배지 중앙 정렬) */}
+                          <td className="hidden lg:table-cell py-3 px-2 text-center">
+                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
+                              {item.accounts?.broker_name || item.accounts?.account_name || '기본계좌'}
+                            </span>
+                          </td>
 
                           {/* 11. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}
                           <td
@@ -845,6 +964,7 @@ export default function TradesPage() {
         mode={modalMode}
         initialData={editingTrade}
         stocks={stocks}
+        accounts={accounts}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveTrade}
       />
