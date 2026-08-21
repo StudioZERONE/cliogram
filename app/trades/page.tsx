@@ -753,7 +753,7 @@ export default function TradesPage() {
                   <col className="w-[30px] min-[1920px]:w-[60px]" />
                   <col className="w-[80px] min-[1920px]:w-[200px]" />
                   <col className="w-[50px] min-[1920px]:w-[100px]" />
-                  <col className="w-[100px] min-[1920px]:w-[200px]" />
+                  <col className="w-[120px] min-[1920px]:w-[200px]" />
                   <col className="w-[60px] min-[1920px]:w-[150px]" />
                   <col className="w-[50px] min-[1920px]:w-[100px]" />
                   <col className="w-[70px] min-[1920px]:w-[150px]" />
