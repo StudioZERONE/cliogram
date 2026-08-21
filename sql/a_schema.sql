@@ -39,8 +39,7 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   account_name TEXT NOT NULL,
   broker_name TEXT,
-  account_number TEXT,
-  currency TEXT DEFAULT 'KRW',
+  account_number VARCHAR(30),
   sort_order INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()

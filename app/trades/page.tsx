@@ -67,7 +67,7 @@ export default function TradesPage() {
     try {
       const { data, error } = await supabase
         .from('accounts')
-        .select('id, account_name, broker_name, currency, is_active')
+        .select('id, account_name, broker_name, account_number, is_active')
         .eq('user_id', user.id)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
@@ -78,7 +78,7 @@ export default function TradesPage() {
             id: a.id,
             account_name: a.account_name,
             broker_name: a.broker_name || a.account_name,
-            currency: a.currency || 'KRW',
+            account_number: a.account_number || '',
             is_active: a.is_active ?? true,
           }))
         );
@@ -89,7 +89,7 @@ export default function TradesPage() {
             id: 'default-acc',
             account_name: 'KB증권 종합위탁',
             broker_name: 'KB증권',
-            currency: 'KRW',
+            account_number: '123-45-678901',
             is_active: true,
           },
         ]);
@@ -100,7 +100,7 @@ export default function TradesPage() {
           id: 'default-acc',
           account_name: 'KB증권 종합위탁',
           broker_name: 'KB증권',
-          currency: 'KRW',
+          account_number: '123-45-678901',
           is_active: true,
         },
       ]);

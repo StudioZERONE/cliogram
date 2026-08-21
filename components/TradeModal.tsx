@@ -24,7 +24,7 @@ export interface AccountOption {
   id: string;
   account_name: string;
   broker_name?: string | null;
-  currency?: string;
+  account_number?: string | null;
   is_active?: boolean;
 }
 
