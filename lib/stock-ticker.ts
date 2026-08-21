@@ -33,17 +33,17 @@ export const POPULAR_STOCKS_PRESETS: Record<string, PresetStockInfo> = {
   JEPQ: { ticker: 'JEPQ', name: 'JPMorgan Nasdaq Equity Premium Income ETF', short_name: 'JEPQ', type: 'Dividend', currency: 'USD', market: 'NASDAQ' },
 
   // European & Global Major Stocks
-  DHER: { ticker: 'DHER', name: 'Delivery Hero SE', short_name: '딜리버리히어로', type: 'Growth', currency: 'EUR', market: 'XETRA' },
+  DHER: { ticker: 'DHER', name: 'Delivery Hero SE', short_name: '딜리버리히어로', type: 'Growth', currency: 'EUR', market: 'ETR' },
 
   // KR Major Stocks & ETFs
-  '005930': { ticker: '005930', name: '삼성전자', short_name: '삼성전자', type: 'Dividend', currency: 'KRW', market: 'KOSPI' },
-  '005935': { ticker: '005935', name: '삼성전자우', short_name: '삼성전자우', type: 'Dividend', currency: 'KRW', market: 'KOSPI' },
-  '000660': { ticker: '000660', name: 'SK하이닉스', short_name: 'SK하이닉스', type: 'Growth', currency: 'KRW', market: 'KOSPI' },
-  '035420': { ticker: '035420', name: 'NAVER', short_name: '네이버', type: 'Growth', currency: 'KRW', market: 'KOSPI' },
-  '035720': { ticker: '035720', name: '카카오', short_name: '카카오', type: 'Growth', currency: 'KRW', market: 'KOSPI' },
-  '373220': { ticker: '373220', name: 'LG에너지솔루션', short_name: 'LG엔솔', type: 'Growth', currency: 'KRW', market: 'KOSPI' },
-  '005380': { ticker: '005380', name: '현대자동차', short_name: '현대차', type: 'Dividend', currency: 'KRW', market: 'KOSPI' },
-  '000270': { ticker: '000270', name: '기아', short_name: '기아', type: 'Dividend', currency: 'KRW', market: 'KOSPI' },
+  '005930': { ticker: '005930', name: '삼성전자', short_name: '삼성전자', type: 'Dividend', currency: 'KRW', market: 'KRX' },
+  '005935': { ticker: '005935', name: '삼성전자우', short_name: '삼성전자우', type: 'Dividend', currency: 'KRW', market: 'KRX' },
+  '000660': { ticker: '000660', name: 'SK하이닉스', short_name: 'SK하이닉스', type: 'Growth', currency: 'KRW', market: 'KRX' },
+  '035420': { ticker: '035420', name: 'NAVER', short_name: '네이버', type: 'Growth', currency: 'KRW', market: 'KRX' },
+  '035720': { ticker: '035720', name: '카카오', short_name: '카카오', type: 'Growth', currency: 'KRW', market: 'KRX' },
+  '373220': { ticker: '373220', name: 'LG에너지솔루션', short_name: 'LG엔솔', type: 'Growth', currency: 'KRW', market: 'KRX' },
+  '005380': { ticker: '005380', name: '현대자동차', short_name: '현대차', type: 'Dividend', currency: 'KRW', market: 'KRX' },
+  '000270': { ticker: '000270', name: '기아', short_name: '기아', type: 'Dividend', currency: 'KRW', market: 'KRX' },
 };
 
 /**

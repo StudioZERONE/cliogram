@@ -68,7 +68,6 @@ CREATE TABLE IF NOT EXISTS public.trades (
   account_id UUID REFERENCES public.accounts(id) ON DELETE SET NULL,
   trade_date DATE NOT NULL,
   ticker TEXT NOT NULL,
-  stock_name TEXT,
   trade_type TEXT NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
   quantity NUMERIC NOT NULL CHECK (quantity != 0),
   remaining_quantity NUMERIC,
@@ -79,8 +78,6 @@ CREATE TABLE IF NOT EXISTS public.trades (
   total_amount_krw NUMERIC,
   fee NUMERIC DEFAULT 0,
   tax NUMERIC DEFAULT 0,
-  foreign_fee NUMERIC DEFAULT 0,
-  foreign_tax NUMERIC DEFAULT 0,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );

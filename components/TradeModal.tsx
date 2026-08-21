@@ -40,8 +40,6 @@ export interface TradeRecordData {
   total_amount_krw?: number;
   fee?: number;
   tax?: number;
-  foreign_fee?: number;
-  foreign_tax?: number;
   notes?: string;
   created_at?: string;
   accounts?: {
@@ -91,8 +89,6 @@ export function TradeModal({
   const [resolvedStock, setResolvedStock] = useState<{ name: string; short_name: string; currency: string; type?: string; market?: string } | null>(null);
   const [fee, setFee] = useState<string>('0');
   const [tax, setTax] = useState<string>('0');
-  const [foreignFee, setForeignFee] = useState<string>('0');
-  const [foreignTax, setForeignTax] = useState<string>('0');
   const [notes, setNotes] = useState<string>('');
 
   const [formError, setFormError] = useState<string | null>(null);
@@ -145,8 +141,6 @@ export function TradeModal({
         setRateFetchedAt(new Date());
         setFee(formatCommaString(initialData.fee || '0'));
         setTax(formatCommaString(initialData.tax || '0'));
-        setForeignFee(formatCommaString(initialData.foreign_fee || '0'));
-        setForeignTax(formatCommaString(initialData.foreign_tax || '0'));
         setNotes(initialData.notes || '');
       } else {
         setTradeDate(new Date());
@@ -160,8 +154,6 @@ export function TradeModal({
         setRateFetchedAt(null);
         setFee('0');
         setTax('0');
-        setForeignFee('0');
-        setForeignTax('0');
         setNotes('');
       }
 
@@ -304,8 +296,6 @@ export function TradeModal({
   const parsedRate = parseCommaNumber(exchangeRate) || (currency === 'KRW' ? 1 : 1450);
   const parsedFee = parseCommaNumber(fee);
   const parsedTax = parseCommaNumber(tax);
-  const parsedForeignFee = parseCommaNumber(foreignFee);
-  const parsedForeignTax = parseCommaNumber(foreignTax);
 
   // Automated trade type: positive -> BUY, negative -> SELL
   const tradeType: 'BUY' | 'SELL' = parsedQty < 0 ? 'SELL' : 'BUY';
@@ -380,8 +370,6 @@ export function TradeModal({
         total_amount_krw: krwTotal,
         fee: parsedFee,
         tax: parsedTax,
-        foreign_fee: parsedForeignFee,
-        foreign_tax: parsedForeignTax,
         notes: notes.trim(),
         resolvedStock,
       });
@@ -684,56 +672,29 @@ export function TradeModal({
 
           {/* 구역 2: 수수료 및 제세금 */}
           <div className="space-y-1.5 sm:space-y-2">
-            <label className="block text-xs font-bold text-[var(--fg-muted)]">
-              수수료 및 제세금
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
-                  수수료
+                <label className="block text-[11px] sm:text-xs font-bold text-[var(--fg-muted)] mb-1">
+                  수수료 ({currency})
                 </label>
                 <input
                   type="text"
                   inputMode="decimal"
                   value={fee}
                   onChange={(e) => setFee(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
-                  제세금
+                <label className="block text-[11px] sm:text-xs font-bold text-[var(--fg-muted)] mb-1">
+                  제세금 ({currency})
                 </label>
                 <input
                   type="text"
                   inputMode="decimal"
                   value={tax}
                   onChange={(e) => setTax(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
-                  외화수수료
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={foreignFee}
-                  onChange={(e) => setForeignFee(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
-                  외화제세금
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={foreignTax}
-                  onChange={(e) => setForeignTax(formatCommaString(e.target.value))}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs sm:text-sm font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
                 />
               </div>
             </div>

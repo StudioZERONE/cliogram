@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TrendingUp, Globe2, Building2, Coins } from 'lucide-react';
@@ -12,12 +12,13 @@ import { Header } from '@/components/Header';
 interface StockRecord {
   ticker: string;
   name: string;
+  short_name?: string;
 }
 
 interface TradeRecord {
   id?: string;
   trade_date: string;
-  stock_name: string;
+  ticker: string;
   trade_type: 'BUY' | 'SELL';
   price: number;
   currency: 'KRW' | 'USD' | 'EUR';
@@ -74,15 +75,26 @@ export default function DashboardPage() {
     if (stocksRes.data) setStocks(stocksRes.data as StockRecord[]);
   };
 
+  const stocksMap = useMemo(() => {
+    const map: Record<string, StockRecord> = {};
+    stocks.forEach((s) => {
+      if (s.ticker) {
+        map[s.ticker.trim().toUpperCase()] = s;
+      }
+    });
+    return map;
+  }, [stocks]);
+
   if (isAuthChecking) {
     return <div className="min-h-screen bg-[var(--bg)]" />;
   }
 
-  const renderFlagEmoji = (curr: string) => {
-    if (curr === 'USD') return <span className="text-2xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;
-    if (curr === 'KRW') return <span className="text-2xl leading-none inline-block align-middle" title="대한민국 원 (KRW)">🇰🇷</span>;
-    if (curr === 'EUR') return <span className="text-2xl leading-none inline-block align-middle" title="유로화 (EUR)">🇪🇺</span>;
-    return <span className="text-sm font-bold text-[var(--fg-muted)]">{curr}</span>;
+  const renderCurrencyBadge = (curr: string) => {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--fg)]">
+        {curr}
+      </span>
+    );
   };
 
   return (
@@ -163,17 +175,22 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {trades.slice(0, 5).map((item) => (
-                      <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
-                        <td className="py-3.5 px-4 text-center text-sm font-semibold">{item.trade_date}</td>
-                        <td className="py-3.5 px-4 text-center">
-                          <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{item.trade_type}</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
-                        <td className="py-3.5 px-4 text-left font-semibold">{item.stock_name}</td>
-                        <td className="py-3.5 px-4 text-right font-bold">{item.price.toLocaleString()}</td>
-                      </tr>
-                    ))}
+                    {trades.slice(0, 5).map((item) => {
+                      const stock = stocksMap[item.ticker?.trim().toUpperCase()];
+                      const stockDisplayName = stock?.short_name || stock?.name || item.ticker;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
+                          <td className="py-3.5 px-4 text-center text-sm font-semibold">{item.trade_date}</td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className={`inline-block rounded-md px-2.5 py-0.5 text-xs font-bold ${item.trade_type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{item.trade_type}</span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">{renderCurrencyBadge(item.currency)}</td>
+                          <td className="py-3.5 px-4 text-left font-semibold">{stockDisplayName}</td>
+                          <td className="py-3.5 px-4 text-right font-bold">{item.price.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -200,7 +217,7 @@ export default function DashboardPage() {
                     {dividends.slice(0, 5).map((item) => (
                       <tr key={item.id} className="hover:bg-[var(--bg)]/50 transition-colors">
                         <td className="py-3.5 px-4 text-center text-sm font-semibold">{item.payment_date}</td>
-                        <td className="py-3.5 px-4 text-center">{renderFlagEmoji(item.currency)}</td>
+                        <td className="py-3.5 px-4 text-center">{renderCurrencyBadge(item.currency)}</td>
                         <td className="py-3.5 px-4 text-left font-semibold text-emerald-500">{item.stock_name}</td>
                         <td className="py-3.5 px-4 text-right font-semibold">{item.amount.toLocaleString()}</td>
                         <td className="py-3.5 px-4 text-right font-bold text-emerald-500">{(item.amount - item.tax).toLocaleString()}</td>

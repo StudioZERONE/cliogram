@@ -57,6 +57,7 @@ export default function TradesPage() {
   const [trades, setTrades] = useState<TradeRecordData[]>([]);
   const [stocks, setStocks] = useState<StockOption[]>([]);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [marketCodes, setMarketCodes] = useState<{ code: string; name: string }[]>([]);
 
   // Toolbar & Filter States
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -97,7 +98,7 @@ export default function TradesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [accountsRes, stocksRes, tradesRes] = await Promise.all([
+      const [accountsRes, stocksRes, tradesRes, marketCodesRes] = await Promise.all([
         supabase
           .from('accounts')
           .select('id, account_name, broker_name, account_number, is_active')
@@ -108,14 +109,25 @@ export default function TradesPage() {
           .from('stocks')
           .select('id, ticker, name, short_name, currency, market, is_active')
           .eq('user_id', user.id)
-          .order('name', { ascending: true }),
+          .order('name', { ascending: true })
+          .order('ticker', { ascending: true }),
         supabase
           .from('trades')
           .select('*')
           .eq('user_id', user.id)
           .order('trade_date', { ascending: false })
           .order('created_at', { ascending: false }),
+        supabase
+          .from('common_codes')
+          .select('code, name')
+          .eq('group_id', 'MARKET_TYPE')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true }),
       ]);
+
+      if (marketCodesRes.data) {
+        setMarketCodes(marketCodesRes.data);
+      }
 
       if (accountsRes.data) {
         setAccounts(
@@ -141,60 +153,22 @@ export default function TradesPage() {
           is_active: s.is_active ?? true,
         }));
       }
+      setStocks(loadedStocks);
 
       if (tradesRes.data) {
         const rawTrades = tradesRes.data;
-        // Auto-sync missing trade tickers into stocks master
         const existingTickerSet = new Set(loadedStocks.map((s) => s.ticker?.toUpperCase()));
-        const missingTrades = rawTrades.filter(
-          (t: any) => t.ticker && !existingTickerSet.has(t.ticker.toUpperCase())
+        const missingTickers = Array.from(
+          new Set(
+            rawTrades
+              .map((t: any) => t.ticker?.toUpperCase()?.trim())
+              .filter((tick: string) => tick && !existingTickerSet.has(tick))
+          )
         );
 
-        if (missingTrades.length > 0) {
-          const addedTickers = new Set<string>();
-          for (const t of missingTrades) {
-            const tick = t.ticker.toUpperCase().trim();
-            if (addedTickers.has(tick)) continue;
-            addedTickers.add(tick);
-
-            const preset = lookupTickerInfo(tick);
-            const stockName = t.stock_name || preset?.name || tick;
-            const stockShortName = preset?.short_name || stockName;
-            const stockCurrency = t.currency || preset?.currency || 'USD';
-            const stockMarket = preset?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
-
-            await supabase.from('stocks').insert([{
-              user_id: user.id,
-              ticker: tick,
-              name: stockName,
-              short_name: stockShortName,
-              type: 'Growth',
-              currency: stockCurrency,
-              market: stockMarket,
-              is_active: true,
-            }]);
-          }
-
-          const { data: refetched } = await supabase
-            .from('stocks')
-            .select('id, ticker, name, short_name, currency, market, is_active')
-            .eq('user_id', user.id)
-            .order('name', { ascending: true });
-
-          if (refetched) {
-            loadedStocks = refetched.map((s: any) => ({
-              id: s.id,
-              ticker: s.ticker,
-              name: s.name,
-              short_name: s.short_name || s.name,
-              currency: s.currency || 'USD',
-              market: s.market || '',
-              is_active: s.is_active ?? true,
-            }));
-          }
+        if (missingTickers.length > 0) {
+          toast.warning(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목 마스터에서 종목을 지금 등록하세요.`);
         }
-
-        setStocks(loadedStocks);
 
         const normalizedTrades = rawTrades.map((t: any) => {
           if (t.trade_type === 'SELL' && t.quantity > 0) {
@@ -227,8 +201,6 @@ export default function TradesPage() {
 
           return distinctYears.length > 0 ? distinctYears[0] : 'ALL';
         });
-      } else {
-        setStocks(loadedStocks);
       }
     } finally {
       setIsLoadingTrades(false);
@@ -340,24 +312,23 @@ export default function TradesPage() {
     return map;
   }, [stocks]);
 
-  // Helper to resolve stock names cleanly without ever showing ticker as name
-  const resolveStockDisplayName = (itemTicker: string, legacyStockName?: string) => {
-    const stock = stocksMap[itemTicker] || stocksMap[itemTicker?.trim()?.toUpperCase()];
+  // Helper to resolve stock names cleanly from stocks master JOIN
+  const resolveStockDisplayName = (itemTicker: string) => {
+    const cleanTicker = itemTicker?.trim()?.toUpperCase() || '';
+    const stock = stocksMap[cleanTicker];
     if (stock?.name) {
       return {
         fullName: stock.name,
         shortName: stock.short_name || stock.name,
+        isRegistered: true,
       };
     }
 
-    // If not matched in stocks master, check legacy stock_name and strip any (TICKER) prefix
-    if (legacyStockName && legacyStockName.trim()) {
-      const match = legacyStockName.match(/\(([^)]+)\)/);
-      const cleaned = match ? match[1] : legacyStockName;
-      return { fullName: cleaned, shortName: cleaned };
-    }
-
-    return { fullName: itemTicker, shortName: itemTicker };
+    return {
+      fullName: cleanTicker,
+      shortName: cleanTicker,
+      isRegistered: false,
+    };
   };
 
   // Universal Currency Symbol Helper (Always outputs appropriate symbol for every currency)
@@ -424,7 +395,7 @@ export default function TradesPage() {
   const filteredTrades = useMemo(() => {
     return trades
       .filter((item) => {
-        const { fullName, shortName } = resolveStockDisplayName(item.ticker, (item as any).stock_name);
+        const { fullName, shortName } = resolveStockDisplayName(item.ticker);
 
         // Search Query (ticker, stock name, short name, notes, broker name)
         if (searchQuery.trim()) {
@@ -461,8 +432,8 @@ export default function TradesPage() {
         } else if (sortField === 'ticker') {
           diff = (a.ticker || '').localeCompare(b.ticker || '');
         } else if (sortField === 'stock_name') {
-          const nameA = resolveStockDisplayName(a.ticker, (a as any).stock_name).fullName;
-          const nameB = resolveStockDisplayName(b.ticker, (b as any).stock_name).fullName;
+          const nameA = resolveStockDisplayName(a.ticker).fullName;
+          const nameB = resolveStockDisplayName(b.ticker).fullName;
           diff = nameA.localeCompare(nameB);
         } else if (sortField === 'trade_date') {
           diff = new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime();
@@ -517,7 +488,17 @@ export default function TradesPage() {
 
       if (!dbExisting) {
         const stockCurrency = tradeData.currency || (tradeData.resolvedStock?.currency || 'USD');
-        const stockMarket = tradeData.resolvedStock?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
+        const resolvedMarket = tradeData.resolvedStock?.market || (stockCurrency === 'KRW' ? 'KRX' : '');
+
+        // Validate market against MARKET_TYPE common codes
+        const validMarketCodes = marketCodes.map((c: any) => c.code);
+        if (validMarketCodes.length > 0 && resolvedMarket && !validMarketCodes.includes(resolvedMarket)) {
+          const msg = `등록하시려는 종목의 상장시장('${resolvedMarket}')이 공통코드(MARKET_TYPE)에 등록되어 있지 않습니다. 공통코드에서 시장 코드를 먼저 등록해 주세요.`;
+          toast.error(msg);
+          throw new Error(msg);
+        }
+
+        const stockMarket = resolvedMarket || (stockCurrency === 'KRW' ? 'KRX' : (validMarketCodes.includes('NASDAQ') ? 'NASDAQ' : validMarketCodes[0] || ''));
 
         const { error: stockErr } = await supabase.from('stocks').insert([{
           user_id: user.id,
@@ -530,20 +511,21 @@ export default function TradesPage() {
           is_active: true,
         }]);
 
-        if (!stockErr) {
-          await fetchStocks();
-        } else {
+        if (stockErr) {
           console.error('Failed to auto-insert into stocks master:', stockErr);
+          throw new Error(`종목 마스터 등록 실패: ${stockErr.message}`);
         }
+
+        await fetchStocks();
       }
     }
 
+    // 2. Build Trade Payload strictly matching DB schema (no stock_name, no foreign_fee/foreign_tax)
     const payload: any = {
       user_id: user.id,
       account_id: tradeData.account_id ? tradeData.account_id : null,
       trade_date: tradeData.trade_date,
       ticker: cleanTicker,
-      stock_name: stockName,
       trade_type: tradeData.trade_type,
       quantity: tradeData.quantity,
       price: tradeData.price,
@@ -553,39 +535,17 @@ export default function TradesPage() {
       total_amount_krw: tradeData.total_amount_krw,
       fee: tradeData.fee ?? 0,
       tax: tradeData.tax ?? 0,
-      foreign_fee: tradeData.foreign_fee ?? 0,
-      foreign_tax: tradeData.foreign_tax ?? 0,
       notes: tradeData.notes?.trim() || null,
     };
 
     if (modalMode === 'edit' && tradeData.id) {
-      let { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
-
-      // Schema Cache Fallback: Only if remote DB table lacks foreign_tax or foreign_fee columns
-      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache')) && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee'))) {
-        const fallbackPayload = { ...payload };
-        delete fallbackPayload.foreign_fee;
-        delete fallbackPayload.foreign_tax;
-        const fallbackRes = await supabase.from('trades').update(fallbackPayload).eq('id', tradeData.id);
-        error = fallbackRes.error;
-      }
-
+      const { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
       if (error) {
         console.error('Failed to update trade:', error);
         throw error;
       }
     } else {
-      let { error } = await supabase.from('trades').insert([payload]);
-
-      // Schema Cache Fallback: Only if remote DB table lacks foreign_tax or foreign_fee columns
-      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache')) && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee'))) {
-        const fallbackPayload = { ...payload };
-        delete fallbackPayload.foreign_fee;
-        delete fallbackPayload.foreign_tax;
-        const fallbackRes = await supabase.from('trades').insert([fallbackPayload]);
-        error = fallbackRes.error;
-      }
-
+      const { error } = await supabase.from('trades').insert([payload]);
       if (error) {
         console.error('Failed to insert trade:', error);
         throw error;
@@ -964,7 +924,7 @@ export default function TradesPage() {
                         ? (item.total_amount_krw !== undefined ? item.total_amount_krw : rawAmount * rate)
                         : rawAmount;
 
-                      const { fullName, shortName } = resolveStockDisplayName(item.ticker, (item as any).stock_name);
+                      const { fullName, shortName, isRegistered } = resolveStockDisplayName(item.ticker);
                       const currSymbol = getCurrencySymbol(currencyViewMode, item.currency);
 
                       return (
@@ -1002,7 +962,14 @@ export default function TradesPage() {
                             className="hidden lg:table-cell py-3 px-3 text-left text-xs font-semibold text-[var(--fg)] truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
                             title={`"${fullName}" 검색`}
                           >
-                            {shortName}
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="truncate">{shortName}</span>
+                              {!isRegistered && (
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                                  미등록
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* 5. 통화 (Desktop: Flag Icon Only) */}
@@ -1120,13 +1087,18 @@ export default function TradesPage() {
                                 {isSell ? '매도' : '매수'}
                               </span>
                             </div>
-                            <p
+                            <div
                               onClick={() => setSearchQuery(shortName)}
-                              className="font-bold text-xs text-[var(--fg)] mt-1 truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline"
+                              className="font-bold text-xs text-[var(--fg)] mt-1 truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline flex items-center gap-1.5"
                               title={`"${shortName}" 검색`}
                             >
-                              {shortName}
-                            </p>
+                              <span className="truncate">{shortName}</span>
+                              {!isRegistered && (
+                                <span className="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                                  미등록
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Mobile Col 2: 단가 x 수량 (1행), 거래금액 (2행) */}

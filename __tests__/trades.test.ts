@@ -415,96 +415,98 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     expect(result.success).toBe(true);
   });
 
-  it('handles Schema Cache Fallback by stripping foreign_tax/foreign_fee when remote schema lacks them', async () => {
-    const mockSaveWithFallback = async (payload: any, schemaHasForeignCols: boolean) => {
-      let insertedPayload = { ...payload };
-      if (!schemaHasForeignCols) {
-        // Simulates first attempt returning PGRST204 / schema cache error
-        const initialError = new Error("Could not find the 'foreign_tax' column of 'trades' in the schema cache");
-        // Fallback logic
-        delete insertedPayload.foreign_fee;
-        delete insertedPayload.foreign_tax;
-      }
-      return { success: true, payload: insertedPayload };
-    };
-
-    const fullPayload = {
-      ticker: 'AAPL',
-      quantity: 10,
-      price: 200,
-      foreign_fee: 1,
-      foreign_tax: 2,
-    };
-
-    const res = await mockSaveWithFallback(fullPayload, false);
-    expect(res.success).toBe(true);
-    expect(res.payload.foreign_tax).toBeUndefined();
-    expect(res.payload.foreign_fee).toBeUndefined();
-    expect(res.payload.ticker).toBe('AAPL');
-  });
-
-  it('ensures stock_name is always populated from resolved stock or ticker in trade payload', () => {
-    const buildTradePayload = (tradeData: any, stocks: any[]) => {
+  it('builds trade payload strictly according to DB schema without stock_name, foreign_fee, or foreign_tax', () => {
+    const buildTradePayload = (tradeData: any) => {
       const cleanTicker = tradeData.ticker?.trim().toUpperCase();
-      const existingStock = stocks.find((s) => s.ticker?.toUpperCase() === cleanTicker);
-      const stockName = tradeData.resolvedStock?.name || existingStock?.name || cleanTicker;
       return {
+        user_id: 'user-123',
+        account_id: tradeData.account_id || null,
+        trade_date: tradeData.trade_date,
         ticker: cleanTicker,
-        stock_name: stockName,
+        trade_type: tradeData.trade_type,
         quantity: tradeData.quantity,
         price: tradeData.price,
+        currency: tradeData.currency,
+        exchange_rate: tradeData.exchange_rate ?? 1,
+        total_amount: tradeData.total_amount,
+        total_amount_krw: tradeData.total_amount_krw,
+        fee: tradeData.fee ?? 0,
+        tax: tradeData.tax ?? 0,
+        notes: tradeData.notes?.trim() || null,
       };
     };
 
-    const payload1 = buildTradePayload(
-      { ticker: '005380', quantity: 2, price: 4000, resolvedStock: { name: '현대차' } },
-      []
-    );
-    expect(payload1.stock_name).toBe('현대차');
-    expect(payload1.ticker).toBe('005380');
+    const payload = buildTradePayload({
+      account_id: 'acc-1',
+      trade_date: '2026-08-22',
+      ticker: 'AAPL',
+      trade_type: 'BUY',
+      quantity: 10,
+      price: 200,
+      currency: 'USD',
+      fee: 3,
+      tax: 4,
+    });
 
-    const payload2 = buildTradePayload(
-      { ticker: 'TSLA', quantity: 5, price: 200 },
-      [{ ticker: 'TSLA', name: '테슬라' }]
-    );
-    expect(payload2.stock_name).toBe('테슬라');
-
-    const payload3 = buildTradePayload(
-      { ticker: 'UNKNOWN', quantity: 1, price: 100 },
-      []
-    );
-    expect(payload3.stock_name).toBe('UNKNOWN');
+    expect(payload.fee).toBe(3);
+    expect(payload.tax).toBe(4);
+    expect((payload as any).stock_name).toBeUndefined();
+    expect((payload as any).foreign_fee).toBeUndefined();
+    expect((payload as any).foreign_tax).toBeUndefined();
   });
 
-  it('assigns Growth as the fixed default type for auto-registered stocks from trades', () => {
-    const buildAutoRegisteredStock = (ticker: string, tradeCurrency: string, resolved?: any) => {
-      const cleanTicker = ticker.trim().toUpperCase();
-      const stockName = resolved?.name || cleanTicker;
-      const stockShortName = resolved?.short_name || stockName;
-      const stockCurrency = tradeCurrency || resolved?.currency || 'USD';
-      const stockMarket = resolved?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
+  it('resolves stock name strictly from stocks master JOIN and marks unregistered stocks', () => {
+    const stocksMap: Record<string, any> = {
+      'AAPL': { ticker: 'AAPL', name: 'Apple Inc.', short_name: '애플' },
+      '005380': { ticker: '005380', name: '현대자동차', short_name: '현대차' },
+    };
 
+    const resolveStockDisplayName = (itemTicker: string) => {
+      const cleanTicker = itemTicker?.trim()?.toUpperCase() || '';
+      const stock = stocksMap[cleanTicker];
+      if (stock?.name) {
+        return {
+          fullName: stock.name,
+          shortName: stock.short_name || stock.name,
+          isRegistered: true,
+        };
+      }
       return {
-        ticker: cleanTicker,
-        name: stockName,
-        short_name: stockShortName,
-        type: 'Growth', // 고정값: 성장주 (Growth)
-        currency: stockCurrency,
-        market: stockMarket,
-        is_active: true,
+        fullName: cleanTicker,
+        shortName: cleanTicker,
+        isRegistered: false,
       };
     };
 
-    const newStock1 = buildAutoRegisteredStock('005380', 'KRW', { name: '현대차', short_name: '현대차', market: 'KRX' });
-    expect(newStock1.type).toBe('Growth');
-    expect(newStock1.name).toBe('현대차');
-    expect(newStock1.market).toBe('KRX');
-    expect(newStock1.currency).toBe('KRW');
+    const res1 = resolveStockDisplayName('005380');
+    expect(res1.fullName).toBe('현대자동차');
+    expect(res1.shortName).toBe('현대차');
+    expect(res1.isRegistered).toBe(true);
 
-    const newStock2 = buildAutoRegisteredStock('NVDA', 'USD');
-    expect(newStock2.type).toBe('Growth');
-    expect(newStock2.market).toBe('NASDAQ');
-    expect(newStock2.currency).toBe('USD');
+    const res2 = resolveStockDisplayName('AAPL');
+    expect(res2.fullName).toBe('Apple Inc.');
+    expect(res2.isRegistered).toBe(true);
+
+    const res3 = resolveStockDisplayName('999999');
+    expect(res3.fullName).toBe('999999');
+    expect(res3.shortName).toBe('999999');
+    expect(res3.isRegistered).toBe(false);
+  });
+
+  it('validates stock market code against common_codes MARKET_TYPE and rejects invalid markets', () => {
+    const validMarketCodes = ['KRX', 'NASDAQ', 'NYSE', 'NYSEARCA', 'ETR'];
+
+    const validateMarketCode = (market: string) => {
+      if (validMarketCodes.length > 0 && market && !validMarketCodes.includes(market)) {
+        throw new Error(`등록하시려는 종목의 상장시장('${market}')이 공통코드(MARKET_TYPE)에 등록되어 있지 않습니다. 공통코드에서 시장 코드를 먼저 등록해 주세요.`);
+      }
+      return true;
+    };
+
+    expect(() => validateMarketCode('KRX')).not.toThrow();
+    expect(() => validateMarketCode('NASDAQ')).not.toThrow();
+    expect(() => validateMarketCode('NYSE')).not.toThrow();
+    expect(() => validateMarketCode('INVALID_EXCHANGE')).toThrowError(/공통코드\(MARKET_TYPE\)에 등록되어 있지 않습니다/);
   });
 });
 

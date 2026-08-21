@@ -118,53 +118,26 @@ export default function StocksPage() {
         .order('name', { ascending: true })
         .order('ticker', { ascending: true });
 
-      let currentStocks = data || [];
+      const currentStocks = data || [];
 
-      // Auto-sync missing trade tickers into stocks master
+      // Check if any trades have tickers not in stocks master
       const { data: userTrades } = await supabase
         .from('trades')
-        .select('ticker, stock_name, currency')
+        .select('ticker')
         .eq('user_id', user.id);
 
       if (userTrades && userTrades.length > 0) {
         const existingTickerSet = new Set(currentStocks.map((s: any) => s.ticker?.toUpperCase()));
-        const missingTrades = userTrades.filter(
-          (t: any) => t.ticker && !existingTickerSet.has(t.ticker.toUpperCase())
+        const missingTickers = Array.from(
+          new Set(
+            userTrades
+              .map((t: any) => t.ticker?.toUpperCase()?.trim())
+              .filter((tick: string) => tick && !existingTickerSet.has(tick))
+          )
         );
 
-        if (missingTrades.length > 0) {
-          const addedTickers = new Set<string>();
-          for (const t of missingTrades) {
-            const tick = t.ticker.toUpperCase().trim();
-            if (addedTickers.has(tick)) continue;
-            addedTickers.add(tick);
-
-            const preset = lookupTickerInfo(tick);
-            const stockName = t.stock_name || preset?.name || tick;
-            const stockShortName = preset?.short_name || stockName;
-            const stockCurrency = t.currency || preset?.currency || 'USD';
-            const stockMarket = preset?.market || (stockCurrency === 'KRW' ? 'KRX' : 'NASDAQ');
-
-            await supabase.from('stocks').insert([{
-              user_id: user.id,
-              ticker: tick,
-              name: stockName,
-              short_name: stockShortName,
-              type: 'Growth',
-              currency: stockCurrency,
-              market: stockMarket,
-              is_active: true,
-            }]);
-          }
-
-          const { data: refetched } = await supabase
-            .from('stocks')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('name', { ascending: true })
-            .order('ticker', { ascending: true });
-
-          if (refetched) currentStocks = refetched;
+        if (missingTickers.length > 0) {
+          toast.warning(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목을 지금 등록하세요.`);
         }
       }
 
