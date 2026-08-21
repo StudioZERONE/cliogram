@@ -43,6 +43,7 @@ export default function TradesPage() {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingTrade, setEditingTrade] = useState<TradeRecordData | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isLoadingTrades, setIsLoadingTrades] = useState<boolean>(true);
 
   // Mobile Action Popover
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
@@ -128,66 +129,71 @@ export default function TradesPage() {
   };
 
   const fetchTrades = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setIsLoadingTrades(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    let res = await supabase
-      .from('trades')
-      .select('*, accounts(id, account_name, broker_name)')
-      .eq('user_id', user.id)
-      .order('trade_date', { ascending: false })
-      .order('created_at', { ascending: false });
-
-    // Fallback if accounts relation query fails
-    if (res.error) {
-      res = await supabase
+      let res = await supabase
         .from('trades')
-        .select('*')
+        .select('*, accounts(id, account_name, broker_name)')
         .eq('user_id', user.id)
         .order('trade_date', { ascending: false })
         .order('created_at', { ascending: false });
-    }
 
-    if (!res.error && res.data) {
-      const normalizedTrades = res.data.map((t: any) => {
-        // If SELL and quantity is positive in DB, normalize to negative
-        if (t.trade_type === 'SELL' && t.quantity > 0) {
-          const negQty = -Math.abs(t.quantity);
-          const negAmount = -Math.abs(t.total_amount || t.quantity * t.price);
-          const negAmountKrw = -Math.abs(t.total_amount_krw || (t.quantity * t.price * (t.exchange_rate || 1)));
+      // Fallback if accounts relation query fails
+      if (res.error) {
+        res = await supabase
+          .from('trades')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('trade_date', { ascending: false })
+          .order('created_at', { ascending: false });
+      }
 
-          // Asynchronously sync the negative quantity back to Supabase
-          supabase.from('trades').update({
-            quantity: negQty,
-            total_amount: negAmount,
-            total_amount_krw: negAmountKrw,
-          }).eq('id', t.id).then();
+      if (!res.error && res.data) {
+        const normalizedTrades = res.data.map((t: any) => {
+          // If SELL and quantity is positive in DB, normalize to negative
+          if (t.trade_type === 'SELL' && t.quantity > 0) {
+            const negQty = -Math.abs(t.quantity);
+            const negAmount = -Math.abs(t.total_amount || t.quantity * t.price);
+            const negAmountKrw = -Math.abs(t.total_amount_krw || (t.quantity * t.price * (t.exchange_rate || 1)));
 
-          return {
-            ...t,
-            quantity: negQty,
-            total_amount: negAmount,
-            total_amount_krw: negAmountKrw,
-          };
-        }
-        return t;
-      });
+            // Asynchronously sync the negative quantity back to Supabase
+            supabase.from('trades').update({
+              quantity: negQty,
+              total_amount: negAmount,
+              total_amount_krw: negAmountKrw,
+            }).eq('id', t.id).then();
 
-      setTrades(normalizedTrades as TradeRecordData[]);
+            return {
+              ...t,
+              quantity: negQty,
+              total_amount: negAmount,
+              total_amount_krw: negAmountKrw,
+            };
+          }
+          return t;
+        });
 
-      // Set initial yearFilter to the latest recorded trade year in DB
-      setYearFilter((prev) => {
-        if (prev !== 'ALL') return prev; // If user already selected a year, keep it
-        const distinctYears = Array.from(
-          new Set(
-            normalizedTrades
-              .map((t: any) => t.trade_date?.substring(0, 4))
-              .filter((y: any): y is string => Boolean(y && y.length === 4))
-          )
-        ).sort((a, b) => b.localeCompare(a));
+        setTrades(normalizedTrades as TradeRecordData[]);
 
-        return distinctYears.length > 0 ? distinctYears[0] : 'ALL';
-      });
+        // Set initial yearFilter to the latest recorded trade year in DB
+        setYearFilter((prev) => {
+          if (prev !== 'ALL') return prev; // If user already selected a year, keep it
+          const distinctYears = Array.from(
+            new Set(
+              normalizedTrades
+                .map((t: any) => t.trade_date?.substring(0, 4))
+                .filter((y: any): y is string => Boolean(y && y.length === 4))
+            )
+          ).sort((a: string, b: string) => b.localeCompare(a));
+
+          return distinctYears.length > 0 ? distinctYears[0] : 'ALL';
+        });
+      }
+    } finally {
+      setIsLoadingTrades(false);
     }
   };
 
@@ -235,13 +241,13 @@ export default function TradesPage() {
     return curr || '$';
   };
 
-  // Dynamic Account Filter Options
+  // Dynamic Account Filter Options (Account Name Priority)
   const accountFilterOptions: FilterOption[] = useMemo(() => {
     return [
       { value: 'ALL', label: '전체' },
       ...accounts.map((acc) => ({
         value: acc.id,
-        label: acc.broker_name || acc.account_name,
+        label: acc.account_name || acc.broker_name || '',
       })),
     ];
   }, [accounts]);
@@ -644,14 +650,14 @@ export default function TradesPage() {
                   <col className="w-[95px] min-[1920px]:w-[105px]" />
                   <col className="w-[135px] min-[1920px]:w-[145px]" />
                   <col className="w-[110px] min-[1920px]:w-[120px]" />
-                  <col className="w-[105px] min-[1920px]:w-[120px]" />
+                  <col className="w-[110px] min-[1920px]:w-[150px]" />
                   <col />
                   <col className="w-[75px] min-[1920px]:w-[85px]" />
                 </colgroup>
                 <colgroup className="sm:hidden">
-                  <col />
-                  <col className="w-[145px]" />
-                  <col className="w-[42px]" />
+                  <col className="w-[54%]" />
+                  <col className="w-[38%]" />
+                  <col className="w-[8%]" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
@@ -700,17 +706,26 @@ export default function TradesPage() {
                     {/* 12. 작업 */}
                     <th className="hidden sm:table-cell py-2.5 px-2 text-center font-medium">작업</th>
 
-                    {/* Mobile 3-Column Headers */}
-                    <th className="sm:hidden py-2 px-2.5 text-left font-medium text-[10.5px]">매매일자 / 종목</th>
+                    {/* Mobile 3-Column Headers (Single Line with whitespace-nowrap) */}
+                    <th className="sm:hidden py-2 px-2 text-left font-medium text-[10.5px] whitespace-nowrap">매매일자 / 종목</th>
                     <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px] whitespace-nowrap">단가·수량 / 거래금액</th>
                     <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px] whitespace-nowrap">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {filteredTrades.length === 0 ? (
+                  {isLoadingTrades ? (
                     <tr>
                       <td colSpan={12} className="py-12 text-center text-xs text-[var(--fg-muted)]">
-                        등록된 매매 내역이 없습니다. 오른쪽 상단 "+" 버튼을 눌러 추가해 주세요.
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                          <span>매매 내역을 불러오는 중입니다...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredTrades.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                        등록된 매매 내역이 없습니다. 오른쪽 상단 &quot;+&quot; 버튼을 눌러 추가해 주세요.
                       </td>
                     </tr>
                   ) : (
@@ -818,11 +833,11 @@ export default function TradesPage() {
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 계좌 (Desktop) */}
+                          {/* 10. 계좌 (Desktop: 계좌명 우선 표출) */}
                           <td className="hidden lg:table-cell py-3 px-2 text-center">
-                            {(item.accounts?.broker_name || item.accounts?.account_name) ? (
+                            {(item.accounts?.account_name || item.accounts?.broker_name) ? (
                               <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
-                                {item.accounts.broker_name || item.accounts.account_name}
+                                {item.accounts.account_name || item.accounts.broker_name}
                               </span>
                             ) : (
                               <span className="text-[var(--fg-muted)] font-normal text-xs">-</span>
