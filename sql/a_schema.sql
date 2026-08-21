@@ -105,7 +105,14 @@ CREATE TABLE IF NOT EXISTS public.exchange_rates (
   rate NUMERIC NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (rate_date, currency)
-);
+-- =========================================================
+-- 9. 성능 최적화 인덱스 (Performance Optimization Indexes)
+-- =========================================================
+CREATE INDEX IF NOT EXISTS idx_trades_user_date ON public.trades(user_id, trade_date DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trades_account ON public.trades(account_id);
+CREATE INDEX IF NOT EXISTS idx_stocks_user ON public.stocks(user_id, name);
+CREATE INDEX IF NOT EXISTS idx_accounts_user ON public.accounts(user_id, sort_order ASC, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_dividends_user_date ON public.dividends(user_id, payment_date DESC);
 
 -- =========================================================
 -- ROW LEVEL SECURITY (RLS) & ACCESS CONTROL POLICIES

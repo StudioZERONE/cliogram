@@ -51,10 +51,7 @@ export function AccountSelect({ accounts, value, onChange, className = '', disab
   };
 
   const formatAccountLabel = (item: AccountOption) => {
-    if (item.account_number) {
-      return `${item.account_name} (${item.account_number})`;
-    }
-    return item.broker_name ? `${item.broker_name} (${item.account_name})` : item.account_name;
+    return item.account_name || item.broker_name || '';
   };
 
   const selectedAccount = accounts.find((a) => a.id === value);

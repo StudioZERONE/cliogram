@@ -55,64 +55,129 @@ export default function TradesPage() {
         return;
       }
       setIsAuthChecking(false);
-      fetchAccounts();
-      fetchStocks();
-      fetchTrades();
+      loadAllData();
     });
   }, [router]);
+
+  const loadAllData = async () => {
+    setIsLoadingTrades(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [accountsRes, stocksRes, tradesRes] = await Promise.all([
+        supabase
+          .from('accounts')
+          .select('id, account_name, broker_name, account_number, is_active')
+          .eq('user_id', user.id)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('stocks')
+          .select('id, ticker, name, short_name, currency, market, is_active')
+          .eq('user_id', user.id)
+          .order('name', { ascending: true }),
+        supabase
+          .from('trades')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('trade_date', { ascending: false })
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (accountsRes.data) {
+        setAccounts(
+          accountsRes.data.map((a: any) => ({
+            id: a.id,
+            account_name: a.account_name,
+            broker_name: a.broker_name || a.account_name,
+            account_number: a.account_number || '',
+            is_active: a.is_active ?? true,
+          }))
+        );
+      }
+
+      if (stocksRes.data) {
+        setStocks(
+          stocksRes.data.map((s: any) => ({
+            id: s.id,
+            ticker: s.ticker,
+            name: s.name,
+            short_name: s.short_name || s.name,
+            currency: s.currency || 'USD',
+            market: s.market || '',
+            is_active: s.is_active ?? true,
+          }))
+        );
+      }
+
+      if (tradesRes.data) {
+        const normalizedTrades = tradesRes.data.map((t: any) => {
+          if (t.trade_type === 'SELL' && t.quantity > 0) {
+            const negQty = -Math.abs(t.quantity);
+            const negAmount = -Math.abs(t.total_amount || t.quantity * t.price);
+            const negAmountKrw = -Math.abs(t.total_amount_krw || (t.quantity * t.price * (t.exchange_rate || 1)));
+
+            return {
+              ...t,
+              quantity: negQty,
+              total_amount: negAmount,
+              total_amount_krw: negAmountKrw,
+            };
+          }
+          return t;
+        });
+
+        setTrades(normalizedTrades as TradeRecordData[]);
+
+        setYearFilter((prev) => {
+          if (prev !== 'ALL') return prev;
+          const distinctYears = Array.from(
+            new Set(
+              normalizedTrades
+                .map((t: any) => t.trade_date?.substring(0, 4))
+                .filter((y: any): y is string => Boolean(y && y.length === 4))
+            )
+          ).sort((a: string, b: string) => b.localeCompare(a));
+
+          return distinctYears.length > 0 ? distinctYears[0] : 'ALL';
+        });
+      }
+    } finally {
+      setIsLoadingTrades(false);
+    }
+  };
 
   const fetchAccounts = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('id, account_name, broker_name, account_number, is_active')
-        .eq('user_id', user.id)
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        const mapped = data.map((a: any) => ({
+    const { data } = await supabase
+      .from('accounts')
+      .select('id, account_name, broker_name, account_number, is_active')
+      .eq('user_id', user.id)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (data) {
+      setAccounts(
+        data.map((a: any) => ({
           id: a.id,
           account_name: a.account_name,
           broker_name: a.broker_name || a.account_name,
           account_number: a.account_number || '',
           is_active: a.is_active ?? true,
-        }));
-        setAccounts(mapped);
-
-        // Auto-backfill existing trades with first registered account if account_id is null
-        const firstAccountId = data[0].id;
-        supabase
-          .from('trades')
-          .update({ account_id: firstAccountId })
-          .eq('user_id', user.id)
-          .is('account_id', null)
-          .then(({ error: updateErr }) => {
-            if (!updateErr) {
-              fetchTrades();
-            }
-          });
-      } else {
-        setAccounts([]);
-      }
-    } catch {
-      setAccounts([]);
+        }))
+      );
     }
   };
 
   const fetchStocks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const { data } = await supabase
       .from('stocks')
       .select('id, ticker, name, short_name, currency, market, is_active')
       .eq('user_id', user.id)
       .order('name', { ascending: true });
-
     if (data) {
       setStocks(
         data.map((s: any) => ({
@@ -134,37 +199,19 @@ export default function TradesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      let res = await supabase
+      const { data } = await supabase
         .from('trades')
-        .select('*, accounts(id, account_name, broker_name)')
+        .select('*')
         .eq('user_id', user.id)
         .order('trade_date', { ascending: false })
         .order('created_at', { ascending: false });
 
-      // Fallback if accounts relation query fails
-      if (res.error) {
-        res = await supabase
-          .from('trades')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('trade_date', { ascending: false })
-          .order('created_at', { ascending: false });
-      }
-
-      if (!res.error && res.data) {
-        const normalizedTrades = res.data.map((t: any) => {
-          // If SELL and quantity is positive in DB, normalize to negative
+      if (data) {
+        const normalizedTrades = data.map((t: any) => {
           if (t.trade_type === 'SELL' && t.quantity > 0) {
             const negQty = -Math.abs(t.quantity);
             const negAmount = -Math.abs(t.total_amount || t.quantity * t.price);
             const negAmountKrw = -Math.abs(t.total_amount_krw || (t.quantity * t.price * (t.exchange_rate || 1)));
-
-            // Asynchronously sync the negative quantity back to Supabase
-            supabase.from('trades').update({
-              quantity: negQty,
-              total_amount: negAmount,
-              total_amount_krw: negAmountKrw,
-            }).eq('id', t.id).then();
 
             return {
               ...t,
@@ -175,27 +222,21 @@ export default function TradesPage() {
           }
           return t;
         });
-
         setTrades(normalizedTrades as TradeRecordData[]);
-
-        // Set initial yearFilter to the latest recorded trade year in DB
-        setYearFilter((prev) => {
-          if (prev !== 'ALL') return prev; // If user already selected a year, keep it
-          const distinctYears = Array.from(
-            new Set(
-              normalizedTrades
-                .map((t: any) => t.trade_date?.substring(0, 4))
-                .filter((y: any): y is string => Boolean(y && y.length === 4))
-            )
-          ).sort((a: string, b: string) => b.localeCompare(a));
-
-          return distinctYears.length > 0 ? distinctYears[0] : 'ALL';
-        });
       }
     } finally {
       setIsLoadingTrades(false);
     }
   };
+
+  // Account Lookup Map (id -> AccountOption) for instant 0ms account resolution
+  const accountsMap = useMemo(() => {
+    const map: Record<string, AccountOption> = {};
+    accounts.forEach((a) => {
+      map[a.id] = a;
+    });
+    return map;
+  }, [accounts]);
 
   // Stock Master Lookup Map (Ticker -> StockOption) with robust trimming and case-insensitive keys
   const stocksMap = useMemo(() => {
@@ -650,7 +691,7 @@ export default function TradesPage() {
                   <col className="w-[95px] min-[1920px]:w-[105px]" />
                   <col className="w-[135px] min-[1920px]:w-[145px]" />
                   <col className="w-[110px] min-[1920px]:w-[120px]" />
-                  <col className="w-[110px] min-[1920px]:w-[150px]" />
+                  <col className="w-[110px] min-[1920px]:w-[300px]" />
                   <col />
                   <col className="w-[75px] min-[1920px]:w-[85px]" />
                 </colgroup>
@@ -709,7 +750,7 @@ export default function TradesPage() {
                     {/* Mobile 3-Column Headers (Single Line with whitespace-nowrap) */}
                     <th className="sm:hidden py-2 px-2 text-left font-medium text-[10.5px] whitespace-nowrap">매매일자 / 종목</th>
                     <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px] whitespace-nowrap">단가·수량 / 거래금액</th>
-                    <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px] whitespace-nowrap">작업</th>
+                    <th className="sm:hidden py-2 px-1 text-left font-medium text-[10.5px] whitespace-nowrap">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -833,15 +874,19 @@ export default function TradesPage() {
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 계좌 (Desktop: 계좌명 우선 표출) */}
+                          {/* 10. 계좌 (Desktop: 계좌명 우선 표출, 1920px+ 300px 공간 활용) */}
                           <td className="hidden lg:table-cell py-3 px-2 text-center">
-                            {(item.accounts?.account_name || item.accounts?.broker_name) ? (
-                              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
-                                {item.accounts.account_name || item.accounts.broker_name}
-                              </span>
-                            ) : (
-                              <span className="text-[var(--fg-muted)] font-normal text-xs">-</span>
-                            )}
+                            {(() => {
+                              const linkedAccount = item.account_id ? accountsMap[item.account_id] : item.accounts;
+                              const accName = linkedAccount?.account_name || linkedAccount?.broker_name;
+                              return accName ? (
+                                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
+                                  {accName}
+                                </span>
+                              ) : (
+                                <span className="text-[var(--fg-muted)] font-normal text-xs">-</span>
+                              );
+                            })()}
                           </td>
 
                           {/* 11. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}
