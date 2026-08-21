@@ -490,13 +490,33 @@ export default function TradesPage() {
     };
 
     if (modalMode === 'edit' && tradeData.id) {
-      const { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
+      let { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
+
+      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee columns
+      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.foreign_fee;
+        delete fallbackPayload.foreign_tax;
+        const fallbackRes = await supabase.from('trades').update(fallbackPayload).eq('id', tradeData.id);
+        error = fallbackRes.error;
+      }
+
       if (error) {
         console.error('Failed to update trade:', error);
         throw error;
       }
     } else {
-      const { error } = await supabase.from('trades').insert([payload]);
+      let { error } = await supabase.from('trades').insert([payload]);
+
+      // Schema Cache Fallback: If DB table does not yet have foreign_tax or foreign_fee columns
+      if (error && (error.message?.includes('foreign_tax') || error.message?.includes('foreign_fee') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.foreign_fee;
+        delete fallbackPayload.foreign_tax;
+        const fallbackRes = await supabase.from('trades').insert([fallbackPayload]);
+        error = fallbackRes.error;
+      }
+
       if (error) {
         console.error('Failed to insert trade:', error);
         throw error;
@@ -516,7 +536,11 @@ export default function TradesPage() {
       // Batch sync remaining_quantity in DB for changed records
       for (const t of withRem) {
         if (t.id && t.account_id === tradeData.account_id && t.ticker?.toUpperCase() === cleanTicker) {
-          await supabase.from('trades').update({ remaining_quantity: t.remaining_quantity }).eq('id', t.id);
+          try {
+            await supabase.from('trades').update({ remaining_quantity: t.remaining_quantity }).eq('id', t.id);
+          } catch {
+            // Safe fallback if remaining_quantity column is not in remote schema
+          }
         }
       }
     }

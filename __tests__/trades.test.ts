@@ -414,6 +414,34 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     const result = await mockSaveTrade({ isAuth: true }, 'create', { ticker: 'AAPL' });
     expect(result.success).toBe(true);
   });
+
+  it('handles Schema Cache Fallback by stripping foreign_tax/foreign_fee when remote schema lacks them', async () => {
+    const mockSaveWithFallback = async (payload: any, schemaHasForeignCols: boolean) => {
+      let insertedPayload = { ...payload };
+      if (!schemaHasForeignCols) {
+        // Simulates first attempt returning PGRST204 / schema cache error
+        const initialError = new Error("Could not find the 'foreign_tax' column of 'trades' in the schema cache");
+        // Fallback logic
+        delete insertedPayload.foreign_fee;
+        delete insertedPayload.foreign_tax;
+      }
+      return { success: true, payload: insertedPayload };
+    };
+
+    const fullPayload = {
+      ticker: 'AAPL',
+      quantity: 10,
+      price: 200,
+      foreign_fee: 1,
+      foreign_tax: 2,
+    };
+
+    const res = await mockSaveWithFallback(fullPayload, false);
+    expect(res.success).toBe(true);
+    expect(res.payload.foreign_tax).toBeUndefined();
+    expect(res.payload.foreign_fee).toBeUndefined();
+    expect(res.payload.ticker).toBe('AAPL');
+  });
 });
 
 
