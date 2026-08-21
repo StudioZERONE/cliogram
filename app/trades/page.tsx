@@ -27,6 +27,7 @@ export default function TradesPage() {
 
   // Toolbar & Filter States
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [yearFilter, setYearFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [currencyFilter, setCurrencyFilter] = useState<string>('ALL');
   const [currencyViewMode, setCurrencyViewMode] = useState<CurrencyViewMode>('ORIGINAL');
@@ -165,6 +166,22 @@ export default function TradesPage() {
     return curr || '$';
   };
 
+  // Dynamic Year Filter Options extracted from recorded trade dates
+  const yearFilterOptions: FilterOption[] = useMemo(() => {
+    const yearsSet = new Set<string>();
+    trades.forEach((t) => {
+      if (t.trade_date && t.trade_date.length >= 4) {
+        yearsSet.add(t.trade_date.substring(0, 4));
+      }
+    });
+    yearsSet.add(new Date().getFullYear().toString());
+    const sortedYears = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    return [
+      { value: 'ALL', label: '전체' },
+      ...sortedYears.map((y) => ({ value: y, label: `${y}년` })),
+    ];
+  }, [trades]);
+
   const typeFilterOptions: FilterOption[] = useMemo(() => [
     { value: 'ALL', label: '전체' },
     { value: 'BUY', label: '매수' },
@@ -204,6 +221,9 @@ export default function TradesPage() {
           if (!matchTicker && !matchName && !matchShortName && !matchNotes) return false;
         }
 
+        // Year Filter
+        if (yearFilter !== 'ALL' && !item.trade_date?.startsWith(yearFilter)) return false;
+
         // Type Filter
         if (typeFilter !== 'ALL' && item.trade_type !== typeFilter) return false;
 
@@ -240,7 +260,7 @@ export default function TradesPage() {
         // Tertiary Tie-breaker: created_at DESC
         return (b.created_at || '').localeCompare(a.created_at || '');
       });
-  }, [trades, searchQuery, typeFilter, currencyFilter, sortField, sortDirection, currencyViewMode, stocksMap]);
+  }, [trades, searchQuery, yearFilter, typeFilter, currencyFilter, sortField, sortDirection, currencyViewMode, stocksMap]);
 
   // Handlers for Save and Delete
   const handleOpenCreateModal = () => {
@@ -384,7 +404,7 @@ export default function TradesPage() {
             </div>
 
             {/* Filter Toolbar Section */}
-            {/* Desktop Toolbar: 1-Row Flex */}
+            {/* Desktop Toolbar: 1-Row Flex with Year, Type, Currency Filters */}
             <div className="hidden sm:flex items-center justify-between gap-3">
               <div className="flex-1 max-w-sm">
                 <input
@@ -396,6 +416,12 @@ export default function TradesPage() {
                 />
               </div>
               <div className="flex items-center gap-2.5">
+                <FilterDropdown
+                  labelPrefix="년도"
+                  options={yearFilterOptions}
+                  value={yearFilter}
+                  onChange={setYearFilter}
+                />
                 <FilterDropdown
                   labelPrefix="구분"
                   options={typeFilterOptions}
@@ -411,7 +437,7 @@ export default function TradesPage() {
               </div>
             </div>
 
-            {/* Mobile Toolbar: 2-Row Structured Grid */}
+            {/* Mobile Toolbar: 2-Row Structured Grid with 3 Filters */}
             <div className="sm:hidden space-y-2">
               {/* Row 1: Search & Currency Toggle */}
               <div className="flex items-center gap-2">
@@ -424,8 +450,15 @@ export default function TradesPage() {
                 />
                 <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} />
               </div>
-              {/* Row 2: 2 Equal Columns Filter Comboboxes (구분, 통화) */}
-              <div className="grid grid-cols-2 gap-1.5 w-full">
+              {/* Row 2: 3 Equal Columns Filter Comboboxes (년도, 구분, 통화) */}
+              <div className="grid grid-cols-3 gap-1.5 w-full">
+                <FilterDropdown
+                  labelPrefix="년도"
+                  mobileLabelPrefix="년도"
+                  options={yearFilterOptions}
+                  value={yearFilter}
+                  onChange={setYearFilter}
+                />
                 <FilterDropdown
                   labelPrefix="구분"
                   mobileLabelPrefix="구분"

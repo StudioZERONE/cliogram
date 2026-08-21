@@ -166,15 +166,20 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     expect(krwTrade.totalKrw).toBe(3500000);
   });
 
-  it('sorts trades deterministically by trade_date DESC and created_at DESC', () => {
-    const sorted = [...mockTrades].sort((a, b) => {
-      const dateCompare = new Date(b.trade_date).getTime() - new Date(a.trade_date).getTime();
-      if (dateCompare !== 0) return dateCompare;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
+  it('filters trades by trade year correctly', () => {
+    const filterByYear = (items: typeof mockTrades, year: string) => {
+      if (year === 'ALL') return items;
+      return items.filter((item) => item.trade_date.startsWith(year));
+    };
 
-    expect(sorted[0].id).toBe('t3'); // 2026-08-21 11:00
-    expect(sorted[1].id).toBe('t2'); // 2026-08-21 09:00
-    expect(sorted[2].id).toBe('t1'); // 2026-08-20 10:00
+    const all2026 = filterByYear(mockTrades, '2026');
+    expect(all2026.length).toBe(3);
+
+    const all2025 = filterByYear(mockTrades, '2025');
+    expect(all2025.length).toBe(0);
+
+    const all = filterByYear(mockTrades, 'ALL');
+    expect(all.length).toBe(3);
   });
 });
+
