@@ -53,17 +53,15 @@ export default function DividendsPage() {
   const [activeStocks, setActiveStocks] = useState<{ ticker: string; name: string; short_name: string }[]>([]);
 
   useEffect(() => {
-    const initPage = async () => {
-      const isExpired = await checkSessionExpiry();
-      if (isExpired) {
-        router.replace('/?error=session_expired');
+    checkSessionExpiry().then((valid) => {
+      if (!valid) {
+        router.replace('/?error=unauthorized');
         return;
       }
       setIsAuthChecking(false);
       fetchDividends();
       fetchActiveStocks();
-    };
-    initPage();
+    });
   }, [router]);
 
   const fetchActiveStocks = async () => {
@@ -72,13 +70,21 @@ export default function DividendsPage() {
 
     const { data } = await supabase
       .from('stocks')
-      .select('ticker, name, short_name')
+      .select('*')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .order('name', { ascending: true })
       .order('ticker', { ascending: true });
 
-    if (data) setActiveStocks(data);
+    if (data) {
+      setActiveStocks(
+        data.map((s: any) => ({
+          ticker: s.ticker,
+          name: s.name,
+          short_name: s.short_name || s.name,
+        }))
+      );
+    }
   };
 
   const fetchDividends = async () => {
