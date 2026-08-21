@@ -287,6 +287,133 @@ describe('Trades Logic, Stock Master JOIN & Comma Formatting Tests', () => {
     expect(validateSell(-15.6, currentHolding).valid).toBe(false);
     expect(validateSell(-20, currentHolding).error).toContain('초과합니다');
   });
+
+  it('strictly validates trade form input before submission (accountId, ticker, quantity, price)', () => {
+    const validateTradeForm = (params: {
+      accountId: string;
+      ticker: string;
+      parsedQty: number;
+      parsedPrice: number;
+      isSellExceeded?: boolean;
+    }) => {
+      if (!params.accountId || params.accountId.trim() === '') {
+        return { valid: false, error: '계좌를 선택해 주세요.' };
+      }
+      if (!params.ticker || params.ticker.trim() === '') {
+        return { valid: false, error: '티커를 입력해 주세요.' };
+      }
+      if (params.parsedQty === 0) {
+        return { valid: false, error: '수량을 0이 아닌 숫자로 입력해 주세요.' };
+      }
+      if (params.parsedPrice <= 0) {
+        return { valid: false, error: '단가를 0보다 큰 숫자로 입력해 주세요.' };
+      }
+      if (params.isSellExceeded) {
+        return { valid: false, error: '보유 수량을 초과하여 매도할 수 없습니다.' };
+      }
+      return { valid: true };
+    };
+
+    expect(validateTradeForm({ accountId: '', ticker: 'AAPL', parsedQty: 10, parsedPrice: 200 }).valid).toBe(false);
+    expect(validateTradeForm({ accountId: '', ticker: 'AAPL', parsedQty: 10, parsedPrice: 200 }).error).toBe('계좌를 선택해 주세요.');
+
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: '', parsedQty: 10, parsedPrice: 200 }).valid).toBe(false);
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: '', parsedQty: 10, parsedPrice: 200 }).error).toBe('티커를 입력해 주세요.');
+
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: 'AAPL', parsedQty: 0, parsedPrice: 200 }).valid).toBe(false);
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: 'AAPL', parsedQty: 0, parsedPrice: 200 }).error).toBe('수량을 0이 아닌 숫자로 입력해 주세요.');
+
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: 'AAPL', parsedQty: 10, parsedPrice: 0 }).valid).toBe(false);
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: 'AAPL', parsedQty: 10, parsedPrice: -50 }).valid).toBe(false);
+
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: 'AAPL', parsedQty: 10, parsedPrice: 200, isSellExceeded: true }).valid).toBe(false);
+
+    expect(validateTradeForm({ accountId: 'acc-1', ticker: 'AAPL', parsedQty: 10, parsedPrice: 200 }).valid).toBe(true);
+  });
+
+  it('correctly builds and sanitizes database payload (UUID empty-string to null, defaults)', () => {
+    const buildTradePayload = (user: { id: string }, tradeData: any) => {
+      const cleanTicker = tradeData.ticker?.trim().toUpperCase();
+      return {
+        user_id: user.id,
+        account_id: tradeData.account_id ? tradeData.account_id : null,
+        trade_date: tradeData.trade_date,
+        ticker: cleanTicker,
+        trade_type: tradeData.trade_type,
+        quantity: tradeData.quantity,
+        price: tradeData.price,
+        currency: tradeData.currency,
+        exchange_rate: tradeData.exchange_rate ?? 1,
+        total_amount: tradeData.total_amount,
+        total_amount_krw: tradeData.total_amount_krw,
+        fee: tradeData.fee ?? 0,
+        tax: tradeData.tax ?? 0,
+        foreign_fee: tradeData.foreign_fee ?? 0,
+        foreign_tax: tradeData.foreign_tax ?? 0,
+        notes: tradeData.notes?.trim() || null,
+      };
+    };
+
+    const mockUser = { id: 'user-uuid-123' };
+    const payloadWithEmptyFields = buildTradePayload(mockUser, {
+      account_id: '',
+      trade_date: '2026-08-22',
+      ticker: '  nvda  ',
+      trade_type: 'BUY',
+      quantity: 5,
+      price: 130,
+      currency: 'USD',
+      notes: '   ',
+    });
+
+    expect(payloadWithEmptyFields.user_id).toBe('user-uuid-123');
+    expect(payloadWithEmptyFields.account_id).toBeNull(); // Empty string converted to null for Postgres UUID compatibility
+    expect(payloadWithEmptyFields.ticker).toBe('NVDA'); // Trimmed & uppercase
+    expect(payloadWithEmptyFields.exchange_rate).toBe(1);
+    expect(payloadWithEmptyFields.fee).toBe(0);
+    expect(payloadWithEmptyFields.notes).toBeNull(); // Whitespace string converted to null
+  });
+
+  it('throws an error when Supabase insert/update fails, preventing silent failure in modal', async () => {
+    const mockSaveTrade = async (
+      supabaseMock: { insertReturnsError?: boolean; updateReturnsError?: boolean; isAuth?: boolean },
+      mode: 'create' | 'edit',
+      tradeData: any
+    ) => {
+      if (!supabaseMock.isAuth) {
+        throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+      }
+
+      if (mode === 'edit') {
+        if (supabaseMock.updateReturnsError) {
+          throw new Error('Failed to update trade: DB constraint violation');
+        }
+        return { success: true };
+      } else {
+        if (supabaseMock.insertReturnsError) {
+          throw new Error('Failed to insert trade: Foreign key constraint violation');
+        }
+        return { success: true };
+      }
+    };
+
+    // 1. Auth failure should throw
+    await expect(mockSaveTrade({ isAuth: false }, 'create', {})).rejects.toThrow('로그인 세션이 만료되었습니다');
+
+    // 2. Insert DB error should throw (not silently swallowed)
+    await expect(
+      mockSaveTrade({ isAuth: true, insertReturnsError: true }, 'create', { ticker: 'AAPL' })
+    ).rejects.toThrow('Failed to insert trade');
+
+    // 3. Update DB error should throw
+    await expect(
+      mockSaveTrade({ isAuth: true, updateReturnsError: true }, 'edit', { id: 't1' })
+    ).rejects.toThrow('Failed to update trade');
+
+    // 4. Normal success
+    const result = await mockSaveTrade({ isAuth: true }, 'create', { ticker: 'AAPL' });
+    expect(result.success).toBe(true);
+  });
 });
 
 

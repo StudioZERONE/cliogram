@@ -486,7 +486,7 @@ export default function TradesPage() {
       tax: tradeData.tax ?? 0,
       foreign_fee: tradeData.foreign_fee ?? 0,
       foreign_tax: tradeData.foreign_tax ?? 0,
-      notes: tradeData.notes ? tradeData.notes.trim() : null,
+      notes: tradeData.notes?.trim() || null,
     };
 
     if (modalMode === 'edit' && tradeData.id) {
