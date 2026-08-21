@@ -387,6 +387,9 @@ export default function TradesPage() {
               <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-1">
                 원화(KRW) 및 외화(USD 등) 주식 매매 거래 내역을 기록하고 관리하는 원장 목록입니다.
               </p>
+              <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                목록의 티커, 종목, 비고 텍스트를 클릭하면 해당 항목으로 즉시 자동 검색 및 필터링됩니다.
+              </p>
             </div>
             <div className="flex items-center gap-3">
               {/* Toss Style $ vs 원 Currency Toggle */}
@@ -615,13 +618,21 @@ export default function TradesPage() {
                             </span>
                           </td>
 
-                          {/* 3. 티커 (Desktop: Normal standard text) */}
-                          <td className="hidden sm:table-cell py-3 px-2.5 text-center text-xs text-[var(--fg)] font-normal">
+                          {/* 3. 티커 (Desktop: Click to search) */}
+                          <td
+                            onClick={() => setSearchQuery(item.ticker)}
+                            className="hidden sm:table-cell py-3 px-2.5 text-center text-xs text-[var(--fg)] font-normal cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
+                            title={`"${item.ticker}" 검색`}
+                          >
                             {item.ticker}
                           </td>
 
-                          {/* 4. 종목 (Desktop: Stock master list typography - font-bold text-[var(--fg)] text-xs sm:text-sm) */}
-                          <td className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate" title={fullName}>
+                          {/* 4. 종목 (Desktop: Stock master list typography, Click to search) */}
+                          <td
+                            onClick={() => setSearchQuery(fullName)}
+                            className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
+                            title={`"${fullName}" 검색`}
+                          >
                             <span className="hidden lg:inline">{fullName}</span>
                             <span className="inline lg:hidden">{shortName}</span>
                           </td>
@@ -675,8 +686,14 @@ export default function TradesPage() {
                           {/* 10. 환율과 비고 사이 완충 스페이서 셀 (우측 정렬 환율과 좌측 정렬 비고가 붙지 않도록 분리) */}
                           <td className="hidden lg:table-cell p-0 pointer-events-none" aria-hidden="true" />
 
-                          {/* 11. 비고 (Desktop: 가변 폭 자동 조절, 또렷한 텍스트 font-normal) */}
-                          <td className="hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg)] font-normal truncate" title={item.notes || ''}>
+                          {/* 11. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}
+                          <td
+                            onClick={() => item.notes && setSearchQuery(item.notes)}
+                            className={`hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg)] font-normal truncate ${
+                              item.notes ? 'cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors' : ''
+                            }`}
+                            title={item.notes ? `"${item.notes}" 검색` : ''}
+                          >
                             {item.notes || '-'}
                           </td>
 
@@ -701,7 +718,7 @@ export default function TradesPage() {
                           </td>
 
                           {/* Mobile 3-Column Cells */}
-                          {/* Mobile Col 1: 매매일자(non-bold) + 구분 배지 (1행), 줄간격 확대 + 짧은 종목명 (2행) */}
+                          {/* Mobile Col 1: 매매일자(non-bold) + 구분 배지 (1행), 줄간격 확대 + 짧은 종목명 (2행: Click to search) */}
                           <td className="sm:hidden py-3 px-3 text-left">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-[var(--fg)] font-normal">{item.trade_date}</span>
@@ -715,7 +732,11 @@ export default function TradesPage() {
                                 {isSell ? '매도' : '매수'}
                               </span>
                             </div>
-                            <p className="font-bold text-xs text-[var(--fg)] mt-1.5 truncate">
+                            <p
+                              onClick={() => setSearchQuery(shortName)}
+                              className="font-bold text-xs text-[var(--fg)] mt-1.5 truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline"
+                              title={`"${shortName}" 검색`}
+                            >
                               {shortName}
                             </p>
                           </td>
