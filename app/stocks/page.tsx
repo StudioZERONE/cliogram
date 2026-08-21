@@ -229,103 +229,98 @@ export default function StocksPage() {
 
   // Save handler for StockModal (Create / Edit)
   const handleSaveStock = async (data: StockRecordData & { short_name: string; is_active: boolean }) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace('/?error=unauthorized');
-        return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+    }
+
+    const payload = {
+      user_id: user.id,
+      ticker: data.ticker.toUpperCase(),
+      name: data.name,
+      short_name: data.short_name || data.name,
+      type: data.type,
+      currency: data.currency,
+      market: data.market,
+      is_active: data.is_active ?? true,
+    };
+
+    if (stockModal.mode === 'create') {
+      let { data: inserted, error } = await supabase
+        .from('stocks')
+        .insert([payload])
+        .select();
+
+      // Supabase 스키마 캐시 미갱신 방어 로직 (Schema Cache Fallback)
+      if (error && (error.message?.includes('is_active') || error.message?.includes('short_name') || error.code === 'PGRST204')) {
+        const fallbackPayload = {
+          user_id: user.id,
+          ticker: payload.ticker,
+          name: payload.name,
+          type: payload.type,
+          currency: payload.currency,
+          market: payload.market,
+        };
+        const fallbackRes = await supabase.from('stocks').insert([fallbackPayload]).select();
+        inserted = fallbackRes.data;
+        error = fallbackRes.error;
       }
 
-      const payload = {
-        user_id: user.id,
-        ticker: data.ticker.toUpperCase(),
-        name: data.name,
-        short_name: data.short_name || data.name,
-        type: data.type,
-        currency: data.currency,
-        market: data.market,
-        is_active: data.is_active ?? true,
-      };
+      if (error) {
+        console.error('Failed to insert stock:', error);
+        throw new Error(`종목 등록 실패: ${error.message}`);
+      }
 
-      if (stockModal.mode === 'create') {
-        let { data: inserted, error } = await supabase
-          .from('stocks')
-          .insert([payload])
-          .select();
+      if (inserted && inserted.length > 0) {
+        const newRecord: StockRecord = {
+          id: inserted[0].id,
+          user_id: inserted[0].user_id,
+          ticker: inserted[0].ticker,
+          name: inserted[0].name,
+          short_name: inserted[0].short_name || inserted[0].name,
+          type: inserted[0].type,
+          currency: inserted[0].currency,
+          market: inserted[0].market,
+          is_active: inserted[0].is_active ?? true,
+        };
+        setStocks((prev) => [...prev, newRecord]);
+        refreshCounts();
+      }
+    } else if (stockModal.mode === 'edit') {
+      let { error } = await supabase
+        .from('stocks')
+        .update({
+          name: payload.name,
+          short_name: payload.short_name,
+          type: payload.type,
+          currency: payload.currency,
+          market: payload.market,
+          is_active: payload.is_active,
+        })
+        .eq('ticker', payload.ticker);
 
-        // Supabase 스키마 캐시 미갱신 방어 로직 (Schema Cache Fallback)
-        if (error && (error.message?.includes('is_active') || error.message?.includes('short_name') || error.code === 'PGRST204')) {
-          const fallbackPayload = {
-            user_id: user.id,
-            ticker: payload.ticker,
-            name: payload.name,
-            type: payload.type,
-            currency: payload.currency,
-            market: payload.market,
-          };
-          const fallbackRes = await supabase.from('stocks').insert([fallbackPayload]).select();
-          inserted = fallbackRes.data;
-          error = fallbackRes.error;
-        }
-
-        if (error) {
-          alert(`종목 등록 실패: ${error.message}`);
-          return;
-        }
-
-        if (inserted && inserted.length > 0) {
-          const newRecord: StockRecord = {
-            id: inserted[0].id,
-            user_id: inserted[0].user_id,
-            ticker: inserted[0].ticker,
-            name: inserted[0].name,
-            short_name: inserted[0].short_name || inserted[0].name,
-            type: inserted[0].type,
-            currency: inserted[0].currency,
-            market: inserted[0].market,
-            is_active: inserted[0].is_active ?? true,
-          };
-          setStocks((prev) => [...prev, newRecord]);
-          refreshCounts();
-        }
-      } else if (stockModal.mode === 'edit') {
-        let { error } = await supabase
+      // Supabase 스키마 캐시 미갱신 방어 로직 (Schema Cache Fallback)
+      if (error && (error.message?.includes('is_active') || error.message?.includes('short_name') || error.code === 'PGRST204')) {
+        const fallbackRes = await supabase
           .from('stocks')
           .update({
             name: payload.name,
-            short_name: payload.short_name,
             type: payload.type,
             currency: payload.currency,
             market: payload.market,
-            is_active: payload.is_active,
           })
           .eq('ticker', payload.ticker);
-
-        // Supabase 스키마 캐시 미갱신 방어 로직 (Schema Cache Fallback)
-        if (error && (error.message?.includes('is_active') || error.message?.includes('short_name') || error.code === 'PGRST204')) {
-          const fallbackRes = await supabase
-            .from('stocks')
-            .update({
-              name: payload.name,
-              type: payload.type,
-              currency: payload.currency,
-              market: payload.market,
-            })
-            .eq('ticker', payload.ticker);
-          error = fallbackRes.error;
-        }
-
-        if (error) {
-          alert(`종목 수정 실패: ${error.message}`);
-          return;
-        }
-
-        setStocks((prev) =>
-          prev.map((s) => (s.ticker === payload.ticker ? { ...s, ...payload } : s))
-        );
+        error = fallbackRes.error;
       }
-    } catch (err: any) {
-      alert(`오류 발생: ${err?.message || err}`);
+
+      if (error) {
+        console.error('Failed to update stock:', error);
+        throw new Error(`종목 수정 실패: ${error.message}`);
+      }
+
+      setStocks((prev) =>
+        prev.map((s) => (s.ticker === payload.ticker ? { ...s, ...payload } : s))
+      );
     }
   };
 

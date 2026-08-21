@@ -97,10 +97,18 @@ export default function DividendsPage() {
 
   const handleAddDividend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dividendForm.stock_name || !dividendForm.amount) return;
+    if (!dividendForm.stock_name) {
+      alert('종목을 선택해 주세요.');
+      return;
+    }
+    if (!dividendForm.amount || parseFloat(dividendForm.amount) <= 0) {
+      alert('배당금을 0보다 큰 금액으로 입력해 주세요.');
+      return;
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+      alert('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
       router.replace('/?error=unauthorized');
       return;
     }
@@ -115,7 +123,13 @@ export default function DividendsPage() {
     };
 
     const { data, error } = await supabase.from('dividends').insert([newRecord]).select();
-    if (!error && data) {
+    if (error) {
+      console.error('Failed to insert dividend:', error);
+      alert(`배당 내역 저장 중 오류가 발생했습니다: ${error.message}`);
+      return;
+    }
+
+    if (data) {
       setDividends([data[0] as DividendRecord, ...dividends]);
       setDividendForm({ ...dividendForm, stock_name: '', amount: '', tax: '0' });
       setIsMobileFormOpen(false);
@@ -126,7 +140,10 @@ export default function DividendsPage() {
   const executeDelete = async () => {
     if (!deleteTargetId) return;
     const { error } = await supabase.from('dividends').delete().eq('id', deleteTargetId);
-    if (!error) {
+    if (error) {
+      console.error('Failed to delete dividend:', error);
+      alert(`배당 내역 삭제 중 오류가 발생했습니다: ${error.message}`);
+    } else {
       setDividends(dividends.filter((d) => d.id !== deleteTargetId));
       refreshCounts();
     }
@@ -138,10 +155,11 @@ export default function DividendsPage() {
   }
 
   const renderFlagEmoji = (curr: string) => {
-    if (curr === 'USD') return <span className="text-xl sm:text-2xl leading-none inline-block align-middle" title="미국 달러 (USD)">🇺🇸</span>;
-    if (curr === 'KRW') return <span className="text-xl sm:text-2xl leading-none inline-block align-middle" title="대한민국 원 (KRW)">🇰🇷</span>;
-    if (curr === 'EUR') return <span className="text-xl sm:text-2xl leading-none inline-block align-middle" title="유로화 (EUR)">🇪🇺</span>;
-    return <span className="text-xs sm:text-sm font-bold text-[var(--fg-muted)]">{curr}</span>;
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+        {curr}
+      </span>
+    );
   };
 
   return (

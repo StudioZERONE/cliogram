@@ -172,10 +172,12 @@ export default function CodesPage() {
   }) => {
     if (groupModal.mode === 'create') {
       const { error } = await supabase.from('common_code_groups').insert([groupData]);
-      if (!error) {
-        setSelectedGroupId(groupData.group_id);
-        fetchGroups();
+      if (error) {
+        console.error('Failed to insert code group:', error);
+        throw new Error(`코드 그룹 등록 실패: ${error.message}`);
       }
+      setSelectedGroupId(groupData.group_id);
+      fetchGroups();
     } else {
       const { error } = await supabase
         .from('common_code_groups')
@@ -185,9 +187,11 @@ export default function CodesPage() {
         })
         .eq('group_id', groupData.group_id);
 
-      if (!error) {
-        fetchGroups();
+      if (error) {
+        console.error('Failed to update code group:', error);
+        throw new Error(`코드 그룹 수정 실패: ${error.message}`);
       }
+      fetchGroups();
     }
   };
 
@@ -210,7 +214,11 @@ export default function CodesPage() {
           is_active: codeData.is_active,
         },
       ]);
-      if (!error) fetchCodes();
+      if (error) {
+        console.error('Failed to insert code:', error);
+        throw new Error(`공통코드 등록 실패: ${error.message}`);
+      }
+      fetchCodes();
     } else if (codeData.id) {
       const { error } = await supabase
         .from('common_codes')
@@ -221,7 +229,11 @@ export default function CodesPage() {
         })
         .eq('id', codeData.id);
 
-      if (!error) fetchCodes();
+      if (error) {
+        console.error('Failed to update code:', error);
+        throw new Error(`공통코드 수정 실패: ${error.message}`);
+      }
+      fetchCodes();
     }
   };
 

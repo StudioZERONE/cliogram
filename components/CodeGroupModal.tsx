@@ -62,7 +62,14 @@ export function CodeGroupModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupId.trim() || !groupName.trim()) return;
+    if (!groupId.trim()) {
+      alert('그룹 ID를 입력해 주세요.');
+      return;
+    }
+    if (!groupName.trim()) {
+      alert('그룹명을 입력해 주세요.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -72,6 +79,9 @@ export function CodeGroupModal({
         description: description.trim(),
       });
       onClose();
+    } catch (err: any) {
+      console.error('CodeGroupModal save error:', err);
+      alert(`코드 그룹 저장 중 오류가 발생했습니다: ${err?.message || err}`);
     } finally {
       setIsSubmitting(false);
     }

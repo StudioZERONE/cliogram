@@ -81,7 +81,10 @@ export function AccountModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accountName.trim()) return;
+    if (!accountName.trim()) {
+      alert('계좌명을 입력해 주세요.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {

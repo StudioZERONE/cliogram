@@ -178,7 +178,18 @@ export function StockModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticker.trim() || !name.trim() || isDuplicateTicker) return;
+    if (!ticker.trim()) {
+      alert('티커(종목코드)를 입력해 주세요.');
+      return;
+    }
+    if (!name.trim()) {
+      alert('종목명을 입력해 주세요.');
+      return;
+    }
+    if (isDuplicateTicker) {
+      alert(`이미 등록되어 있는 티커(${ticker.trim().toUpperCase()})입니다.`);
+      return;
+    }
 
     setIsSubmitting(true);
     try {

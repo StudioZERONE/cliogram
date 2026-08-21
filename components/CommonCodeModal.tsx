@@ -76,7 +76,14 @@ export function CommonCodeModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || !codeName.trim()) return;
+    if (!code.trim()) {
+      alert('코드를 입력해 주세요.');
+      return;
+    }
+    if (!codeName.trim()) {
+      alert('코드명을 입력해 주세요.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -89,6 +96,9 @@ export function CommonCodeModal({
         is_active: isActive,
       });
       onClose();
+    } catch (err: any) {
+      console.error('CommonCodeModal save error:', err);
+      alert(`공통코드 저장 중 오류가 발생했습니다: ${err?.message || err}`);
     } finally {
       setIsSubmitting(false);
     }

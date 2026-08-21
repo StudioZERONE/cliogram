@@ -192,7 +192,9 @@ export default function AccountsPage() {
     is_active: boolean;
   }) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+    }
 
     const payload = {
       user_id: user.id,
