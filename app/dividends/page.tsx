@@ -193,7 +193,9 @@ export default function DividendsPage() {
                     selected={dividendForm.payment_date}
                     onChange={(date: Date | null) => date && setDividendForm({ ...dividendForm, payment_date: date })}
                     dateFormat="yyyy-MM-dd"
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer font-semibold"
+                    readOnly
+                    popperPlacement="bottom-start"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-base text-center text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 cursor-pointer font-semibold select-none"
                   />
                 </div>
 
