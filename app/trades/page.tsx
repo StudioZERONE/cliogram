@@ -538,9 +538,9 @@ export default function TradesPage() {
                   <col className="w-[75px] min-[1920px]:w-[85px]" />   {/* 12. 작업 */}
                 </colgroup>
                 <colgroup className="sm:hidden">
-                  <col className="w-[50%]" /> {/* 1. 매매일자 / 종목 */}
-                  <col className="w-[40%]" /> {/* 2. 단가·수량 / 거래금액 */}
-                  <col className="w-[10%]" /> {/* 3. 작업 */}
+                  <col className="w-[48%]" /> {/* 1. 매매일자 / 종목 */}
+                  <col className="w-[44%]" /> {/* 2. 단가·수량 / 거래금액 */}
+                  <col className="w-[8%]" />  {/* 3. 작업 */}
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
@@ -590,9 +590,9 @@ export default function TradesPage() {
                     <th className="hidden sm:table-cell py-2.5 px-2 text-center font-medium">작업</th>
 
                     {/* Mobile 3-Column Headers */}
-                    <th className="sm:hidden py-2.5 px-3 text-left font-medium">매매일자 / 종목</th>
-                    <th className="sm:hidden py-2.5 px-3 text-right font-medium">단가·수량 / 거래금액</th>
-                    <th className="sm:hidden py-2.5 px-2 text-center font-medium">작업</th>
+                    <th className="sm:hidden py-2 px-2 text-left font-medium text-[10.5px]">매매일자 / 종목</th>
+                    <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px]">단가·수량 / 거래금액</th>
+                    <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px]">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -742,12 +742,14 @@ export default function TradesPage() {
                           </td>
 
                           {/* Mobile 3-Column Cells */}
-                          {/* Mobile Col 1: 매매일자(non-bold) + 구분 배지 (1행), 줄간격 확대 + 짧은 종목명 (2행: Click to search) */}
-                          <td className="sm:hidden py-3 px-3 text-left">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-[var(--fg)] font-normal">{item.trade_date}</span>
+                          {/* Mobile Col 1: 매매일자(10px) + 초소형 구분 배지 (1행), 짧은 종목명 (2행: Click to search) */}
+                          <td className="sm:hidden py-2.5 px-2 text-left">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10.5px] text-[var(--fg-muted)] font-medium whitespace-nowrap shrink-0">
+                                {item.trade_date}
+                              </span>
                               <span
-                                className={`inline-block rounded-full px-1.5 py-0.5 text-[10px] font-bold border ${
+                                className={`inline-flex items-center justify-center rounded-full px-1.5 py-0.2 text-[8.5px] font-bold border whitespace-nowrap shrink-0 leading-tight ${
                                   isSell
                                     ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
                                     : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
@@ -758,16 +760,16 @@ export default function TradesPage() {
                             </div>
                             <p
                               onClick={() => setSearchQuery(shortName)}
-                              className="font-bold text-xs text-[var(--fg)] mt-1.5 truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline"
+                              className="font-bold text-xs text-[var(--fg)] mt-1 truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline"
                               title={`"${shortName}" 검색`}
                             >
                               {shortName}
                             </p>
                           </td>
 
-                          {/* Mobile Col 2: 단가(통화기호 포함, non-bold) x 수량(non-bold) (1행), 거래금액(통화기호 포함) (2행) */}
-                          <td className="sm:hidden py-3 px-3 text-right">
-                            <div className="text-xs font-normal text-[var(--fg)] flex items-center justify-end">
+                          {/* Mobile Col 2: 단가 x 수량 (1행, 10px 간결화), 거래금액 (2행) */}
+                          <td className="sm:hidden py-2.5 px-2 text-right">
+                            <div className="text-[10px] sm:text-[11px] font-normal text-[var(--fg-muted)] flex items-center justify-end gap-1 whitespace-nowrap">
                               <span>
                                 {currSymbol} {currencyViewMode === 'KRW'
                                   ? Math.round(displayPrice).toLocaleString()
@@ -775,18 +777,18 @@ export default function TradesPage() {
                                       minimumFractionDigits: item.currency === 'KRW' ? 0 : 2,
                                     })}
                               </span>
-                              <span className="text-[var(--fg-muted)] font-normal mx-1">x</span>
-                              <span className={isSell ? 'text-red-500 font-normal' : 'text-[var(--fg)] font-normal'}>
+                              <span className="text-[var(--fg-muted)]">×</span>
+                              <span className={`whitespace-nowrap font-medium ${isSell ? 'text-red-500 font-semibold' : 'text-[var(--fg)]'}`}>
                                 {displayQty.toLocaleString()}주
                               </span>
                             </div>
-                            <div className="mt-1.5">
+                            <div className="mt-1">
                               {isSell ? (
-                                <span className="text-xs font-bold text-red-500 dark:text-red-400">
+                                <span className="text-xs font-bold text-red-500 dark:text-red-400 whitespace-nowrap">
                                   - {currSymbol} {Math.round(Math.abs(displayAmount)).toLocaleString()}
                                 </span>
                               ) : (
-                                <span className="text-xs font-bold text-[var(--fg)]">
+                                <span className="text-xs font-bold text-[var(--fg)] whitespace-nowrap">
                                   {currSymbol} {Math.round(displayAmount).toLocaleString()}
                                 </span>
                               )}
@@ -794,10 +796,10 @@ export default function TradesPage() {
                           </td>
 
                           {/* Mobile Col 3: 작업 Popover Menu Button */}
-                          <td className="sm:hidden py-3 px-2 text-center relative">
+                          <td className="sm:hidden py-2.5 px-1 text-center relative">
                             <button
                               onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id || null)}
-                              className="p-1.5 rounded-lg text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] cursor-pointer"
+                              className="p-1 rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] cursor-pointer"
                               aria-label="작업 메뉴"
                             >
                               <MoreVertical className="h-4 w-4" />

@@ -444,16 +444,11 @@ export function TradeModal({
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={exchangeRate}
-                      onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
-                      className="w-18 sm:w-24 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
-                      placeholder="1,450.00"
-                    />
-                    <span className="text-[10.5px] sm:text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
+                  <div className="flex items-center gap-1 shrink-0 text-right">
+                    <span className="text-xs sm:text-sm font-bold text-[var(--fg)]">
+                      {parsedRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10.5px] sm:text-xs font-semibold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
                   </div>
                 </div>
               ) : (
