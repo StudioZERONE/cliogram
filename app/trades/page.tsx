@@ -62,7 +62,7 @@ export default function TradesPage() {
 
     const { data } = await supabase
       .from('stocks')
-      .select('id, ticker, name, short_name, currency, is_active')
+      .select('id, ticker, name, short_name, currency, market, is_active')
       .eq('user_id', user.id)
       .order('name', { ascending: true });
 
@@ -74,6 +74,7 @@ export default function TradesPage() {
           name: s.name,
           short_name: s.short_name || s.name,
           currency: s.currency || 'USD',
+          market: s.market || '',
           is_active: s.is_active ?? true,
         }))
       );
@@ -96,11 +97,11 @@ export default function TradesPage() {
     }
   };
 
-  // Map ticker -> short_name for responsive display
-  const tickerToShortNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
+  // Stock Master Lookup Map (Ticker -> StockOption)
+  const stocksMap = useMemo(() => {
+    const map: Record<string, StockOption> = {};
     stocks.forEach((s) => {
-      map[s.ticker] = s.short_name || s.name;
+      map[s.ticker] = s;
     });
     return map;
   }, [stocks]);
@@ -128,17 +129,20 @@ export default function TradesPage() {
     }
   };
 
-  // Filter & Sort Trades List
+  // Filter & Sort Trades List with Stock Master JOIN
   const filteredTrades = useMemo(() => {
     return trades
       .filter((item) => {
-        // Search Query (ticker, stock_name, short_name, notes)
+        const stock = stocksMap[item.ticker];
+        const stockName = stock?.name || '';
+        const shortName = stock?.short_name || '';
+
+        // Search Query (ticker, stock name, short name, notes)
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
           const matchTicker = item.ticker?.toLowerCase().includes(q);
-          const matchName = item.stock_name?.toLowerCase().includes(q);
-          const shortName = (item.ticker ? tickerToShortNameMap[item.ticker] : undefined)?.toLowerCase();
-          const matchShortName = shortName?.includes(q);
+          const matchName = stockName.toLowerCase().includes(q);
+          const matchShortName = shortName.toLowerCase().includes(q);
           const matchNotes = item.notes?.toLowerCase().includes(q);
           if (!matchTicker && !matchName && !matchShortName && !matchNotes) return false;
         }
@@ -163,7 +167,9 @@ export default function TradesPage() {
         } else if (sortField === 'ticker') {
           diff = (a.ticker || '').localeCompare(b.ticker || '');
         } else if (sortField === 'stock_name') {
-          diff = (a.stock_name || '').localeCompare(b.stock_name || '');
+          const nameA = stocksMap[a.ticker]?.name || a.ticker || '';
+          const nameB = stocksMap[b.ticker]?.name || b.ticker || '';
+          diff = nameA.localeCompare(nameB);
         } else if (sortField === 'trade_date') {
           diff = new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime();
         }
@@ -179,7 +185,7 @@ export default function TradesPage() {
         // Tertiary Tie-breaker: created_at DESC
         return (b.created_at || '').localeCompare(a.created_at || '');
       });
-  }, [trades, searchQuery, typeFilter, currencyFilter, sortField, sortDirection, currencyViewMode, tickerToShortNameMap]);
+  }, [trades, searchQuery, typeFilter, currencyFilter, sortField, sortDirection, currencyViewMode, stocksMap]);
 
   // Handlers for Save and Delete
   const handleOpenCreateModal = () => {
@@ -199,11 +205,10 @@ export default function TradesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const payload = {
+    const payload: any = {
       user_id: user.id,
       trade_date: tradeData.trade_date,
       ticker: tradeData.ticker,
-      stock_name: tradeData.stock_name,
       trade_type: tradeData.trade_type,
       quantity: tradeData.quantity,
       price: tradeData.price,
@@ -213,6 +218,8 @@ export default function TradesPage() {
       total_amount_krw: tradeData.total_amount_krw,
       fee: tradeData.fee,
       tax: tradeData.tax,
+      foreign_fee: tradeData.foreign_fee,
+      foreign_tax: tradeData.foreign_tax,
       notes: tradeData.notes,
     };
 
@@ -382,7 +389,7 @@ export default function TradesPage() {
             </div>
 
             {/* Data Table View */}
-            {/* Desktop Columns Order: 매매일자, 구분, 티커, 종목, 통화, 단가, 수량, 거래금액, 환율, 작업 */}
+            {/* Desktop Columns (11): 매매일자, 구분, 티커, 종목, 통화, 단가, 수량, 거래금액, 환율, 비고, 작업 */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm">
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
@@ -400,7 +407,7 @@ export default function TradesPage() {
                       티커 {renderSortIcon('ticker')}
                     </th>
 
-                    {/* 4. 종목 (Sortable) */}
+                    {/* 4. 종목 (Sortable, Joined from stocks master) */}
                     <th onClick={() => handleSort('stock_name')} className="hidden sm:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)]">
                       종목 {renderSortIcon('stock_name')}
                     </th>
@@ -422,7 +429,10 @@ export default function TradesPage() {
                     {/* 9. 환율 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">환율</th>
 
-                    {/* 10. 작업 */}
+                    {/* 10. 비고 (Desktop Only) */}
+                    <th className="hidden lg:table-cell py-2.5 px-3 text-left max-w-[160px]">비고</th>
+
+                    {/* 11. 작업 */}
                     <th className="hidden sm:table-cell py-2.5 px-3 text-center w-24">작업</th>
 
                     {/* Mobile 3-Column Headers */}
@@ -434,7 +444,7 @@ export default function TradesPage() {
                 <tbody className="divide-y divide-[var(--border)] font-medium">
                   {filteredTrades.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                      <td colSpan={11} className="py-12 text-center text-xs text-[var(--fg-muted)]">
                         등록된 매매 내역이 없습니다. 오른쪽 상단 "+" 버튼을 눌러 추가해 주세요.
                       </td>
                     </tr>
@@ -450,7 +460,9 @@ export default function TradesPage() {
                       const baseAmount = currencyViewMode === 'KRW' ? rawAmount * rate : rawAmount;
                       const effectiveAmount = isSell ? -baseAmount : baseAmount;
 
-                      const shortName = (item.ticker ? tickerToShortNameMap[item.ticker] : undefined) || item.stock_name;
+                      const stock = stocksMap[item.ticker];
+                      const stockFullName = stock?.name || item.ticker;
+                      const stockShortName = stock?.short_name || stock?.name || item.ticker;
                       const currSymbol = currencyViewMode === 'KRW' ? '₩' : item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '';
 
                       return (
@@ -478,10 +490,10 @@ export default function TradesPage() {
                             {item.ticker}
                           </td>
 
-                          {/* 4. 종목 (Desktop: wide -> full name, narrow -> short name, clean without ticker) */}
+                          {/* 4. 종목 (Desktop: Joined from stocks master) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)]">
-                            <span className="hidden lg:inline">{item.stock_name}</span>
-                            <span className="inline lg:hidden">{shortName}</span>
+                            <span className="hidden lg:inline">{stockFullName}</span>
+                            <span className="inline lg:hidden">{stockShortName}</span>
                           </td>
 
                           {/* 5. 통화 (Desktop: Flag icon only) */}
@@ -489,12 +501,15 @@ export default function TradesPage() {
                             {renderFlagEmoji(item.currency)}
                           </td>
 
-                          {/* 6. 단가 (Desktop) */}
+                          {/* 6. 단가 (Desktop: Formatted with commas) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right font-semibold">
-                            {item.price.toLocaleString(undefined, { minimumFractionDigits: item.currency === 'KRW' ? 0 : 2 })}
+                            {item.price.toLocaleString(undefined, {
+                              minimumFractionDigits: item.currency === 'KRW' ? 0 : 2,
+                              maximumFractionDigits: 4,
+                            })}
                           </td>
 
-                          {/* 7. 수량 (Desktop: 매도(-)는 빨간색, 매수(+)는 회색/노말) */}
+                          {/* 7. 수량 (Desktop: Formatted with commas, 매도(-)는 빨간색, 매수(+)는 회색/노말) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right">
                             {effectiveQty < 0 ? (
                               <span className="text-red-500 dark:text-red-400 font-bold">
@@ -507,7 +522,7 @@ export default function TradesPage() {
                             )}
                           </td>
 
-                          {/* 8. 거래금액 (Desktop: 매도(-)는 빨간색, 매수(+)는 노말) */}
+                          {/* 8. 거래금액 (Desktop: Formatted with commas, 매도(-)는 빨간색, 매수(+)는 노말) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-right">
                             {effectiveAmount < 0 ? (
                               <span className="text-red-500 dark:text-red-400 font-bold">
@@ -520,12 +535,17 @@ export default function TradesPage() {
                             )}
                           </td>
 
-                          {/* 9. 환율 (Desktop) */}
+                          {/* 9. 환율 (Desktop: Formatted with commas) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg-muted)] font-semibold">
-                            {item.currency === 'KRW' ? '-' : `${rate.toLocaleString()} 원`}
+                            {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 작업 (Desktop) */}
+                          {/* 10. 비고 (Desktop Only) */}
+                          <td className="hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg-muted)] font-medium max-w-[160px] truncate" title={item.notes || ''}>
+                            {item.notes || '-'}
+                          </td>
+
+                          {/* 11. 작업 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
@@ -561,7 +581,7 @@ export default function TradesPage() {
                               </span>
                             </div>
                             <p className="font-bold text-xs text-[var(--fg)] mt-0.5">
-                              {shortName}
+                              {stockShortName}
                             </p>
                           </td>
 

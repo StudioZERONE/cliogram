@@ -6,6 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
 import { X, Layers, Calculator, Sparkles } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
+import { formatCommaString, parseCommaNumber } from '@/lib/format';
 
 export interface StockOption {
   id?: string;
@@ -13,14 +14,14 @@ export interface StockOption {
   name: string;
   short_name: string;
   currency: string;
+  market?: string;
   is_active: boolean;
 }
 
 export interface TradeRecordData {
   id?: string;
   trade_date: string;
-  ticker?: string;
-  stock_name: string;
+  ticker: string;
   trade_type: 'BUY' | 'SELL';
   quantity: number;
   price: number;
@@ -30,6 +31,8 @@ export interface TradeRecordData {
   total_amount_krw?: number;
   fee?: number;
   tax?: number;
+  foreign_fee?: number;
+  foreign_tax?: number;
   notes?: string;
   created_at?: string;
 }
@@ -54,13 +57,14 @@ export function TradeModal({
   const [tradeDate, setTradeDate] = useState<Date>(new Date());
   const [selectedStockId, setSelectedStockId] = useState<string>('');
   const [ticker, setTicker] = useState<string>('');
-  const [stockName, setStockName] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('');
   const [price, setPrice] = useState<string>('');
   const [currency, setCurrency] = useState<'KRW' | 'USD' | 'EUR' | 'JPY' | 'CNY'>('USD');
   const [exchangeRate, setExchangeRate] = useState<string>('1');
   const [fee, setFee] = useState<string>('0');
   const [tax, setTax] = useState<string>('0');
+  const [foreignFee, setForeignFee] = useState<string>('0');
+  const [foreignTax, setForeignTax] = useState<string>('0');
   const [notes, setNotes] = useState<string>('');
 
   const [isFetchingRate, setIsFetchingRate] = useState<boolean>(false);
@@ -73,22 +77,23 @@ export function TradeModal({
       if (mode === 'edit' && initialData) {
         setTradeDate(initialData.trade_date ? new Date(initialData.trade_date) : new Date());
         setTicker(initialData.ticker || '');
-        setStockName(initialData.stock_name || '');
         
         // If SELL, make sure quantity reflects negative sign
         const rawQty = initialData.quantity || 0;
         const signedQty = initialData.trade_type === 'SELL' ? -Math.abs(rawQty) : Math.abs(rawQty);
-        setQuantity(String(signedQty));
+        setQuantity(formatCommaString(signedQty));
 
-        setPrice(initialData.price ? String(initialData.price) : '');
+        setPrice(formatCommaString(initialData.price || ''));
         setCurrency(initialData.currency || 'USD');
-        setExchangeRate(initialData.exchange_rate ? String(initialData.exchange_rate) : '1');
-        setFee(initialData.fee ? String(initialData.fee) : '0');
-        setTax(initialData.tax ? String(initialData.tax) : '0');
+        setExchangeRate(formatCommaString(initialData.exchange_rate || '1'));
+        setFee(formatCommaString(initialData.fee || '0'));
+        setTax(formatCommaString(initialData.tax || '0'));
+        setForeignFee(formatCommaString(initialData.foreign_fee || '0'));
+        setForeignTax(formatCommaString(initialData.foreign_tax || '0'));
         setNotes(initialData.notes || '');
 
         // Match stock in list
-        const matched = stocks.find((s) => s.ticker === initialData.ticker || s.name === initialData.stock_name || s.short_name === initialData.stock_name);
+        const matched = stocks.find((s) => s.ticker === initialData.ticker);
         if (matched) {
           setSelectedStockId(matched.ticker);
         } else {
@@ -98,13 +103,14 @@ export function TradeModal({
         setTradeDate(new Date());
         setSelectedStockId('');
         setTicker('');
-        setStockName('');
         setQuantity('');
         setPrice('');
         setCurrency('USD');
-        setExchangeRate('1450');
+        setExchangeRate('1,450');
         setFee('0');
         setTax('0');
+        setForeignFee('0');
+        setForeignTax('0');
         setNotes('');
       }
     }
@@ -135,7 +141,7 @@ export function TradeModal({
         if (res.ok) {
           const data = await res.json();
           if (data.usd_krw) {
-            setExchangeRate(String(data.usd_krw));
+            setExchangeRate(formatCommaString(data.usd_krw));
           }
         }
       } catch (err) {
@@ -164,16 +170,17 @@ export function TradeModal({
     const matched = stocks.find((s) => s.ticker === stockTicker);
     if (matched) {
       setTicker(matched.ticker);
-      setStockName(matched.short_name || matched.name);
       setCurrency((matched.currency as any) || 'USD');
     }
   };
 
-  const parsedQty = parseFloat(quantity) || 0;
-  const parsedPrice = parseFloat(price) || 0;
-  const parsedRate = parseFloat(exchangeRate) || (currency === 'KRW' ? 1 : 1450);
-  const parsedFee = parseFloat(fee) || 0;
-  const parsedTax = parseFloat(tax) || 0;
+  const parsedQty = parseCommaNumber(quantity);
+  const parsedPrice = parseCommaNumber(price);
+  const parsedRate = parseCommaNumber(exchangeRate) || (currency === 'KRW' ? 1 : 1450);
+  const parsedFee = parseCommaNumber(fee);
+  const parsedTax = parseCommaNumber(tax);
+  const parsedForeignFee = parseCommaNumber(foreignFee);
+  const parsedForeignTax = parseCommaNumber(foreignTax);
 
   // Automated trade type: positive -> BUY, negative -> SELL
   const tradeType: 'BUY' | 'SELL' = parsedQty < 0 ? 'SELL' : 'BUY';
@@ -181,9 +188,11 @@ export function TradeModal({
   const rawTotal = parsedQty * parsedPrice;
   const krwTotal = currency === 'KRW' ? rawTotal : rawTotal * parsedRate;
 
+  const matchedStock = stocks.find((s) => s.ticker === ticker);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stockName.trim() || parsedQty === 0 || parsedPrice <= 0) return;
+    if (!ticker.trim() || parsedQty === 0 || parsedPrice <= 0) return;
 
     setIsSubmitting(true);
     try {
@@ -191,7 +200,6 @@ export function TradeModal({
         id: initialData?.id,
         trade_date: format(tradeDate, 'yyyy-MM-dd'),
         ticker: ticker.trim().toUpperCase(),
-        stock_name: stockName.trim(),
         trade_type: tradeType,
         quantity: parsedQty,
         price: parsedPrice,
@@ -201,6 +209,8 @@ export function TradeModal({
         total_amount_krw: krwTotal,
         fee: parsedFee,
         tax: parsedTax,
+        foreign_fee: parsedForeignFee,
+        foreign_tax: parsedForeignTax,
         notes: notes.trim(),
       });
       onClose();
@@ -212,7 +222,7 @@ export function TradeModal({
     }
   };
 
-  const isSubmitDisabled = isSubmitting || !stockName.trim() || parsedQty === 0 || parsedPrice <= 0;
+  const isSubmitDisabled = isSubmitting || !ticker.trim() || parsedQty === 0 || parsedPrice <= 0;
 
   return (
     <div
@@ -276,10 +286,10 @@ export function TradeModal({
             </div>
           </div>
 
-          {/* Stock Master Selection */}
+          {/* Stock Master Selection (JOIN based) */}
           <div>
             <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-              종목 선택 (종목 마스터 연동) <span className="text-red-500">*</span>
+              종목 선택 (종목 마스터 원장 연결) <span className="text-red-500">*</span>
             </label>
             <select
               value={selectedStockId}
@@ -292,28 +302,15 @@ export function TradeModal({
                   [{s.ticker}] {s.short_name || s.name} ({s.currency}){!s.is_active ? ' [사용중지]' : ''}
                 </option>
               ))}
-              <option value="custom">+ 기타 수동 직접 입력</option>
+              <option value="custom">+ 기타 티커 직접 입력</option>
             </select>
           </div>
 
-          {/* Stock Name & Ticker Inputs */}
+          {/* Ticker & Stock Master Resolved Display */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                종목 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="예: 애플, 삼성전자"
-                value={stockName}
-                onChange={(e) => setStockName(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                티커 코드
+                티커 코드 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -321,22 +318,31 @@ export function TradeModal({
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
                 className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold uppercase text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                required
               />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                연결 종목명 (마스터 조회)
+              </label>
+              <div className="flex items-center h-[42px] px-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] shadow-inner text-xs sm:text-sm font-semibold text-[var(--fg-muted)] truncate">
+                {matchedStock ? `${matchedStock.short_name || matchedStock.name} (${matchedStock.market || ''})` : '직접 입력 티커'}
+              </div>
             </div>
           </div>
 
-          {/* Quantity, Price, Currency */}
+          {/* Quantity, Price, Currency (Auto Comma Formatted) */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
                 수량 (+매수 / -매도) <span className="text-red-500">*</span>
               </label>
               <input
-                type="number"
-                step="any"
+                type="text"
+                inputMode="numeric"
                 placeholder="+10 또는 -10"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => setQuantity(formatCommaString(e.target.value))}
                 className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
                   parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
                 }`}
@@ -348,11 +354,11 @@ export function TradeModal({
                 단가 <span className="text-red-500">*</span>
               </label>
               <input
-                type="number"
-                step="any"
-                placeholder="185.5"
+                type="text"
+                inputMode="decimal"
+                placeholder="185.50"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => setPrice(formatCommaString(e.target.value))}
                 className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                 required
               />
@@ -386,12 +392,12 @@ export function TradeModal({
               </div>
               <div className="flex items-center gap-2">
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   value={exchangeRate}
-                  onChange={(e) => setExchangeRate(e.target.value)}
+                  onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
-                  placeholder="1450"
+                  placeholder="1,450.00"
                 />
                 <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
               </div>
@@ -421,30 +427,54 @@ export function TradeModal({
             </div>
           )}
 
-          {/* Fee & Tax Inputs */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Fee & Tax Inputs (4 Grid Columns: 수수료, 제세금, 외화수수료, 외화제세금) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div>
-              <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+              <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
                 수수료 ({currency})
               </label>
               <input
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 value={fee}
-                onChange={(e) => setFee(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                onChange={(e) => setFee(formatCommaString(e.target.value))}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+              <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
                 제세금 ({currency})
               </label>
               <input
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 value={tax}
-                onChange={(e) => setTax(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                onChange={(e) => setTax(formatCommaString(e.target.value))}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
+                외화수수료
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={foreignFee}
+                onChange={(e) => setForeignFee(formatCommaString(e.target.value))}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
+                외화제세금
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={foreignTax}
+                onChange={(e) => setForeignTax(formatCommaString(e.target.value))}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none shadow-inner"
               />
             </div>
           </div>

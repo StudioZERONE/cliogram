@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS public.stocks (
   sort_code TEXT,
   name TEXT NOT NULL,
   short_name TEXT,
-  sort_name TEXT,
   type TEXT,
   currency TEXT DEFAULT 'USD',
   market TEXT,
@@ -55,10 +54,9 @@ CREATE TABLE IF NOT EXISTS public.trades (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   trade_date DATE NOT NULL,
-  ticker TEXT,
-  stock_name TEXT NOT NULL,
+  ticker TEXT NOT NULL,
   trade_type TEXT NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
-  quantity NUMERIC NOT NULL CHECK (quantity > 0),
+  quantity NUMERIC NOT NULL CHECK (quantity != 0),
   price NUMERIC NOT NULL CHECK (price >= 0),
   currency TEXT NOT NULL CHECK (currency IN ('KRW', 'USD', 'EUR', 'JPY', 'CNY')),
   exchange_rate NUMERIC DEFAULT 1,
@@ -67,6 +65,7 @@ CREATE TABLE IF NOT EXISTS public.trades (
   fee NUMERIC DEFAULT 0,
   tax NUMERIC DEFAULT 0,
   foreign_fee NUMERIC DEFAULT 0,
+  foreign_tax NUMERIC DEFAULT 0,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
