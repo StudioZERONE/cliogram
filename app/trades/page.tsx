@@ -458,8 +458,8 @@ export default function TradesPage() {
                   <col className="w-[95px] xl:w-[105px]" />  {/* 7. 수량 */}
                   <col className="w-[135px] xl:w-[145px]" /> {/* 8. 거래금액 */}
                   <col className="w-[110px] xl:w-[120px]" /> {/* 9. 환율 */}
-                  {/* 10. 환율-비고 완충 분리 영역 (의도적 간격 분리) */}
-                  <col className="w-[24px] xl:w-[40px]" />
+                  {/* 10. 환율-비고 완충 분리 영역 (의도적 간격 분리: XL 150px) */}
+                  <col className="w-[24px] xl:w-[150px]" />
                   <col />                                    {/* 11. 비고 (가변 폭) */}
                   <col className="w-[75px] xl:w-[85px]" />   {/* 12. 작업 */}
                 </colgroup>
