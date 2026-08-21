@@ -29,16 +29,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    setToasts((prev) => [...prev, { id, type, message }]);
+    setToasts((prev) => {
+      // Prevent duplicate toasts with the exact same message and type
+      if (prev.some((t) => t.message === message && t.type === type)) {
+        return prev;
+      }
 
-    // Auto-dismiss ONLY positive/neutral feedback toasts (success, info in 5 seconds)
-    // Error and Warning toasts remain persistent until the user manually reviews and dismisses them
-    if (type === 'success' || type === 'info') {
-      setTimeout(() => {
-        removeToast(id);
-      }, 5000);
-    }
+      const id = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+      // Auto-dismiss ONLY positive/neutral feedback toasts (success, info in 5 seconds)
+      // Error and Warning toasts remain persistent until the user manually reviews and dismisses them
+      if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+          removeToast(id);
+        }, 5000);
+      }
+
+      return [...prev, { id, type, message }];
+    });
   }, [removeToast]);
 
   const success = useCallback((msg: string) => showToast(msg, 'success'), [showToast]);
