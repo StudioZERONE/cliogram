@@ -47,8 +47,9 @@ export default function AccountsPage() {
   const [sortField, setSortField] = useState<SortField>('broker_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // Mobile Action Popover
-  const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
+  // Smart Fixed Popover Positioning State
+  const [activeMobileActionId, setActiveMobileActionId] = useState<string | null>(null);
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number; openUp: boolean } | null>(null);
 
   // Modals state
   const [accountModal, setAccountModal] = useState<{
@@ -140,6 +141,30 @@ export default function AccountsPage() {
       return a.account_name.localeCompare(b.account_name);
     });
   }, [accounts, sortField, sortDirection]);
+
+  // Mobile Smart Action Popover Handlers
+  const handleToggleMobileAction = (e: React.MouseEvent<HTMLButtonElement>, accountId: string) => {
+    e.stopPropagation();
+    if (activeMobileActionId === accountId) {
+      setActiveMobileActionId(null);
+      setActionMenuPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < 180;
+    setActionMenuPos({
+      top: rect.top,
+      right: window.innerWidth - rect.right,
+      openUp,
+    });
+    setActiveMobileActionId(accountId);
+  };
+
+  const closeMobileAction = () => {
+    setActiveMobileActionId(null);
+    setActionMenuPos(null);
+  };
 
   // Handlers for Save, Toggle & Delete
   const handleOpenCreateModal = () => {
@@ -283,9 +308,9 @@ export default function AccountsPage() {
               </button>
             </div>
 
-            {/* Accounts Table */}
-            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-              <table className="w-full text-xs sm:text-sm table-fixed">
+            {/* Accounts Table with Clean Flow (No table-internal scrollbars) */}
+            <div className="rounded-xl border border-[var(--border)]">
+              <table className="w-full text-xs sm:text-sm">
                 <colgroup className="hidden lg:table-column-group">
                   <col />
                   <col />
@@ -294,37 +319,41 @@ export default function AccountsPage() {
                   <col className="w-[85px] min-[1920px]:w-[95px]" />
                 </colgroup>
                 <colgroup className="lg:hidden">
-                  <col className="w-[28%]" />
-                  <col className="w-[28%]" />
-                  <col className="w-[24%]" />
-                  <col className="w-[52px]" />
-                  <col className="w-[32px]" />
+                  <col className="w-[30%]" />
+                  <col className="w-[36%]" />
+                  <col className="w-[34%]" />
+                  <col className="w-12" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
                   <tr>
                     {/* 1. 증권사 */}
-                    <th onClick={() => handleSort('broker_name')} className="py-2.5 px-1.5 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium whitespace-nowrap">
+                    <th onClick={() => handleSort('broker_name')} className="py-2.5 px-2 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium whitespace-nowrap">
                       증권사 {renderSortIcon('broker_name')}
                     </th>
 
                     {/* 2. 계좌명 */}
-                    <th onClick={() => handleSort('account_name')} className="py-2.5 px-1.5 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium whitespace-nowrap">
+                    <th onClick={() => handleSort('account_name')} className="py-2.5 px-2 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium whitespace-nowrap">
                       계좌명 {renderSortIcon('account_name')}
                     </th>
 
                     {/* 3. 계좌번호 */}
-                    <th className="py-2.5 px-1.5 sm:px-3 text-left font-medium whitespace-nowrap">
+                    <th className="py-2.5 px-2 sm:px-3 text-left font-medium whitespace-nowrap">
                       계좌번호
                     </th>
 
-                    {/* 4. 상태 (정렬기능 삭제) */}
-                    <th className="py-2.5 px-1 sm:px-2 text-center font-medium whitespace-nowrap">
+                    {/* 4. 상태 (Desktop Only) */}
+                    <th className="hidden lg:table-cell py-2.5 px-1 sm:px-2 text-center font-medium whitespace-nowrap">
                       상태
                     </th>
 
-                    {/* 5. 작업 */}
-                    <th className="py-2.5 px-1 sm:px-2 text-center font-medium whitespace-nowrap">
+                    {/* 5. 작업 (Desktop) */}
+                    <th className="hidden lg:table-cell py-2.5 px-1 sm:px-2 text-center font-medium whitespace-nowrap">
+                      작업
+                    </th>
+
+                    {/* 5. 작업 (Mobile) */}
+                    <th className="lg:hidden py-2.5 px-2 text-center w-12 font-medium whitespace-nowrap">
                       작업
                     </th>
                   </tr>
@@ -350,25 +379,26 @@ export default function AccountsPage() {
                     sortedAccounts.map((item) => (
                       <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
                         {/* 1. 증권사 (일반 텍스트) */}
-                        <td className="py-3 px-1.5 sm:px-3 text-left font-semibold text-[var(--fg)] text-xs sm:text-sm truncate" title={item.broker_name || ''}>
+                        <td className="py-3 px-2 sm:px-3 text-left font-semibold text-[var(--fg)] text-xs sm:text-sm truncate" title={item.broker_name || ''}>
                           {item.broker_name || '-'}
                         </td>
 
                         {/* 2. 계좌명 */}
-                        <td className="py-3 px-1.5 sm:px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate" title={item.account_name}>
+                        <td className="py-3 px-2 sm:px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate" title={item.account_name}>
                           {item.account_name}
                         </td>
 
                         {/* 3. 계좌번호 */}
-                        <td className="py-3 px-1.5 sm:px-3 text-left text-[11px] sm:text-xs text-[var(--fg-muted)] font-semibold truncate" title={item.account_number || ''}>
+                        <td className="py-3 px-2 sm:px-3 text-left text-[11px] sm:text-xs text-[var(--fg-muted)] font-semibold truncate" title={item.account_number || ''}>
                           {item.account_number || '-'}
                         </td>
 
-                        {/* 4. 상태 토글 버튼 */}
-                        <td className="py-3 px-0.5 sm:px-2 text-center">
+                        {/* 4. 상태 토글 버튼 (Desktop Only) */}
+                        <td className="hidden lg:table-cell py-3 px-0.5 sm:px-2 text-center">
                           <button
+                            type="button"
                             onClick={() => handleToggleStatus(item)}
-                            className={`inline-flex items-center justify-center rounded-full px-1.5 sm:px-2.5 py-0.5 text-[9.5px] sm:text-[11px] font-bold transition-all cursor-pointer border whitespace-nowrap ${
+                            className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold transition-all cursor-pointer border whitespace-nowrap ${
                               item.is_active
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
                                 : 'bg-gray-500/10 text-gray-500 border-gray-500/20 hover:bg-gray-500/20'
@@ -377,12 +407,12 @@ export default function AccountsPage() {
                           >
                             {item.is_active ? (
                               <>
-                                <CheckCircle2 className="h-3 w-3 hidden sm:inline mr-0.5" />
+                                <CheckCircle2 className="h-3 w-3 mr-0.5" />
                                 사용중
                               </>
                             ) : (
                               <>
-                                <XCircle className="h-3 w-3 hidden sm:inline mr-0.5" />
+                                <XCircle className="h-3 w-3 mr-0.5" />
                                 미사용
                               </>
                             )}
@@ -393,6 +423,7 @@ export default function AccountsPage() {
                         <td className="hidden lg:table-cell py-3 px-2 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button
+                              type="button"
                               onClick={() => handleOpenEditModal(item)}
                               className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
                               title="수정"
@@ -400,6 +431,7 @@ export default function AccountsPage() {
                               <Edit2 className="h-4 w-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => setDeleteTargetId(item.id)}
                               className="p-1 text-red-500 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
                               title="삭제"
@@ -409,41 +441,93 @@ export default function AccountsPage() {
                           </div>
                         </td>
 
-                        {/* 5. 작업 (Mobile: 점 세개 팝오버 버튼) */}
-                        <td className="lg:hidden py-3 px-0.5 text-center relative align-middle">
-                          <div className="flex items-center justify-center">
-                            <button
-                              onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id)}
-                              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] transition-colors cursor-pointer"
-                              aria-label="작업 메뉴"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                        {/* 5. 작업 (Mobile: 점 세개 스마트 고정 팝오버) */}
+                        <td className="lg:hidden py-2 px-2 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleMobileAction(e, item.id)}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 text-[var(--fg-muted)] hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer mx-auto shrink-0"
+                            title="작업 메뉴"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </button>
 
-                          {activePopoverId === item.id && (
-                            <div className="absolute right-1 top-8 z-30 w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] overflow-hidden text-left animate-in zoom-in-95">
-                              <button
-                                onClick={() => {
-                                  handleOpenEditModal(item);
-                                  setActivePopoverId(null);
+                          {activeMobileActionId === item.id && actionMenuPos && (
+                            <>
+                              {/* Transparent Backdrop */}
+                              <div
+                                className="fixed inset-0 z-40 bg-transparent cursor-default"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  closeMobileAction();
                                 }}
-                                className="w-full min-h-[42px] px-3 py-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] flex items-center gap-2 cursor-pointer"
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                                정보 수정
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setDeleteTargetId(item.id);
-                                  setActivePopoverId(null);
+                              />
+                              {/* Smart Fixed Floating Popover */}
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'fixed',
+                                  right: `${actionMenuPos.right}px`,
+                                  ...(actionMenuPos.openUp
+                                    ? { bottom: `${window.innerHeight - actionMenuPos.top + 6}px` }
+                                    : { top: `${actionMenuPos.top + 32}px` }),
                                 }}
-                                className="w-full min-h-[42px] px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-[var(--bg)] flex items-center gap-2 cursor-pointer"
+                                className="z-50 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-md text-left text-xs divide-y divide-[var(--border)] animate-in fade-in-50 zoom-in-95 cursor-default"
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                삭제하기
-                              </button>
-                            </div>
+                                {/* Status Toggle */}
+                                <div className="py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleToggleStatus(item);
+                                      closeMobileAction();
+                                    }}
+                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 min-h-[42px] font-bold transition-colors hover:bg-[var(--bg)] cursor-pointer"
+                                  >
+                                    <span className="text-[var(--fg)]">상태 변경</span>
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                                        item.is_active
+                                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                          : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                                      }`}
+                                    >
+                                      {item.is_active ? '사용중' : '미사용'}
+                                    </span>
+                                  </button>
+                                </div>
+
+                                {/* Edit */}
+                                <div className="py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleOpenEditModal(item);
+                                      closeMobileAction();
+                                    }}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] cursor-pointer"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                    <span>계좌 수정</span>
+                                  </button>
+                                </div>
+
+                                {/* Delete */}
+                                <div className="pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDeleteTargetId(item.id);
+                                      closeMobileAction();
+                                    }}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 min-h-[42px] font-bold text-red-500 hover:bg-[var(--bg)] cursor-pointer"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>계좌 삭제</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </>
                           )}
                         </td>
                       </tr>
