@@ -12,6 +12,7 @@ import {
   Landmark,
   CheckCircle2,
   XCircle,
+  MoreVertical,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
@@ -32,7 +33,7 @@ export interface AccountRecord {
   created_at?: string;
 }
 
-type SortField = 'broker_name' | 'account_name' | 'is_active';
+type SortField = 'broker_name' | 'account_name';
 type SortDirection = 'asc' | 'desc';
 
 export default function AccountsPage() {
@@ -45,6 +46,9 @@ export default function AccountsPage() {
   // Sorting State (Default: broker_name asc)
   const [sortField, setSortField] = useState<SortField>('broker_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Mobile Action Popover
+  const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
 
   // Modals state
   const [accountModal, setAccountModal] = useState<{
@@ -126,8 +130,6 @@ export default function AccountsPage() {
         diff = (a.broker_name || '').localeCompare(b.broker_name || '');
       } else if (sortField === 'account_name') {
         diff = a.account_name.localeCompare(b.account_name);
-      } else if (sortField === 'is_active') {
-        diff = (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1);
       }
 
       if (diff !== 0) {
@@ -284,38 +286,47 @@ export default function AccountsPage() {
             {/* Accounts Table */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
-                <colgroup>
+                <colgroup className="hidden lg:table-column-group">
                   <col />
                   <col />
                   <col />
-                  <col className="w-[75px] sm:w-[90px] min-[1920px]:w-[100px]" />
-                  <col className="w-[70px] sm:w-[85px] min-[1920px]:w-[95px]" />
+                  <col className="w-[90px] min-[1920px]:w-[100px]" />
+                  <col className="w-[85px] min-[1920px]:w-[95px]" />
+                </colgroup>
+                <colgroup className="lg:hidden">
+                  <col className="w-[28%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[24%]" />
+                  <col className="w-[52px]" />
+                  <col className="w-[32px]" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
                   <tr>
                     {/* 1. 증권사 */}
-                    <th onClick={() => handleSort('broker_name')} className="py-2.5 px-2.5 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('broker_name')} className="py-2.5 px-1.5 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium whitespace-nowrap">
                       증권사 {renderSortIcon('broker_name')}
                     </th>
 
                     {/* 2. 계좌명 */}
-                    <th onClick={() => handleSort('account_name')} className="py-2.5 px-2.5 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('account_name')} className="py-2.5 px-1.5 sm:px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium whitespace-nowrap">
                       계좌명 {renderSortIcon('account_name')}
                     </th>
 
-                    {/* 3. 계좌번호 (정렬기능 삭제) */}
-                    <th className="py-2.5 px-2.5 sm:px-3 text-left font-medium">
+                    {/* 3. 계좌번호 */}
+                    <th className="py-2.5 px-1.5 sm:px-3 text-left font-medium whitespace-nowrap">
                       계좌번호
                     </th>
 
-                    {/* 4. 상태 */}
-                    <th onClick={() => handleSort('is_active')} className="py-2.5 px-1 sm:px-2 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
-                      상태 {renderSortIcon('is_active')}
+                    {/* 4. 상태 (정렬기능 삭제) */}
+                    <th className="py-2.5 px-1 sm:px-2 text-center font-medium whitespace-nowrap">
+                      상태
                     </th>
 
                     {/* 5. 작업 */}
-                    <th className="py-2.5 px-1 sm:px-2 text-center font-medium">작업</th>
+                    <th className="py-2.5 px-1 sm:px-2 text-center font-medium whitespace-nowrap">
+                      작업
+                    </th>
                   </tr>
                 </thead>
 
@@ -339,25 +350,25 @@ export default function AccountsPage() {
                     sortedAccounts.map((item) => (
                       <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
                         {/* 1. 증권사 (일반 텍스트) */}
-                        <td className="py-3 px-2.5 sm:px-3 text-left font-semibold text-[var(--fg)] text-xs sm:text-sm truncate">
+                        <td className="py-3 px-1.5 sm:px-3 text-left font-semibold text-[var(--fg)] text-xs sm:text-sm truncate" title={item.broker_name || ''}>
                           {item.broker_name || '-'}
                         </td>
 
                         {/* 2. 계좌명 */}
-                        <td className="py-3 px-2.5 sm:px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate">
+                        <td className="py-3 px-1.5 sm:px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate" title={item.account_name}>
                           {item.account_name}
                         </td>
 
                         {/* 3. 계좌번호 */}
-                        <td className="py-3 px-2.5 sm:px-3 text-left text-xs text-[var(--fg-muted)] font-semibold truncate">
+                        <td className="py-3 px-1.5 sm:px-3 text-left text-[11px] sm:text-xs text-[var(--fg-muted)] font-semibold truncate" title={item.account_number || ''}>
                           {item.account_number || '-'}
                         </td>
 
                         {/* 4. 상태 토글 버튼 */}
-                        <td className="py-3 px-1 sm:px-2 text-center">
+                        <td className="py-3 px-0.5 sm:px-2 text-center">
                           <button
                             onClick={() => handleToggleStatus(item)}
-                            className={`inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-0.5 text-[10.5px] sm:text-[11px] font-bold transition-all cursor-pointer border ${
+                            className={`inline-flex items-center justify-center rounded-full px-1.5 sm:px-2.5 py-0.5 text-[9.5px] sm:text-[11px] font-bold transition-all cursor-pointer border whitespace-nowrap ${
                               item.is_active
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
                                 : 'bg-gray-500/10 text-gray-500 border-gray-500/20 hover:bg-gray-500/20'
@@ -366,36 +377,74 @@ export default function AccountsPage() {
                           >
                             {item.is_active ? (
                               <>
-                                <CheckCircle2 className="h-3 w-3 hidden sm:inline" />
+                                <CheckCircle2 className="h-3 w-3 hidden sm:inline mr-0.5" />
                                 사용중
                               </>
                             ) : (
                               <>
-                                <XCircle className="h-3 w-3 hidden sm:inline" />
+                                <XCircle className="h-3 w-3 hidden sm:inline mr-0.5" />
                                 미사용
                               </>
                             )}
                           </button>
                         </td>
 
-                        {/* 5. 작업 */}
-                        <td className="py-3 px-1 sm:px-2 text-center">
+                        {/* 5. 작업 (Desktop: 인라인 버튼) */}
+                        <td className="hidden lg:table-cell py-3 px-2 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => handleOpenEditModal(item)}
                               className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
                               title="수정"
                             >
-                              <Edit2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <Edit2 className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => setDeleteTargetId(item.id)}
                               className="p-1 text-red-500 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
                               title="삭제"
                             >
-                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
+                        </td>
+
+                        {/* 5. 작업 (Mobile: 점 세개 팝오버 버튼) */}
+                        <td className="lg:hidden py-3 px-0.5 text-center relative align-middle">
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id)}
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+                              aria-label="작업 메뉴"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                          {activePopoverId === item.id && (
+                            <div className="absolute right-1 top-8 z-30 w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] overflow-hidden text-left animate-in zoom-in-95">
+                              <button
+                                onClick={() => {
+                                  handleOpenEditModal(item);
+                                  setActivePopoverId(null);
+                                }}
+                                className="w-full min-h-[42px] px-3 py-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                                정보 수정
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeleteTargetId(item.id);
+                                  setActivePopoverId(null);
+                                }}
+                                className="w-full min-h-[42px] px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-[var(--bg)] flex items-center gap-2 cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                삭제하기
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))
