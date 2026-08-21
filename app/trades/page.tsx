@@ -440,9 +440,11 @@ export default function TradesPage() {
 
   const handleSaveTrade = async (tradeData: TradeRecordData) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+    }
 
-    // 1. Auto-insert into stocks master table if ticker is new
+    // 1. Auto-insert/upsert into stocks master table if ticker is new
     const cleanTicker = tradeData.ticker?.trim().toUpperCase();
     const existingStock = stocks.find((s) => s.ticker?.toUpperCase() === cleanTicker);
     if (!existingStock && cleanTicker) {
@@ -452,7 +454,7 @@ export default function TradesPage() {
       const stockCurrency = tradeData.currency || 'USD';
       const stockMarket = tradeData.resolvedStock?.market || '';
 
-      const { error: stockErr } = await supabase.from('stocks').insert([{
+      const { error: stockErr } = await supabase.from('stocks').upsert([{
         user_id: user.id,
         ticker: cleanTicker,
         name: stockName,
@@ -461,7 +463,7 @@ export default function TradesPage() {
         currency: stockCurrency,
         market: stockMarket,
         is_active: true,
-      }]);
+      }], { onConflict: 'user_id, ticker' });
 
       if (!stockErr) {
         await fetchStocks();
@@ -470,27 +472,35 @@ export default function TradesPage() {
 
     const payload: any = {
       user_id: user.id,
-      account_id: tradeData.account_id,
+      account_id: tradeData.account_id ? tradeData.account_id : null,
       trade_date: tradeData.trade_date,
       ticker: cleanTicker,
       trade_type: tradeData.trade_type,
       quantity: tradeData.quantity,
       price: tradeData.price,
       currency: tradeData.currency,
-      exchange_rate: tradeData.exchange_rate,
+      exchange_rate: tradeData.exchange_rate ?? 1,
       total_amount: tradeData.total_amount,
       total_amount_krw: tradeData.total_amount_krw,
-      fee: tradeData.fee,
-      tax: tradeData.tax,
-      foreign_fee: tradeData.foreign_fee,
-      foreign_tax: tradeData.foreign_tax,
-      notes: tradeData.notes,
+      fee: tradeData.fee ?? 0,
+      tax: tradeData.tax ?? 0,
+      foreign_fee: tradeData.foreign_fee ?? 0,
+      foreign_tax: tradeData.foreign_tax ?? 0,
+      notes: tradeData.notes ? tradeData.notes.trim() : null,
     };
 
     if (modalMode === 'edit' && tradeData.id) {
-      await supabase.from('trades').update(payload).eq('id', tradeData.id);
+      const { error } = await supabase.from('trades').update(payload).eq('id', tradeData.id);
+      if (error) {
+        console.error('Failed to update trade:', error);
+        throw error;
+      }
     } else {
-      await supabase.from('trades').insert([payload]);
+      const { error } = await supabase.from('trades').insert([payload]);
+      if (error) {
+        console.error('Failed to insert trade:', error);
+        throw error;
+      }
     }
 
     // Recalculate remaining quantities for all trades of this account + ticker

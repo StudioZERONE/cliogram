@@ -332,7 +332,18 @@ export function TradeModal({
       alert('계좌를 선택해 주세요.');
       return;
     }
-    if (!ticker.trim() || parsedQty === 0 || parsedPrice <= 0) return;
+    if (!ticker.trim()) {
+      alert('티커를 입력해 주세요.');
+      return;
+    }
+    if (parsedQty === 0) {
+      alert('수량을 0이 아닌 숫자로 입력해 주세요.');
+      return;
+    }
+    if (parsedPrice <= 0) {
+      alert('단가를 0보다 큰 숫자로 입력해 주세요.');
+      return;
+    }
     if (isSellExceeded) {
       alert(`매도 수량(${Math.abs(parsedQty)}주)이 현재 보유 잔여수량(${currentHoldingQty}주)을 초과하여 저장할 수 없습니다.`);
       return;
