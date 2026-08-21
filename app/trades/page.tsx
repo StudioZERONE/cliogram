@@ -7,12 +7,14 @@ import { supabase } from '@/lib/supabase';
 import { checkSessionExpiry } from '@/lib/auth';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
-import { FilterDropdown } from '@/components/FilterDropdown';
+import { FilterDropdown, FilterOption } from '@/components/FilterDropdown';
 import { CurrencyViewToggle, CurrencyViewMode } from '@/components/CurrencyViewToggle';
-import { ViewSettingsMenu } from '@/components/ViewSettingsMenu';
 import { TradeModal, TradeRecordData, StockOption } from '@/components/TradeModal';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
+
+type SortField = 'trade_date' | 'ticker' | 'stock_name' | 'price' | 'quantity' | 'total_amount';
+type SortDirection = 'asc' | 'desc';
 
 export default function TradesPage() {
   const router = useRouter();
@@ -27,16 +29,11 @@ export default function TradesPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [currencyFilter, setCurrencyFilter] = useState<string>('ALL');
-  const [stockFilter, setStockFilter] = useState<string>('ALL');
   const [currencyViewMode, setCurrencyViewMode] = useState<CurrencyViewMode>('ORIGINAL');
 
-  // Toss Style View Settings
-  const [showSplitBalance, setShowSplitBalance] = useState<boolean>(true);
-  const [displayTicker, setDisplayTicker] = useState<boolean>(false);
-
-  // Sorting
-  const [sortField, setSortField] = useState<'trade_date' | 'stock_name' | 'total_amount'>('trade_date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // Sorting: Default trade_date DESC
+  const [sortField, setSortField] = useState<SortField>('trade_date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Modals & Action States
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -99,32 +96,30 @@ export default function TradesPage() {
     }
   };
 
-  const typeFilterOptions = useMemo(() => [
+  // Map ticker -> short_name for responsive display
+  const tickerToShortNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    stocks.forEach((s) => {
+      map[s.ticker] = s.short_name || s.name;
+    });
+    return map;
+  }, [stocks]);
+
+  const typeFilterOptions: FilterOption[] = useMemo(() => [
     { value: 'ALL', label: '전체' },
     { value: 'BUY', label: '매수' },
     { value: 'SELL', label: '매도' },
   ], []);
 
-  const currencyFilterOptions = useMemo(() => [
+  const currencyFilterOptions: FilterOption[] = useMemo(() => [
     { value: 'ALL', label: '전체' },
     { value: 'USD', label: 'USD' },
     { value: 'KRW', label: 'KRW' },
     { value: 'EUR', label: 'EUR' },
   ], []);
 
-  const stockFilterOptions = useMemo(() => {
-    const unique = new Set<string>();
-    trades.forEach((t) => {
-      if (t.stock_name) unique.add(t.stock_name);
-    });
-    return [
-      { value: 'ALL', label: '전체' },
-      ...Array.from(unique).map((name) => ({ value: name, label: name })),
-    ];
-  }, [trades]);
-
   // Handle Sort
-  const handleSort = (field: 'trade_date' | 'stock_name' | 'total_amount') => {
+  const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -137,13 +132,15 @@ export default function TradesPage() {
   const filteredTrades = useMemo(() => {
     return trades
       .filter((item) => {
-        // Search Query (ticker, stock_name, notes)
+        // Search Query (ticker, stock_name, short_name, notes)
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
           const matchTicker = item.ticker?.toLowerCase().includes(q);
           const matchName = item.stock_name?.toLowerCase().includes(q);
+          const shortName = (item.ticker ? tickerToShortNameMap[item.ticker] : undefined)?.toLowerCase();
+          const matchShortName = shortName?.includes(q);
           const matchNotes = item.notes?.toLowerCase().includes(q);
-          if (!matchTicker && !matchName && !matchNotes) return false;
+          if (!matchTicker && !matchName && !matchShortName && !matchNotes) return false;
         }
 
         // Type Filter
@@ -152,68 +149,39 @@ export default function TradesPage() {
         // Currency Filter
         if (currencyFilter !== 'ALL' && item.currency !== currencyFilter) return false;
 
-        // Stock Filter
-        if (stockFilter !== 'ALL' && item.stock_name !== stockFilter) return false;
-
         return true;
       })
       .sort((a, b) => {
-        let valA: any = a[sortField];
-        let valB: any = b[sortField];
+        let diff = 0;
 
         if (sortField === 'total_amount') {
-          valA = currencyViewMode === 'KRW' ? a.total_amount_krw || a.quantity * a.price * (a.exchange_rate || 1) : a.quantity * a.price;
-          valB = currencyViewMode === 'KRW' ? b.total_amount_krw || b.quantity * b.price * (b.exchange_rate || 1) : b.quantity * b.price;
+          const valA = currencyViewMode === 'KRW' ? a.total_amount_krw || a.quantity * a.price * (a.exchange_rate || 1) : a.quantity * a.price;
+          const valB = currencyViewMode === 'KRW' ? b.total_amount_krw || b.quantity * b.price * (b.exchange_rate || 1) : b.quantity * b.price;
+          diff = valA - valB;
+        } else if (sortField === 'price') {
+          diff = a.price - b.price;
+        } else if (sortField === 'quantity') {
+          diff = a.quantity - b.quantity;
+        } else if (sortField === 'ticker') {
+          diff = (a.ticker || '').localeCompare(b.ticker || '');
+        } else if (sortField === 'stock_name') {
+          diff = (a.stock_name || '').localeCompare(b.stock_name || '');
+        } else if (sortField === 'trade_date') {
+          diff = new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime();
         }
 
-        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        if (diff !== 0) {
+          return sortDirection === 'asc' ? diff : -diff;
+        }
 
-        // Secondary tie-breaker: trade_date
-        return new Date(b.trade_date).getTime() - new Date(a.trade_date).getTime();
+        // Secondary Tie-breaker: trade_date DESC
+        const dateDiff = new Date(b.trade_date).getTime() - new Date(a.trade_date).getTime();
+        if (dateDiff !== 0) return dateDiff;
+
+        // Tertiary Tie-breaker: created_at DESC
+        return (b.created_at || '').localeCompare(a.created_at || '');
       });
-  }, [trades, searchQuery, typeFilter, currencyFilter, stockFilter, sortField, sortDirection, currencyViewMode]);
-
-  // Trade Summary Totals
-  const tradeSummary = useMemo(() => {
-    let buyKrw = 0;
-    let sellKrw = 0;
-    let buyUsd = 0;
-    let sellUsd = 0;
-    let pureKrwTotal = 0;
-    let pureUsdTotal = 0;
-
-    filteredTrades.forEach((t) => {
-      const amount = t.quantity * t.price;
-      const rate = t.exchange_rate || (t.currency === 'KRW' ? 1 : 1450);
-      const krwAmount = t.total_amount_krw || amount * rate;
-
-      if (t.currency === 'KRW') {
-        pureKrwTotal += (t.trade_type === 'BUY' ? amount : -amount);
-      } else if (t.currency === 'USD') {
-        pureUsdTotal += (t.trade_type === 'BUY' ? amount : -amount);
-      }
-
-      if (t.trade_type === 'BUY') {
-        buyKrw += krwAmount;
-        if (t.currency === 'USD') buyUsd += amount;
-      } else {
-        sellKrw += krwAmount;
-        if (t.currency === 'USD') sellUsd += amount;
-      }
-    });
-
-    return {
-      buyKrw,
-      sellKrw,
-      netKrw: buyKrw - sellKrw,
-      buyUsd,
-      sellUsd,
-      netUsd: buyUsd - sellUsd,
-      pureKrwTotal,
-      pureUsdTotal,
-    };
-  }, [filteredTrades]);
+  }, [trades, searchQuery, typeFilter, currencyFilter, sortField, sortDirection, currencyViewMode, tickerToShortNameMap]);
 
   // Handlers for Save and Delete
   const handleOpenCreateModal = () => {
@@ -283,16 +251,17 @@ export default function TradesPage() {
     return <div className="min-h-screen bg-[var(--bg)]" />;
   }
 
+  // Currency Flag Only
   const renderFlagEmoji = (curr: string) => {
-    if (curr === 'USD') return <span className="text-lg leading-none align-middle" title="미국 달러">🇺🇸</span>;
-    if (curr === 'KRW') return <span className="text-lg leading-none align-middle" title="대한민국 원">🇰🇷</span>;
-    if (curr === 'EUR') return <span className="text-lg leading-none align-middle" title="유로화">🇪🇺</span>;
-    if (curr === 'JPY') return <span className="text-lg leading-none align-middle" title="일본 엔화">🇯🇵</span>;
-    if (curr === 'CNY') return <span className="text-lg leading-none align-middle" title="중국 위안화">🇨🇳</span>;
+    if (curr === 'USD') return <span className="text-lg leading-none align-middle inline-block" title="미국 달러 (USD)">🇺🇸</span>;
+    if (curr === 'KRW') return <span className="text-lg leading-none align-middle inline-block" title="대한민국 원 (KRW)">🇰🇷</span>;
+    if (curr === 'EUR') return <span className="text-lg leading-none align-middle inline-block" title="유로화 (EUR)">🇪🇺</span>;
+    if (curr === 'JPY') return <span className="text-lg leading-none align-middle inline-block" title="일본 엔화 (JPY)">🇯🇵</span>;
+    if (curr === 'CNY') return <span className="text-lg leading-none align-middle inline-block" title="중국 위안화 (CNY)">🇨🇳</span>;
     return <span className="text-xs font-bold text-[var(--fg-muted)]">{curr}</span>;
   };
 
-  const renderSortIcon = (field: 'trade_date' | 'stock_name' | 'total_amount') => {
+  const renderSortIcon = (field: SortField) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 opacity-40 inline ml-1" />;
     return sortDirection === 'asc' ? (
       <ArrowUp className="h-3 w-3 text-emerald-500 inline ml-1" />
@@ -314,68 +283,15 @@ export default function TradesPage() {
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
-                자산 매매 내역 관제
+                자산 매매 내역 원장
               </h3>
               <p className="text-xs sm:text-sm text-[var(--fg-muted)] mt-1">
-                원화(KRW) 및 외화(USD 등) 주식 매매 거래 내역을 기록하고 실시간 환율을 반영하여 관리합니다.
+                원화(KRW) 및 외화(USD 등) 주식 매매 거래 내역을 기록하고 관리하는 원장 목록입니다.
               </p>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3">
               {/* Toss Style $ vs 원 Currency Toggle */}
               <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} />
-              {/* Toss Style View Settings Menu */}
-              <ViewSettingsMenu
-                showSplitBalance={showSplitBalance}
-                onToggleSplitBalance={setShowSplitBalance}
-                displayTicker={displayTicker}
-                onToggleDisplayTicker={setDisplayTicker}
-              />
-            </div>
-          </div>
-
-          {/* Toss Style Split Balance Card (원화 / 달러) */}
-          {showSplitBalance && (
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-5 shadow-xs">
-                <span className="text-[11px] sm:text-xs font-semibold text-[var(--fg-muted)]">원화 순매수 잔액</span>
-                <p className="text-sm sm:text-xl font-extrabold text-[var(--fg)] mt-1">
-                  ₩ {Math.round(tradeSummary.pureKrwTotal).toLocaleString()}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-5 shadow-xs">
-                <span className="text-[11px] sm:text-xs font-semibold text-[var(--fg-muted)]">달러 순매수 잔액</span>
-                <p className="text-sm sm:text-xl font-extrabold text-[var(--fg)] mt-1">
-                  $ {tradeSummary.pureUsdTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Trade Summary Stat Cards */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-5 shadow-xs text-center sm:text-left">
-              <p className="text-[10px] sm:text-xs font-bold text-[var(--fg-muted)]">총 매수 금액</p>
-              <p className="text-xs sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                {currencyViewMode === 'KRW'
-                  ? `₩ ${Math.round(tradeSummary.buyKrw).toLocaleString()}`
-                  : `$ ${tradeSummary.buyUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-5 shadow-xs text-center sm:text-left">
-              <p className="text-[10px] sm:text-xs font-bold text-[var(--fg-muted)]">총 매도 금액</p>
-              <p className="text-xs sm:text-lg font-bold text-red-500 mt-1">
-                {currencyViewMode === 'KRW'
-                  ? `₩ ${Math.round(tradeSummary.sellKrw).toLocaleString()}`
-                  : `$ ${tradeSummary.sellUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-5 shadow-xs text-center sm:text-left">
-              <p className="text-[10px] sm:text-xs font-bold text-[var(--fg-muted)]">순 투자 금액</p>
-              <p className="text-xs sm:text-lg font-bold text-[var(--fg)] mt-1">
-                {currencyViewMode === 'KRW'
-                  ? `₩ ${Math.round(tradeSummary.netKrw).toLocaleString()}`
-                  : `$ ${tradeSummary.netUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-              </p>
             </div>
           </div>
 
@@ -387,30 +303,19 @@ export default function TradesPage() {
                 <h2 className="text-base sm:text-xl font-bold text-[var(--fg)]">
                   매매 내역 목록
                 </h2>
-                <span className="text-xs sm:text-sm font-bold text-[var(--fg-muted)]">
-                  [{filteredTrades.length} / {trades.length}건]
+                <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                  {filteredTrades.length} / {trades.length}건
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Mobile View Settings */}
-                <div className="sm:hidden">
-                  <ViewSettingsMenu
-                    showSplitBalance={showSplitBalance}
-                    onToggleSplitBalance={setShowSplitBalance}
-                    displayTicker={displayTicker}
-                    onToggleDisplayTicker={setDisplayTicker}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleOpenCreateModal}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-                  title="신규 매매 내역 등록"
-                  aria-label="신규 매매 내역 등록"
-                >
-                  <Plus className="h-5 w-5 stroke-[2.5]" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleOpenCreateModal}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
+                title="신규 매매 내역 등록"
+                aria-label="신규 매매 내역 등록"
+              >
+                <Plus className="h-5 w-5 stroke-[2.5]" />
+              </button>
             </div>
 
             {/* Filter Toolbar Section */}
@@ -419,13 +324,13 @@ export default function TradesPage() {
               <div className="flex-1 max-w-sm">
                 <input
                   type="text"
-                  placeholder={displayTicker ? "티커, 종목명, 비고 검색..." : "종목명, 티커, 비고 검색..."}
+                  placeholder="종목, 짧은 종목명, 티커, 비고 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <FilterDropdown
                   labelPrefix="구분"
                   options={typeFilterOptions}
@@ -438,12 +343,6 @@ export default function TradesPage() {
                   value={currencyFilter}
                   onChange={setCurrencyFilter}
                 />
-                <FilterDropdown
-                  labelPrefix="종목"
-                  options={stockFilterOptions}
-                  value={stockFilter}
-                  onChange={setStockFilter}
-                />
               </div>
             </div>
 
@@ -453,15 +352,15 @@ export default function TradesPage() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder={displayTicker ? "티커, 종목명 검색..." : "종목명, 티커 검색..."}
+                  placeholder="종목, 티커 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                 />
                 <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} />
               </div>
-              {/* Row 2: 3 Equal Columns Filter Comboboxes */}
-              <div className="grid grid-cols-3 gap-1.5 w-full">
+              {/* Row 2: 2 Equal Columns Filter Comboboxes (구분, 통화) */}
+              <div className="grid grid-cols-2 gap-1.5 w-full">
                 <FilterDropdown
                   labelPrefix="구분"
                   mobileLabelPrefix="구분"
@@ -476,42 +375,59 @@ export default function TradesPage() {
                   value={currencyFilter}
                   onChange={setCurrencyFilter}
                 />
-                <FilterDropdown
-                  labelPrefix="종목"
-                  mobileLabelPrefix="종목"
-                  options={stockFilterOptions}
-                  value={stockFilter}
-                  onChange={setStockFilter}
-                />
               </div>
             </div>
 
             {/* Data Table View */}
+            {/* Desktop Columns: 거래일자, 구분, 티커, 종목, 통화, 단가, 수량, 거래금액, 환율, 작업 */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm">
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
                   <tr>
-                    {/* Desktop Headers */}
+                    {/* 1. 거래일자 */}
                     <th onClick={() => handleSort('trade_date')} className="hidden sm:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)]">
                       거래일자 {renderSortIcon('trade_date')}
                     </th>
+
+                    {/* 2. 구분 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-center">구분</th>
+
+                    {/* 3. 티커 */}
+                    <th onClick={() => handleSort('ticker')} className="hidden sm:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)]">
+                      티커 {renderSortIcon('ticker')}
+                    </th>
+
+                    {/* 4. 종목 */}
                     <th onClick={() => handleSort('stock_name')} className="hidden sm:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)]">
-                      {displayTicker ? '티커 (종목명)' : '종목명 (티커)'} {renderSortIcon('stock_name')}
+                      종목 {renderSortIcon('stock_name')}
                     </th>
+
+                    {/* 5. 통화 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-center">통화</th>
-                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">수량</th>
-                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">단가</th>
-                    <th onClick={() => handleSort('total_amount')} className="hidden sm:table-cell py-2.5 px-3 text-right cursor-pointer hover:text-[var(--fg)] font-bold">
-                      총 거래금액 ({currencyViewMode === 'KRW' ? '원화 환산' : '원본 통화'}) {renderSortIcon('total_amount')}
+
+                    {/* 6. 단가 */}
+                    <th onClick={() => handleSort('price')} className="hidden sm:table-cell py-2.5 px-2.5 text-right cursor-pointer hover:text-[var(--fg)]">
+                      단가 {renderSortIcon('price')}
                     </th>
+
+                    {/* 7. 수량 */}
+                    <th onClick={() => handleSort('quantity')} className="hidden sm:table-cell py-2.5 px-2.5 text-right cursor-pointer hover:text-[var(--fg)]">
+                      수량 {renderSortIcon('quantity')}
+                    </th>
+
+                    {/* 8. 거래금액 */}
+                    <th onClick={() => handleSort('total_amount')} className="hidden sm:table-cell py-2.5 px-3 text-right cursor-pointer hover:text-[var(--fg)] font-bold">
+                      거래금액 ({currencyViewMode === 'KRW' ? '원화 환산' : '원본 통화'}) {renderSortIcon('total_amount')}
+                    </th>
+
+                    {/* 9. 환율 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">환율</th>
+
+                    {/* 10. 작업 */}
                     <th className="hidden sm:table-cell py-2.5 px-3 text-center w-24">작업</th>
 
                     {/* Mobile 3-Column Headers */}
-                    <th className="sm:hidden py-2.5 px-3 text-left">
-                      {displayTicker ? '거래일자 / 티커' : '거래일자 / 종목명'}
-                    </th>
+                    <th className="sm:hidden py-2.5 px-3 text-left">거래일자 / 종목</th>
                     <th className="sm:hidden py-2.5 px-2 text-center w-28">구분 / 금액</th>
                     <th className="sm:hidden py-2.5 px-2 text-center w-12">작업</th>
                   </tr>
@@ -519,7 +435,7 @@ export default function TradesPage() {
                 <tbody className="divide-y divide-[var(--border)] font-medium">
                   {filteredTrades.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                      <td colSpan={10} className="py-12 text-center text-xs text-[var(--fg-muted)]">
                         등록된 매매 내역이 없습니다. 오른쪽 상단 "+" 버튼을 눌러 추가해 주세요.
                       </td>
                     </tr>
@@ -532,15 +448,16 @@ export default function TradesPage() {
                           ? item.total_amount_krw || amount * rate
                           : amount;
 
-                      const primaryStockText = displayTicker ? (item.ticker || item.stock_name) : item.stock_name;
-                      const secondaryStockText = displayTicker ? item.stock_name : item.ticker;
+                      const shortName = (item.ticker ? tickerToShortNameMap[item.ticker] : undefined) || item.stock_name;
 
                       return (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
-                          {/* Desktop Columns */}
+                          {/* 1. 거래일자 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
                             {item.trade_date}
                           </td>
+
+                          {/* 2. 구분 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-center">
                             <span
                               className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold border ${
@@ -552,30 +469,45 @@ export default function TradesPage() {
                               {item.trade_type === 'BUY' ? '매수' : '매도'}
                             </span>
                           </td>
+
+                          {/* 3. 티커 (Desktop) */}
+                          <td className="hidden sm:table-cell py-3 px-3 text-center font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                            {item.ticker}
+                          </td>
+
+                          {/* 4. 종목 (Desktop: wide -> full name, narrow -> short name) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)]">
-                            {primaryStockText}{' '}
-                            {secondaryStockText && (
-                              <span className="text-xs text-[var(--fg-muted)] font-normal">
-                                ({secondaryStockText})
-                              </span>
-                            )}
+                            <span className="hidden lg:inline">{item.stock_name}</span>
+                            <span className="inline lg:hidden">{shortName}</span>
                           </td>
+
+                          {/* 5. 통화 (Desktop: Flag icon only) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-center">
-                            {renderFlagEmoji(item.currency)} <span className="text-xs font-bold">{item.currency}</span>
+                            {renderFlagEmoji(item.currency)}
                           </td>
-                          <td className="hidden sm:table-cell py-3 px-2.5 text-right font-semibold">
-                            {item.quantity.toLocaleString()}
-                          </td>
+
+                          {/* 6. 단가 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right font-semibold">
                             {item.price.toLocaleString(undefined, { minimumFractionDigits: item.currency === 'KRW' ? 0 : 2 })}
                           </td>
+
+                          {/* 7. 수량 (Desktop) */}
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-right font-semibold">
+                            {item.quantity.toLocaleString()}
+                          </td>
+
+                          {/* 8. 거래금액 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
                             {currencyViewMode === 'KRW' ? '₩ ' : item.currency === 'USD' ? '$ ' : item.currency === 'EUR' ? '€ ' : ''}
                             {Math.round(displayAmount).toLocaleString()}
                           </td>
+
+                          {/* 9. 환율 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg-muted)] font-semibold">
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString()} 원`}
                           </td>
+
+                          {/* 10. 작업 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
@@ -596,20 +528,15 @@ export default function TradesPage() {
                           </td>
 
                           {/* Mobile 3-Column Cells */}
-                          {/* Column 1: Key Identifier (Date + Stock Name / Ticker) */}
+                          {/* Column 1: 거래일자 + 짧은 종목명 (티커 숨김) */}
                           <td className="sm:hidden py-2.5 px-3 text-left">
                             <p className="text-[10px] text-[var(--fg-muted)] font-bold">{item.trade_date}</p>
                             <p className="font-bold text-xs text-[var(--fg)] mt-0.5">
-                              {primaryStockText}
-                              {secondaryStockText && (
-                                <span className="text-[10px] text-[var(--fg-muted)] font-normal ml-1">
-                                  ({secondaryStockText})
-                                </span>
-                              )}
+                              {shortName}
                             </p>
                           </td>
 
-                          {/* Column 2: Key Attribute Badge (Type + Flag + Amount) */}
+                          {/* Column 2: 구분 + 국기 + 금액 */}
                           <td className="sm:hidden py-2.5 px-2 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <span
@@ -629,7 +556,7 @@ export default function TradesPage() {
                             </p>
                           </td>
 
-                          {/* Column 3: Action Menu Button */}
+                          {/* Column 3: 작업 Popover Menu Button */}
                           <td className="sm:hidden py-2.5 px-2 text-center relative">
                             <button
                               onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id || null)}

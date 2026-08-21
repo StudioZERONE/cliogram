@@ -31,6 +31,7 @@ export interface TradeRecordData {
   fee?: number;
   tax?: number;
   notes?: string;
+  created_at?: string;
 }
 
 export interface TradeModalProps {
