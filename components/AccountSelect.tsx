@@ -50,9 +50,16 @@ export function AccountSelect({ accounts, value, onChange, className = '', disab
     setIsOpen(!isOpen);
   };
 
+  const formatAccountLabel = (item: AccountOption) => {
+    if (item.account_number) {
+      return `${item.account_name} (${item.account_number})`;
+    }
+    return item.broker_name ? `${item.broker_name} (${item.account_name})` : item.account_name;
+  };
+
   const selectedAccount = accounts.find((a) => a.id === value);
   const displayLabel = selectedAccount
-    ? (selectedAccount.broker_name ? `${selectedAccount.broker_name} (${selectedAccount.account_name})` : selectedAccount.account_name)
+    ? formatAccountLabel(selectedAccount)
     : accounts.length > 0 ? '계좌 선택 (미지정)' : '등록된 계좌 없음';
 
   const handleSelect = (id: string) => {
@@ -107,9 +114,7 @@ export function AccountSelect({ accounts, value, onChange, className = '', disab
               </button>
               {accounts.map((item) => {
                 const isSelected = item.id === value;
-                const label = item.broker_name
-                  ? `${item.broker_name} (${item.account_name})`
-                  : item.account_name;
+                const label = formatAccountLabel(item);
                 return (
                   <button
                     key={item.id}

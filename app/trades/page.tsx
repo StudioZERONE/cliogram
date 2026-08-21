@@ -73,15 +73,27 @@ export default function TradesPage() {
         .order('created_at', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        setAccounts(
-          data.map((a: any) => ({
-            id: a.id,
-            account_name: a.account_name,
-            broker_name: a.broker_name || a.account_name,
-            account_number: a.account_number || '',
-            is_active: a.is_active ?? true,
-          }))
-        );
+        const mapped = data.map((a: any) => ({
+          id: a.id,
+          account_name: a.account_name,
+          broker_name: a.broker_name || a.account_name,
+          account_number: a.account_number || '',
+          is_active: a.is_active ?? true,
+        }));
+        setAccounts(mapped);
+
+        // Auto-backfill existing trades with first registered account if account_id is null
+        const firstAccountId = data[0].id;
+        supabase
+          .from('trades')
+          .update({ account_id: firstAccountId })
+          .eq('user_id', user.id)
+          .is('account_id', null)
+          .then(({ error: updateErr }) => {
+            if (!updateErr) {
+              fetchTrades();
+            }
+          });
       } else {
         setAccounts([]);
       }
@@ -637,9 +649,9 @@ export default function TradesPage() {
                   <col className="w-[75px] min-[1920px]:w-[85px]" />
                 </colgroup>
                 <colgroup className="sm:hidden">
-                  <col className="w-[48%]" />
-                  <col className="w-[44%]" />
-                  <col className="w-[8%]" />
+                  <col />
+                  <col className="w-[145px]" />
+                  <col className="w-[42px]" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
@@ -689,9 +701,9 @@ export default function TradesPage() {
                     <th className="hidden sm:table-cell py-2.5 px-2 text-center font-medium">작업</th>
 
                     {/* Mobile 3-Column Headers */}
-                    <th className="sm:hidden py-2 px-2 text-left font-medium text-[10.5px]">매매일자 / 종목</th>
-                    <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px]">단가·수량 / 거래금액</th>
-                    <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px]">작업</th>
+                    <th className="sm:hidden py-2 px-2.5 text-left font-medium text-[10.5px]">매매일자 / 종목</th>
+                    <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px] whitespace-nowrap">단가·수량 / 거래금액</th>
+                    <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px] whitespace-nowrap">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -903,14 +915,16 @@ export default function TradesPage() {
                           </td>
 
                           {/* Mobile Col 3: 작업 Popover Menu Button */}
-                          <td className="sm:hidden py-2.5 px-1 text-center relative">
-                            <button
-                              onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id || null)}
-                              className="p-1 rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] cursor-pointer"
-                              aria-label="작업 메뉴"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
+                          <td className="sm:hidden py-2.5 px-1 text-center relative align-middle">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id || null)}
+                                className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+                                aria-label="작업 메뉴"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </div>
 
                             {/* Floating Touch Popover Menu */}
                             {activePopoverId === item.id && (
