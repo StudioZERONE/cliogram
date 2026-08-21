@@ -83,27 +83,10 @@ export default function TradesPage() {
           }))
         );
       } else {
-        // Fallback default sample account
-        setAccounts([
-          {
-            id: 'default-acc',
-            account_name: 'KB증권 종합위탁',
-            broker_name: 'KB증권',
-            account_number: '123-45-678901',
-            is_active: true,
-          },
-        ]);
+        setAccounts([]);
       }
     } catch {
-      setAccounts([
-        {
-          id: 'default-acc',
-          account_name: 'KB증권 종합위탁',
-          broker_name: 'KB증권',
-          account_number: '123-45-678901',
-          is_active: true,
-        },
-      ]);
+      setAccounts([]);
     }
   };
 
@@ -546,12 +529,14 @@ export default function TradesPage() {
                 )}
               </div>
               <div className="flex items-center gap-2.5">
-                <FilterDropdown
-                  labelPrefix="계좌"
-                  options={accountFilterOptions}
-                  value={accountFilter}
-                  onChange={setAccountFilter}
-                />
+                {accounts.length > 0 && (
+                  <FilterDropdown
+                    labelPrefix="계좌"
+                    options={accountFilterOptions}
+                    value={accountFilter}
+                    onChange={setAccountFilter}
+                  />
+                )}
                 <FilterDropdown
                   labelPrefix="년도"
                   options={yearFilterOptions}
@@ -573,7 +558,7 @@ export default function TradesPage() {
               </div>
             </div>
 
-            {/* Mobile Toolbar: 2-Row Structured Grid with 4 Filters in 2x2 Grid */}
+            {/* Mobile Toolbar: 2-Row Structured Grid with Dynamic Filters */}
             <div className="sm:hidden space-y-2">
               {/* Row 1: Search & Currency Toggle */}
               <div className="flex items-center gap-2">
@@ -599,15 +584,17 @@ export default function TradesPage() {
                 </div>
                 <CurrencyViewToggle mode={currencyViewMode} onChange={setCurrencyViewMode} />
               </div>
-              {/* Row 2: 2x2 Grid Filter Comboboxes (계좌, 년도, 구분, 통화) */}
-              <div className="grid grid-cols-2 gap-1.5 w-full">
-                <FilterDropdown
-                  labelPrefix="계좌"
-                  mobileLabelPrefix="계좌"
-                  options={accountFilterOptions}
-                  value={accountFilter}
-                  onChange={setAccountFilter}
-                />
+              {/* Row 2: Dynamic Grid Filter Comboboxes */}
+              <div className={`grid ${accounts.length > 0 ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 w-full`}>
+                {accounts.length > 0 && (
+                  <FilterDropdown
+                    labelPrefix="계좌"
+                    mobileLabelPrefix="계좌"
+                    options={accountFilterOptions}
+                    value={accountFilter}
+                    onChange={setAccountFilter}
+                  />
+                )}
                 <FilterDropdown
                   labelPrefix="년도"
                   mobileLabelPrefix="년도"
@@ -819,11 +806,46 @@ export default function TradesPage() {
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 계좌 (Desktop: 아이코닉 배지 중앙 정렬) */}
+                          {/* 10. 계좌 (Desktop) */}
                           <td className="hidden lg:table-cell py-3 px-2 text-center">
-                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
-                              {item.accounts?.broker_name || item.accounts?.account_name || '기본계좌'}
-                            </span>
+                            {(item.accounts?.broker_name || item.accounts?.account_name) ? (
+                              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
+                                {item.accounts.broker_name || item.accounts.account_name}
+                              </span>
+                            ) : (
+                              <span className="text-[var(--fg-muted)] font-normal text-xs">-</span>
+                            )}
+                          </td>
+
+                          {/* 11. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}
+                          <td
+                            onClick={() => item.notes && setSearchQuery(item.notes)}
+                            className={`hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg)] font-normal truncate ${
+                              item.notes ? 'cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors' : ''
+                            }`}
+                            title={item.notes ? `"${item.notes}" 검색` : ''}
+                          >
+                            {item.notes || '-'}
+                          </td>
+
+                          {/* 12. 작업 (Desktop) */}
+                          <td className="hidden sm:table-cell py-3 px-2 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleOpenEditModal(item)}
+                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
+                                title="수정"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTargetId(item.id || null)}
+                                className="p-1 text-red-500 hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer"
+                                title="삭제"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
 
                           {/* 11. 비고 (Desktop: 가변 폭 자동 조절, Click to search) */}

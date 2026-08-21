@@ -209,10 +209,20 @@ export default function AccountsPage() {
 
     if (accountModal.mode === 'edit' && data.id) {
       const { error } = await supabase.from('accounts').update(payload).eq('id', data.id);
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('schema cache') || error.code === 'PGRST204' || (error as any).status === 404) {
+          throw new Error("Supabase DB에 'accounts' 테이블이 아직 생성되지 않았습니다. Supabase 대시보드의 SQL Editor에서 'sql/a_schema.sql' 스크립트를 먼저 실행해 주세요.");
+        }
+        throw error;
+      }
     } else {
       const { error } = await supabase.from('accounts').insert([payload]);
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('schema cache') || error.code === 'PGRST204' || (error as any).status === 404) {
+          throw new Error("Supabase DB에 'accounts' 테이블이 아직 생성되지 않았습니다. Supabase 대시보드의 SQL Editor에서 'sql/a_schema.sql' 스크립트를 먼저 실행해 주세요.");
+        }
+        throw error;
+      }
     }
 
     await fetchAccounts();

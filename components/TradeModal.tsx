@@ -391,14 +391,20 @@ export function TradeModal({
                   onChange={(e) => setAccountId(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner cursor-pointer"
                 >
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id} className="bg-[var(--surface)] text-[var(--fg)]">
-                      {acc.broker_name ? `${acc.broker_name} (${acc.account_name})` : acc.account_name}
-                    </option>
-                  ))}
-                  {accounts.length === 0 && (
-                    <option value="" className="bg-[var(--surface)] text-[var(--fg)]">
-                      기본 투자계좌
+                  {accounts.length > 0 ? (
+                    <>
+                      <option value="" className="bg-[var(--surface)] text-[var(--fg-muted)]">
+                        계좌 선택 (미지정)
+                      </option>
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id} className="bg-[var(--surface)] text-[var(--fg)]">
+                          {acc.broker_name ? `${acc.broker_name} (${acc.account_name})` : acc.account_name}
+                        </option>
+                      ))}
+                    </>
+                  ) : (
+                    <option value="" className="bg-[var(--surface)] text-[var(--fg-muted)]">
+                      등록된 계좌 없음
                     </option>
                   )}
                 </select>
