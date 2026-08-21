@@ -286,16 +286,16 @@ export default function AccountsPage() {
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
                 <colgroup className="hidden lg:table-column-group">
-                  <col />                                              {/* 1. 증권사 (가변 폭) */}
-                  <col />                                              {/* 2. 계좌명 (가변 폭) */}
-                  <col />                                              {/* 3. 계좌번호 (가변 폭) */}
-                  <col className="w-[90px] min-[1920px]:w-[100px]" />  {/* 4. 상태 */}
-                  <col className="w-[85px] min-[1920px]:w-[95px]" />   {/* 5. 작업 */}
+                  <col />
+                  <col />
+                  <col />
+                  <col className="w-[90px] min-[1920px]:w-[100px]" />
+                  <col className="w-[85px] min-[1920px]:w-[95px]" />
                 </colgroup>
                 <colgroup className="lg:hidden">
-                  <col />                                              {/* 1. 증권사 / 계좌명 / 계좌번호 (가변 폭) */}
-                  <col className="w-[75px]" />                         {/* 2. 상태 (고정 폭) */}
-                  <col className="w-[45px]" />                         {/* 3. 작업 (고정 폭) */}
+                  <col />
+                  <col className="w-[75px]" />
+                  <col className="w-[45px]" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
