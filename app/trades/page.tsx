@@ -746,16 +746,16 @@ export default function TradesPage() {
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
                 <colgroup className="hidden lg:table-column-group">
-                  <col className="w-[80px] min-[1920px]:w-[120px]" />
-                  <col className="w-[40px] min-[1920px]:w-[70px]" />
-                  <col className="w-[60px] min-[1920px]:w-[100px]" />
+                  <col className="w-[80px] min-[1920px]:w-[170px]" />
+                  <col className="w-[40px] min-[1920px]:w-[100px]" />
+                  <col className="w-[60px] min-[1920px]:w-[150px]" />
                   <col />
                   <col className="w-[30px] min-[1920px]:w-[60px]" />
-                  <col className="w-[70px] min-[1920px]:w-[120px]" />
-                  <col className="w-[50px] min-[1920px]:w-[90px]" />
-                  <col className="w-[105px] min-[1920px]:w-[140px]" />
-                  <col className="w-[60px] min-[1920px]:w-[100px]" />
-                  <col className="w-[50px] min-[1920px]:w-[90px]" />
+                  <col className="w-[75px] min-[1920px]:w-[200px]" />
+                  <col className="w-[50px] min-[1920px]:w-[100px]" />
+                  <col className="w-[105px] min-[1920px]:w-[200px]" />
+                  <col className="w-[60px] min-[1920px]:w-[150px]" />
+                  <col className="w-[50px] min-[1920px]:w-[100px]" />
                   <col className="w-[70px] min-[1920px]:w-[150px]" />
                   <col />
                   <col className="w-[60px] min-[1920px]:w-[80px]" />
