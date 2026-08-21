@@ -127,17 +127,19 @@ export default function StocksPage() {
         .eq('user_id', user.id);
 
       if (userTrades && userTrades.length > 0) {
-        const existingTickerSet = new Set(currentStocks.map((s: any) => s.ticker?.toUpperCase()));
+        const existingTickerSet = new Set(
+          currentStocks.map((s: any) => s.ticker?.trim()?.toUpperCase()).filter(Boolean)
+        );
         const missingTickers = Array.from(
           new Set(
             userTrades
-              .map((t: any) => t.ticker?.toUpperCase()?.trim())
+              .map((t: any) => t.ticker?.trim()?.toUpperCase())
               .filter((tick: string) => tick && !existingTickerSet.has(tick))
           )
         );
 
         if (missingTickers.length > 0) {
-          toast.warning(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목을 지금 등록하세요.`);
+          toast.error(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목을 지금 등록하세요.`);
         }
       }
 

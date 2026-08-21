@@ -32,9 +32,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const id = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setToasts((prev) => [...prev, { id, type, message }]);
 
-    // Only auto-dismiss non-error toasts (5 seconds)
-    // Error toasts remain until the user manually reviews and dismisses them
-    if (type !== 'error') {
+    // Auto-dismiss ONLY positive/neutral feedback toasts (success, info in 5 seconds)
+    // Error and Warning toasts remain persistent until the user manually reviews and dismisses them
+    if (type === 'success' || type === 'info') {
       setTimeout(() => {
         removeToast(id);
       }, 5000);
@@ -69,26 +69,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             IconComponent = AlertCircle;
             iconColor = 'text-rose-600 dark:text-rose-400';
           } else if (item.type === 'warning') {
-            typeStyles = 'border-amber-500/30 bg-amber-50/95 dark:bg-amber-950/90 text-amber-900 dark:text-amber-100 shadow-amber-500/10';
+            typeStyles = 'border-amber-500/30 bg-amber-50/95 dark:bg-amber-950/90 text-amber-900 dark:text-amber-100 shadow-amber-500/10 ring-1 ring-amber-500/30';
             IconComponent = AlertTriangle;
             iconColor = 'text-amber-600 dark:text-amber-400';
           }
+
+          const isPersistent = item.type === 'error' || item.type === 'warning';
 
           return (
             <div
               key={item.id}
               role="alert"
               onClick={() => {
-                if (item.type === 'error') removeToast(item.id);
+                if (isPersistent) removeToast(item.id);
               }}
               className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl border shadow-xl backdrop-blur-md transition-all duration-300 animate-in fade-in-50 slide-in-from-top-4 ${
-                item.type === 'error' ? 'cursor-pointer' : ''
+                isPersistent ? 'cursor-pointer' : ''
               } ${typeStyles}`}
             >
               <IconComponent className={`h-5 w-5 shrink-0 mt-0.5 ${iconColor}`} />
               <div className="flex-1 text-xs sm:text-sm font-semibold leading-relaxed break-keep">
                 {item.message}
-                {item.type === 'error' && (
+                {isPersistent && (
                   <span className="block text-[11px] font-normal opacity-75 mt-0.5">
                     (클릭하여 닫기)
                   </span>

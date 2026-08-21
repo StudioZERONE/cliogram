@@ -107,7 +107,7 @@ export default function TradesPage() {
           .order('created_at', { ascending: true }),
         supabase
           .from('stocks')
-          .select('id, ticker, name, short_name, currency, market, is_active')
+          .select('*')
           .eq('user_id', user.id)
           .order('name', { ascending: true })
           .order('ticker', { ascending: true }),
@@ -157,17 +157,19 @@ export default function TradesPage() {
 
       if (tradesRes.data) {
         const rawTrades = tradesRes.data;
-        const existingTickerSet = new Set(loadedStocks.map((s) => s.ticker?.toUpperCase()));
+        const existingTickerSet = new Set(
+          loadedStocks.map((s) => s.ticker?.trim()?.toUpperCase()).filter(Boolean)
+        );
         const missingTickers = Array.from(
           new Set(
             rawTrades
-              .map((t: any) => t.ticker?.toUpperCase()?.trim())
+              .map((t: any) => t.ticker?.trim()?.toUpperCase())
               .filter((tick: string) => tick && !existingTickerSet.has(tick))
           )
         );
 
         if (missingTickers.length > 0) {
-          toast.warning(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목 마스터에서 종목을 지금 등록하세요.`);
+          toast.error(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목 마스터에서 종목을 지금 등록하세요.`);
         }
 
         const normalizedTrades = rawTrades.map((t: any) => {
@@ -234,9 +236,10 @@ export default function TradesPage() {
     if (!user) return;
     const { data } = await supabase
       .from('stocks')
-      .select('id, ticker, name, short_name, currency, market, is_active')
+      .select('*')
       .eq('user_id', user.id)
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .order('ticker', { ascending: true });
     if (data) {
       setStocks(
         data.map((s: any) => ({
