@@ -443,22 +443,25 @@ export default function TradesPage() {
               </div>
             </div>
 
-            {/* Data Table View (Proportional Responsive Column Layout for All Screens up to 5K Ultra-wide) */}
+            {/* Data Table View (Tightly Clustered Numbers with Intentional Spacer Column between 환율 and 비고) */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
-                {/* Proportional Column Width Distribution for Perfect Scaling across 1080p, 4K, and 5120px Ultra-wide */}
+                {/* Fixed tight column widths for standard metrics & auto-expansion for 종목 and 비고 */}
                 <colgroup className="hidden sm:table-column-group">
-                  <col className="w-[8%]" />  {/* 1. 매매일자 */}
-                  <col className="w-[5%]" />  {/* 2. 구분 */}
-                  <col className="w-[7%]" />  {/* 3. 티커 */}
-                  <col className="w-[20%]" /> {/* 4. 종목 */}
-                  <col className="w-[5%]" />  {/* 5. 통화 */}
-                  <col className="w-[10%]" /> {/* 6. 단가 */}
-                  <col className="w-[9%]" />  {/* 7. 수량 */}
-                  <col className="w-[13%]" /> {/* 8. 거래금액 */}
-                  <col className="w-[9%]" />  {/* 9. 환율 */}
-                  <col className="w-[18%]" /> {/* 10. 비고 */}
-                  <col className="w-[6%]" />  {/* 11. 작업 */}
+                  <col className="w-[105px] xl:w-[115px]" /> {/* 1. 매매일자 */}
+                  <col className="w-[65px] xl:w-[70px]" />   {/* 2. 구분 */}
+                  <col className="w-[85px] xl:w-[95px]" />   {/* 3. 티커 */}
+                  <col />                                    {/* 4. 종목 (가변 폭) */}
+                  {/* 밀집형 수치 데이터 클러스터 (통화, 단가, 수량, 거래금액, 환율) */}
+                  <col className="w-[55px] xl:w-[60px]" />   {/* 5. 통화 */}
+                  <col className="w-[110px] xl:w-[125px]" /> {/* 6. 단가 */}
+                  <col className="w-[95px] xl:w-[105px]" />  {/* 7. 수량 */}
+                  <col className="w-[135px] xl:w-[145px]" /> {/* 8. 거래금액 */}
+                  <col className="w-[110px] xl:w-[120px]" /> {/* 9. 환율 */}
+                  {/* 10. 환율-비고 완충 분리 영역 (의도적 간격 분리) */}
+                  <col className="w-[24px] xl:w-[40px]" />
+                  <col />                                    {/* 11. 비고 (가변 폭) */}
+                  <col className="w-[75px] xl:w-[85px]" />   {/* 12. 작업 */}
                 </colgroup>
                 <colgroup className="sm:hidden">
                   <col className="w-[50%]" /> {/* 1. 매매일자 / 종목 */}
@@ -503,10 +506,13 @@ export default function TradesPage() {
                     {/* 9. 환율 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-right font-medium">환율</th>
 
-                    {/* 10. 비고 (Desktop Only) */}
+                    {/* 10. 환율과 비고 사이 완충 스페이서 컬럼 */}
+                    <th className="hidden lg:table-cell p-0" aria-hidden="true" />
+
+                    {/* 11. 비고 (Desktop Only) */}
                     <th className="hidden lg:table-cell py-2.5 px-3 text-left font-medium">비고</th>
 
-                    {/* 11. 작업 */}
+                    {/* 12. 작업 */}
                     <th className="hidden sm:table-cell py-2.5 px-2 text-center font-medium">작업</th>
 
                     {/* Mobile 3-Column Headers */}
@@ -518,7 +524,7 @@ export default function TradesPage() {
                 <tbody className="divide-y divide-[var(--border)]">
                   {filteredTrades.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                      <td colSpan={12} className="py-12 text-center text-xs text-[var(--fg-muted)]">
                         등록된 매매 내역이 없습니다. 오른쪽 상단 "+" 버튼을 눌러 추가해 주세요.
                       </td>
                     </tr>
@@ -619,12 +625,15 @@ export default function TradesPage() {
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 비고 (Desktop: 가변 폭 자동 조절, 또렷한 텍스트 font-normal) */}
+                          {/* 10. 환율과 비고 사이 완충 스페이서 셀 (우측 정렬 환율과 좌측 정렬 비고가 붙지 않도록 분리) */}
+                          <td className="hidden lg:table-cell p-0 pointer-events-none" aria-hidden="true" />
+
+                          {/* 11. 비고 (Desktop: 가변 폭 자동 조절, 또렷한 텍스트 font-normal) */}
                           <td className="hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg)] font-normal truncate" title={item.notes || ''}>
                             {item.notes || '-'}
                           </td>
 
-                          {/* 11. 작업 (Desktop) */}
+                          {/* 12. 작업 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-2 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
