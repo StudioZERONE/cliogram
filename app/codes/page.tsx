@@ -44,6 +44,8 @@ type GroupSortOption = 'name_asc' | 'name_desc' | 'id_asc' | 'id_desc';
 
 export default function CodesPage() {
   const router = useRouter();
+  const [isLoadingGroups, setIsLoadingGroups] = useState<boolean>(true);
+  const [isLoadingCodes, setIsLoadingCodes] = useState<boolean>(true);
   const [groups, setGroups] = useState<CodeGroup[]>([]);
   const [codes, setCodes] = useState<CommonCode[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
@@ -126,32 +128,40 @@ export default function CodesPage() {
   }, []);
 
   const fetchGroups = async () => {
-    const { data } = await supabase
-      .from('common_code_groups')
-      .select('*')
-      .order('group_name', { ascending: true });
-    if (data) {
-      setGroups(data);
-      if (data.length > 0) {
-        setSelectedGroupId((prev) => {
-          if (prev && data.some((g) => g.group_id === prev)) {
-            return prev;
-          }
-          return data[0].group_id;
-        });
-      } else {
-        setSelectedGroupId('');
+    try {
+      const { data } = await supabase
+        .from('common_code_groups')
+        .select('*')
+        .order('group_name', { ascending: true });
+      if (data) {
+        setGroups(data);
+        if (data.length > 0) {
+          setSelectedGroupId((prev) => {
+            if (prev && data.some((g) => g.group_id === prev)) {
+              return prev;
+            }
+            return data[0].group_id;
+          });
+        } else {
+          setSelectedGroupId('');
+        }
       }
+    } finally {
+      setIsLoadingGroups(false);
     }
   };
 
   const fetchCodes = async () => {
-    const { data } = await supabase
-      .from('common_codes')
-      .select('*')
-      .order('sort_order', { ascending: true })
-      .order('code', { ascending: true });
-    if (data) setCodes(data);
+    try {
+      const { data } = await supabase
+        .from('common_codes')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('code', { ascending: true });
+      if (data) setCodes(data);
+    } finally {
+      setIsLoadingCodes(false);
+    }
   };
 
   // Group Save handler (Create / Edit)
@@ -598,13 +608,25 @@ export default function CodesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)] font-medium">
-                      {currentGroupCodes.length === 0 ? (
+                      {isLoadingCodes ? (
                         <tr>
                           <td
                             colSpan={7}
                             className="py-10 text-center text-xs text-[var(--fg-muted)]"
                           >
-                            등록된 상세 코드가 없습니다. "+ 버튼"을 눌러 등록해 주세요.
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                              <span>상세 코드를 불러오는 중입니다...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : currentGroupCodes.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="py-10 text-center text-xs text-[var(--fg-muted)]"
+                          >
+                            등록된 상세 코드가 없습니다. &quot;+ 버튼&quot;을 눌러 등록해 주세요.
                           </td>
                         </tr>
                       ) : (

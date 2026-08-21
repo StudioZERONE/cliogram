@@ -39,6 +39,7 @@ export default function AccountsPage() {
   const router = useRouter();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState<boolean>(true);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
 
   // Sorting State (Default: broker_name asc)
@@ -70,29 +71,33 @@ export default function AccountsPage() {
   }, [router]);
 
   const fetchAccounts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data, error } = await supabase
-      .from('accounts')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true });
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
 
-    if (!error && data) {
-      setAccounts(
-        data.map((item: any) => ({
-          id: item.id,
-          user_id: item.user_id,
-          account_name: item.account_name,
-          broker_name: item.broker_name || '',
-          account_number: item.account_number || '',
-          sort_order: item.sort_order ?? 0,
-          is_active: item.is_active ?? true,
-          created_at: item.created_at,
-        }))
-      );
+      if (!error && data) {
+        setAccounts(
+          data.map((item: any) => ({
+            id: item.id,
+            user_id: item.user_id,
+            account_name: item.account_name,
+            broker_name: item.broker_name || '',
+            account_number: item.account_number || '',
+            sort_order: item.sort_order ?? 0,
+            is_active: item.is_active ?? true,
+            created_at: item.created_at,
+          }))
+        );
+      }
+    } finally {
+      setIsLoadingAccounts(false);
     }
   };
 
@@ -262,7 +267,7 @@ export default function AccountsPage() {
                   계좌 목록
                 </h2>
                 <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                  {sortedAccounts.length}개
+                  {isLoadingAccounts ? '...' : `${sortedAccounts.length}개`}
                 </span>
               </div>
               <button
@@ -315,10 +320,19 @@ export default function AccountsPage() {
                 </thead>
 
                 <tbody className="divide-y divide-[var(--border)]">
-                  {sortedAccounts.length === 0 ? (
+                  {isLoadingAccounts ? (
                     <tr>
                       <td colSpan={5} className="py-12 text-center text-xs text-[var(--fg-muted)]">
-                        등록된 계좌 정보가 없습니다. 오른쪽 상단 "+" 버튼을 눌러 추가해 주세요.
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                          <span>계좌 목록을 불러오는 중입니다...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : sortedAccounts.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-xs text-[var(--fg-muted)]">
+                        등록된 계좌 정보가 없습니다. 오른쪽 상단 &quot;+&quot; 버튼을 눌러 추가해 주세요.
                       </td>
                     </tr>
                   ) : (

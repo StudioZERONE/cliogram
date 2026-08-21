@@ -46,6 +46,7 @@ export default function StocksPage() {
   const router = useRouter();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+  const [isLoadingStocks, setIsLoadingStocks] = useState<boolean>(true);
   const [stocks, setStocks] = useState<StockRecord[]>([]);
 
   // Common Codes State for Display Name and Sort Order
@@ -102,30 +103,34 @@ export default function StocksPage() {
   };
 
   const fetchStocks = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data } = await supabase
-      .from('stocks')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('name', { ascending: true })
-      .order('ticker', { ascending: true });
+      const { data } = await supabase
+        .from('stocks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name', { ascending: true })
+        .order('ticker', { ascending: true });
 
-    if (data) {
-      const normalizedData: StockRecord[] = data.map((item: any) => ({
-        id: item.id,
-        user_id: item.user_id,
-        ticker: item.ticker,
-        name: item.name,
-        short_name: item.short_name || item.name,
-        type: item.type || 'Growth',
-        currency: item.currency || 'USD',
-        market: item.market || 'NASDAQ',
-        is_active: item.is_active ?? true,
-        created_at: item.created_at,
-      }));
-      setStocks(normalizedData);
+      if (data) {
+        const normalizedData: StockRecord[] = data.map((item: any) => ({
+          id: item.id,
+          user_id: item.user_id,
+          ticker: item.ticker,
+          name: item.name,
+          short_name: item.short_name || item.name,
+          type: item.type || 'Growth',
+          currency: item.currency || 'USD',
+          market: item.market || 'NASDAQ',
+          is_active: item.is_active ?? true,
+          created_at: item.created_at,
+        }));
+        setStocks(normalizedData);
+      }
+    } finally {
+      setIsLoadingStocks(false);
     }
   };
 
@@ -486,7 +491,7 @@ export default function StocksPage() {
               <h3 className="text-base sm:text-xl font-bold flex items-center gap-2">
                 <span>종목 목록</span>
                 <span className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                  {filteredAndSortedStocks.length} / {stocks.length}개
+                  {isLoadingStocks ? '...' : `${filteredAndSortedStocks.length} / ${stocks.length}개`}
                 </span>
               </h3>
 
@@ -656,7 +661,16 @@ export default function StocksPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] font-medium">
-                  {filteredAndSortedStocks.length === 0 ? (
+                  {isLoadingStocks ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-xs sm:text-sm text-[var(--fg-muted)]">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                          <span>종목 목록을 불러오는 중입니다...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredAndSortedStocks.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-xs sm:text-sm text-[var(--fg-muted)]">
                         조회된 종목 데이터가 없습니다. 상단의 &quot;+ 버튼&quot;을 눌러 신규 종목을 추가해 주세요.
