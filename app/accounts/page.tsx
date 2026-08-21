@@ -275,7 +275,7 @@ export default function AccountsPage() {
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Info Banner Card (Desktop Only) */}
-          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs items-center justify-between gap-4">
+          <div className="hidden lg:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs items-center justify-between gap-4">
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Landmark className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
@@ -315,7 +315,7 @@ export default function AccountsPage() {
 
             {/* Filter Toolbar Section */}
             {/* Desktop Toolbar */}
-            <div className="hidden sm:flex items-center justify-between gap-3">
+            <div className="hidden lg:flex items-center justify-between gap-3">
               <div className="flex-1 max-w-sm relative">
                 <input
                   type="text"
@@ -347,7 +347,7 @@ export default function AccountsPage() {
             </div>
 
             {/* Mobile Toolbar */}
-            <div className="sm:hidden space-y-2">
+            <div className="lg:hidden space-y-2">
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <input
@@ -384,7 +384,7 @@ export default function AccountsPage() {
             {/* Accounts Table */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
-                <colgroup className="hidden sm:table-column-group">
+                <colgroup className="hidden lg:table-column-group">
                   <col className="w-[70px] min-[1920px]:w-[80px]" />   {/* 1. 순서 */}
                   <col className="w-[130px] min-[1920px]:w-[150px]" /> {/* 2. 증권사 */}
                   <col />                                              {/* 3. 계좌명 (가변 폭) */}
@@ -392,7 +392,7 @@ export default function AccountsPage() {
                   <col className="w-[90px] min-[1920px]:w-[100px]" />  {/* 5. 상태 */}
                   <col className="w-[85px] min-[1920px]:w-[95px]" />   {/* 6. 작업 */}
                 </colgroup>
-                <colgroup className="sm:hidden">
+                <colgroup className="lg:hidden">
                   <col className="w-[50%]" /> {/* 1. 증권사 / 계좌명 */}
                   <col className="w-[38%]" /> {/* 2. 계좌번호 / 상태 */}
                   <col className="w-[12%]" /> {/* 3. 작업 */}
@@ -401,37 +401,37 @@ export default function AccountsPage() {
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
                   <tr>
                     {/* 1. 순서 */}
-                    <th onClick={() => handleSort('sort_order')} className="hidden sm:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('sort_order')} className="hidden lg:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
                       순서 {renderSortIcon('sort_order')}
                     </th>
 
                     {/* 2. 증권사 */}
-                    <th onClick={() => handleSort('broker_name')} className="hidden sm:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('broker_name')} className="hidden lg:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
                       증권사 {renderSortIcon('broker_name')}
                     </th>
 
                     {/* 3. 계좌명 */}
-                    <th onClick={() => handleSort('account_name')} className="hidden sm:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('account_name')} className="hidden lg:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium">
                       계좌명 {renderSortIcon('account_name')}
                     </th>
 
                     {/* 4. 계좌번호 */}
-                    <th onClick={() => handleSort('account_number')} className="hidden sm:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('account_number')} className="hidden lg:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)] font-medium">
                       계좌번호 {renderSortIcon('account_number')}
                     </th>
 
                     {/* 5. 상태 */}
-                    <th onClick={() => handleSort('is_active')} className="hidden sm:table-cell py-2.5 px-2 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('is_active')} className="hidden lg:table-cell py-2.5 px-2 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
                       상태 {renderSortIcon('is_active')}
                     </th>
 
                     {/* 6. 작업 */}
-                    <th className="hidden sm:table-cell py-2.5 px-2 text-center font-medium">작업</th>
+                    <th className="hidden lg:table-cell py-2.5 px-2 text-center font-medium">작업</th>
 
                     {/* Mobile Headers */}
-                    <th className="sm:hidden py-2 px-2 text-left font-medium text-[10.5px]">증권사 / 계좌명</th>
-                    <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px]">계좌번호 / 상태</th>
-                    <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px]">작업</th>
+                    <th className="lg:hidden py-2 px-2 text-left font-medium text-[10.5px]">증권사 / 계좌명</th>
+                    <th className="lg:hidden py-2 px-2 text-right font-medium text-[10.5px]">계좌번호 / 상태</th>
+                    <th className="lg:hidden py-2 px-1 text-center font-medium text-[10.5px]">작업</th>
                   </tr>
                 </thead>
 
@@ -446,29 +446,29 @@ export default function AccountsPage() {
                     filteredAccounts.map((item) => (
                       <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
                         {/* 1. 순서 (Desktop) */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-bold">
+                        <td className="hidden lg:table-cell py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-bold">
                           {item.sort_order}
                         </td>
 
                         {/* 2. 증권사 (Desktop) */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-center">
+                        <td className="hidden lg:table-cell py-3 px-3 text-center">
                           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
                             {item.broker_name || '기본'}
                           </span>
                         </td>
 
                         {/* 3. 계좌명 (Desktop) */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate">
+                        <td className="hidden lg:table-cell py-3 px-3 text-left font-bold text-[var(--fg)] text-xs sm:text-sm truncate">
                           {item.account_name}
                         </td>
 
                         {/* 4. 계좌번호 (Desktop) */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-left text-xs text-[var(--fg-muted)] font-semibold truncate">
+                        <td className="hidden lg:table-cell py-3 px-3 text-left text-xs text-[var(--fg-muted)] font-semibold truncate">
                           {item.account_number || '-'}
                         </td>
 
                         {/* 5. 상태 토글 버튼 (Desktop) */}
-                        <td className="hidden sm:table-cell py-3 px-2 text-center">
+                        <td className="hidden lg:table-cell py-3 px-2 text-center">
                           <button
                             onClick={() => handleToggleStatus(item)}
                             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all cursor-pointer border ${
@@ -493,7 +493,7 @@ export default function AccountsPage() {
                         </td>
 
                         {/* 6. 작업 (Desktop) */}
-                        <td className="hidden sm:table-cell py-3 px-2 text-center">
+                        <td className="hidden lg:table-cell py-3 px-2 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => handleOpenEditModal(item)}
@@ -513,7 +513,7 @@ export default function AccountsPage() {
                         </td>
 
                         {/* Mobile Col 1: 증권사 배지 + 계좌명 */}
-                        <td className="sm:hidden py-2.5 px-2 text-left">
+                        <td className="lg:hidden py-2.5 px-2 text-left">
                           <div className="flex items-center gap-1.5">
                             <span className="inline-flex items-center rounded-full px-1.5 py-0.2 text-[9px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
                               {item.broker_name || '기본'}
@@ -528,7 +528,7 @@ export default function AccountsPage() {
                         </td>
 
                         {/* Mobile Col 2: 계좌번호 + 상태 */}
-                        <td className="sm:hidden py-2.5 px-2 text-right">
+                        <td className="lg:hidden py-2.5 px-2 text-right">
                           <p className="text-[10.5px] text-[var(--fg-muted)] font-semibold truncate">
                             {item.account_number || '-'}
                           </p>
@@ -547,7 +547,7 @@ export default function AccountsPage() {
                         </td>
 
                         {/* Mobile Col 3: 작업 메뉴 */}
-                        <td className="sm:hidden py-2.5 px-1 text-center relative">
+                        <td className="lg:hidden py-2.5 px-1 text-center relative">
                           <button
                             onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id)}
                             className="p-1 rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] cursor-pointer"

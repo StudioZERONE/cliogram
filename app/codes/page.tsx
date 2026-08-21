@@ -368,7 +368,7 @@ export default function CodesPage() {
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Header Card (Desktop Only - Hidden on Mobile) */}
-          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="hidden lg:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
@@ -536,7 +536,7 @@ export default function CodesPage() {
                         <span className="shrink-0">상세 코드 목록</span>
                         {/* Desktop Group Badge with Explicit Baseline Alignment */}
                         {selectedGroup && (
-                          <span className="hidden sm:inline-flex items-baseline gap-1 text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
+                          <span className="hidden lg:inline-flex items-baseline gap-1 text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 font-bold shrink-0">
                             <span>{selectedGroup.group_name.replace(/\s+/g, ' ')}</span>
                             <span className="text-[11px] font-semibold opacity-80">
                               ({selectedGroupId})
@@ -544,7 +544,7 @@ export default function CodesPage() {
                           </span>
                         )}
                       </h4>
-                      <p className="hidden sm:block text-xs text-[var(--fg-muted)] mt-0.5">
+                      <p className="hidden lg:block text-xs text-[var(--fg-muted)] mt-0.5">
                         마우스 드래그 앤 드롭으로 정렬 순서를 변경할 수 있습니다.
                       </p>
                     </div>
@@ -573,7 +573,7 @@ export default function CodesPage() {
 
                 {/* Mobile Subheader Row: Full Unclipped Group Name Banner with Explicit Baseline Alignment */}
                 {selectedGroup && (
-                  <div className="sm:hidden flex items-baseline gap-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 shadow-xs">
+                  <div className="lg:hidden flex items-baseline gap-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 shadow-xs">
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       {selectedGroup.group_name.replace(/\s+/g, ' ')}
                     </span>
@@ -588,13 +588,13 @@ export default function CodesPage() {
                   <table className="w-full text-xs sm:text-sm">
                     <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
                       <tr>
-                        <th className="hidden sm:table-cell py-2.5 px-2 text-center w-10">이동</th>
-                        <th className="hidden sm:table-cell py-2.5 px-3 text-center w-14">순서</th>
+                        <th className="hidden lg:table-cell py-2.5 px-2 text-center w-10">이동</th>
+                        <th className="hidden lg:table-cell py-2.5 px-3 text-center w-14">순서</th>
                         <th className="py-2.5 px-2.5 sm:px-3 text-left">코드 (Code)</th>
                         <th className="py-2.5 px-2.5 sm:px-4 text-left">코드명</th>
-                        <th className="hidden sm:table-cell py-2.5 px-3 text-center w-20">상태</th>
-                        <th className="hidden sm:table-cell py-2.5 px-3 text-center w-24">작업</th>
-                        <th className="sm:hidden py-2.5 px-2 text-center w-12">작업</th>
+                        <th className="hidden lg:table-cell py-2.5 px-3 text-center w-20">상태</th>
+                        <th className="hidden lg:table-cell py-2.5 px-3 text-center w-24">작업</th>
+                        <th className="lg:hidden py-2.5 px-2 text-center w-12">작업</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)] font-medium">
@@ -630,12 +630,12 @@ export default function CodesPage() {
                               }`}
                             >
                               {/* Drag Grip Handle (Desktop Only) */}
-                              <td className="hidden sm:table-cell py-2.5 px-2 text-center text-[var(--fg-muted)]">
+                              <td className="hidden lg:table-cell py-2.5 px-2 text-center text-[var(--fg-muted)]">
                                 <GripVertical className="h-4 w-4 mx-auto cursor-grab active:cursor-grabbing hover:text-emerald-500" />
                               </td>
 
                               {/* Sort Order (Desktop Only) */}
-                              <td className="hidden sm:table-cell py-2.5 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
+                              <td className="hidden lg:table-cell py-2.5 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
                                 {item.sort_order}
                               </td>
 
@@ -650,7 +650,7 @@ export default function CodesPage() {
                               </td>
 
                               {/* Desktop Active Status Toggle */}
-                              <td className="hidden sm:table-cell py-2.5 px-3 text-center">
+                              <td className="hidden lg:table-cell py-2.5 px-3 text-center">
                                 <button
                                   type="button"
                                   onClick={() => toggleCodeActive(item.id, item.is_active)}
@@ -665,7 +665,7 @@ export default function CodesPage() {
                               </td>
 
                               {/* Desktop Actions (Edit & Delete) */}
-                              <td className="hidden sm:table-cell py-2.5 px-3 text-center">
+                              <td className="hidden lg:table-cell py-2.5 px-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     type="button"
@@ -701,7 +701,7 @@ export default function CodesPage() {
                               </td>
 
                               {/* Mobile Only: Smart Action Button & Fixed Floating Popover */}
-                              <td className="sm:hidden py-2 px-2 text-center">
+                              <td className="lg:hidden py-2 px-2 text-center">
                                 <button
                                   type="button"
                                   onClick={(e) => handleToggleMobileAction(e, item.id)}

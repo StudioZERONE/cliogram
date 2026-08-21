@@ -467,7 +467,7 @@ export default function StocksPage() {
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Info Banner (Hidden on Mobile, Visible on Desktop) */}
-          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-xs items-center justify-between gap-4">
+          <div className="hidden lg:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-xs items-center justify-between gap-4">
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
@@ -563,7 +563,7 @@ export default function StocksPage() {
                     {/* Mobile Only Header: 짧은 종목명 */}
                     <th
                       onClick={() => handleSort('short_name')}
-                      className="sm:hidden py-3 px-3.5 text-left cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
+                      className="lg:hidden py-3 px-3.5 text-left cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center gap-1.5">
                         <span>짧은 종목명</span>
@@ -574,7 +574,7 @@ export default function StocksPage() {
                     {/* Desktop Header: 종목명 */}
                     <th
                       onClick={() => handleSort('name')}
-                      className="hidden sm:table-cell py-3 px-3.5 text-left cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
+                      className="hidden lg:table-cell py-3 px-3.5 text-left cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center gap-1.5">
                         <span>종목명</span>
@@ -585,7 +585,7 @@ export default function StocksPage() {
                     {/* Desktop Header: 짧은 종목명 */}
                     <th
                       onClick={() => handleSort('short_name')}
-                      className="hidden md:table-cell py-3 px-3 text-left cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
+                      className="hidden lg:table-cell py-3 px-3 text-left cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center gap-1.5">
                         <span>짧은 종목명</span>
@@ -596,7 +596,7 @@ export default function StocksPage() {
                     {/* Desktop Header: 티커 */}
                     <th
                       onClick={() => handleSort('ticker')}
-                      className="hidden sm:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
+                      className="hidden lg:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center justify-center gap-1.5">
                         <span>티커</span>
@@ -607,7 +607,7 @@ export default function StocksPage() {
                     {/* Desktop Header: 유형 */}
                     <th
                       onClick={() => handleSort('type')}
-                      className="hidden sm:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
+                      className="hidden lg:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center justify-center gap-1.5">
                         <span>유형</span>
@@ -629,7 +629,7 @@ export default function StocksPage() {
                     {/* Desktop Header: 상장 시장 */}
                     <th
                       onClick={() => handleSort('market')}
-                      className="hidden sm:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
+                      className="hidden lg:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center justify-center gap-1.5">
                         <span>상장 시장</span>
@@ -640,7 +640,7 @@ export default function StocksPage() {
                     {/* Desktop Header: 상태 */}
                     <th
                       onClick={() => handleSort('is_active')}
-                      className="hidden sm:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
+                      className="hidden lg:table-cell py-3 px-3 text-center cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center justify-center gap-1.5">
                         <span>상태</span>
@@ -648,15 +648,18 @@ export default function StocksPage() {
                       </div>
                     </th>
 
-                    {/* Header: Actions */}
-                    <th className="py-3 px-2 sm:px-3 text-center w-12 sm:w-24">관리</th>
+                    {/* Desktop Header: 관리 */}
+                    <th className="hidden lg:table-cell py-3 px-3 text-center w-24">관리</th>
+
+                    {/* Mobile Header: 관리 */}
+                    <th className="lg:hidden py-3 px-2 text-center w-12">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] font-medium">
                   {filteredAndSortedStocks.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-xs sm:text-sm text-[var(--fg-muted)]">
-                        조회된 종목 데이터가 없습니다. 상단의 "+ 버튼"을 눌러 신규 종목을 추가해 주세요.
+                        조회된 종목 데이터가 없습니다. 상단의 &quot;+ 버튼&quot;을 눌러 신규 종목을 추가해 주세요.
                       </td>
                     </tr>
                   ) : (
@@ -668,27 +671,27 @@ export default function StocksPage() {
                         }`}
                       >
                         {/* Mobile Only Cell: 짧은 종목명 */}
-                        <td className="sm:hidden py-3 px-3.5 text-left font-bold text-[var(--fg)] text-xs">
+                        <td className="lg:hidden py-3 px-3.5 text-left font-bold text-[var(--fg)] text-xs">
                           {item.short_name || item.name}
                         </td>
 
                         {/* Desktop Name */}
-                        <td className="hidden sm:table-cell py-3 px-3.5 text-left font-bold text-[var(--fg)] text-xs sm:text-sm">
+                        <td className="hidden lg:table-cell py-3 px-3.5 text-left font-bold text-[var(--fg)] text-xs sm:text-sm">
                           {item.name}
                         </td>
 
                         {/* Desktop Short Name */}
-                        <td className="hidden md:table-cell py-3 px-3 text-left font-semibold text-[var(--fg-muted)] text-xs">
+                        <td className="hidden lg:table-cell py-3 px-3 text-left font-semibold text-[var(--fg-muted)] text-xs">
                           {item.short_name}
                         </td>
 
                         {/* Desktop Ticker */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-center font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                        <td className="hidden lg:table-cell py-3 px-3 text-center font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                           {item.ticker}
                         </td>
 
                         {/* Desktop Type */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-center">
+                        <td className="hidden lg:table-cell py-3 px-3 text-center">
                           <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                             {stockTypeCodeNameMap[item.type] || item.type}
                           </span>
@@ -700,12 +703,12 @@ export default function StocksPage() {
                         </td>
 
                         {/* Desktop Market */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
+                        <td className="hidden lg:table-cell py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
                           {marketTypeCodeNameMap[item.market] || item.market}
                         </td>
 
                         {/* Desktop Status Toggle */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-center">
+                        <td className="hidden lg:table-cell py-3 px-3 text-center">
                           <button
                             onClick={() => setToggleTargetStock(item)}
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-bold cursor-pointer transition-colors ${
@@ -730,7 +733,7 @@ export default function StocksPage() {
                         </td>
 
                         {/* Desktop Actions */}
-                        <td className="hidden sm:table-cell py-3 px-3 text-center">
+                        <td className="hidden lg:table-cell py-3 px-3 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() =>
@@ -757,7 +760,7 @@ export default function StocksPage() {
                         </td>
 
                         {/* Mobile Actions (3-Dot Button & Touch-Optimized Popover Menu) */}
-                        <td className="sm:hidden py-3 px-2 text-center">
+                        <td className="lg:hidden py-3 px-2 text-center">
                           <button
                             type="button"
                             onClick={(e) => handleToggleMobileAction(e, item.ticker)}
