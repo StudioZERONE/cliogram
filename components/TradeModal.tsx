@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
-import { X, Layers, Calculator, Sparkles } from 'lucide-react';
+import { X, Layers, Calculator, RefreshCw } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
 import { formatCommaString, parseCommaNumber } from '@/lib/format';
 
@@ -56,10 +56,11 @@ export function TradeModal({
 }: TradeModalProps) {
   const [tradeDate, setTradeDate] = useState<Date>(new Date());
   const [ticker, setTicker] = useState<string>('');
-  const [quantity, setQuantity] = useState<string>('');
-  const [price, setPrice] = useState<string>('');
   const [currency, setCurrency] = useState<'KRW' | 'USD' | 'EUR' | 'JPY' | 'CNY'>('USD');
+  const [price, setPrice] = useState<string>('');
+  const [quantity, setQuantity] = useState<string>('');
   const [exchangeRate, setExchangeRate] = useState<string>('1');
+  const [rateFetchedAt, setRateFetchedAt] = useState<Date | null>(null);
   const [fee, setFee] = useState<string>('0');
   const [tax, setTax] = useState<string>('0');
   const [foreignFee, setForeignFee] = useState<string>('0');
@@ -85,6 +86,7 @@ export function TradeModal({
         setPrice(formatCommaString(initialData.price || ''));
         setCurrency(initialData.currency || 'USD');
         setExchangeRate(formatCommaString(initialData.exchange_rate || '1'));
+        setRateFetchedAt(new Date());
         setFee(formatCommaString(initialData.fee || '0'));
         setTax(formatCommaString(initialData.tax || '0'));
         setForeignFee(formatCommaString(initialData.foreign_fee || '0'));
@@ -93,10 +95,11 @@ export function TradeModal({
       } else {
         setTradeDate(new Date());
         setTicker('');
-        setQuantity('');
-        setPrice('');
         setCurrency('USD');
+        setPrice('');
+        setQuantity('');
         setExchangeRate('1,450');
+        setRateFetchedAt(null);
         setFee('0');
         setTax('0');
         setForeignFee('0');
@@ -116,32 +119,43 @@ export function TradeModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Auto fetch exchange rate when date or currency changes
-  useEffect(() => {
-    if (!isOpen || currency === 'KRW') {
-      if (currency === 'KRW') setExchangeRate('1');
+  // Fetch exchange rate logic
+  const fetchRate = async () => {
+    if (currency === 'KRW') {
+      setExchangeRate('1');
+      setRateFetchedAt(new Date());
       return;
     }
 
-    const fetchRate = async () => {
-      const dateStr = format(tradeDate, 'yyyy-MM-dd');
-      setIsFetchingRate(true);
-      try {
-        const res = await fetch(`/api/exchange-rate?date=${dateStr}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.usd_krw) {
-            setExchangeRate(formatCommaString(data.usd_krw));
-          }
+    const dateStr = format(tradeDate, 'yyyy-MM-dd');
+    setIsFetchingRate(true);
+    try {
+      const res = await fetch(`/api/exchange-rate?date=${dateStr}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.usd_krw) {
+          setExchangeRate(formatCommaString(data.usd_krw));
+          setRateFetchedAt(new Date());
         }
-      } catch (err) {
-        console.error('Failed to fetch exchange rate:', err);
-      } finally {
-        setIsFetchingRate(false);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch exchange rate:', err);
+    } finally {
+      setIsFetchingRate(false);
+    }
+  };
 
+  // Auto fetch exchange rate when date or currency changes, plus 1-min interval
+  useEffect(() => {
+    if (!isOpen) return;
     fetchRate();
+
+    if (currency !== 'KRW') {
+      const interval = setInterval(() => {
+        fetchRate();
+      }, 60000);
+      return () => clearInterval(interval);
+    }
   }, [isOpen, tradeDate, currency]);
 
   if (!isOpen) return null;
@@ -149,6 +163,24 @@ export function TradeModal({
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === backdropRef.current) {
       onClose();
+    }
+  };
+
+  // Handle ticker change and auto-sync currency
+  const handleTickerChange = (val: string) => {
+    const upper = val.toUpperCase();
+    setTicker(upper);
+    const trimmed = upper.trim();
+    if (!trimmed) {
+      // Nothing searched -> forced reset to first code (USD)
+      setCurrency('USD');
+      return;
+    }
+    const matched = stocks.find((s) => s.ticker.toUpperCase() === trimmed);
+    if (matched && matched.currency) {
+      setCurrency(matched.currency as any);
+    } else {
+      setCurrency('USD');
     }
   };
 
@@ -231,7 +263,7 @@ export function TradeModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-          {/* 구역 1: 기본 정보 (매매 일자, 티커, 종목명) */}
+          {/* 구역 1: 기본 거래 정보 및 환율/금액 통합 블록 (매매일자, 티커, 종목명, 통화, 단가, 수량, 환율&거래금액) */}
           <div className="space-y-3.5">
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
@@ -254,14 +286,7 @@ export function TradeModal({
                   type="text"
                   placeholder="예: AAPL, 005930"
                   value={ticker}
-                  onChange={(e) => {
-                    const val = e.target.value.toUpperCase();
-                    setTicker(val);
-                    const found = stocks.find((s) => s.ticker.toUpperCase() === val.trim());
-                    if (found && found.currency) {
-                      setCurrency(found.currency as any);
-                    }
-                  }}
+                  onChange={(e) => handleTickerChange(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold uppercase text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
                   required
                 />
@@ -278,33 +303,22 @@ export function TradeModal({
                   ) : ticker.trim() ? (
                     <span className="text-[var(--fg-muted)] text-xs font-normal">미등록 종목</span>
                   ) : (
-                    <span className="text-[var(--fg-muted)] text-xs font-normal">-</span>
+                    <span className="text-[var(--fg-muted)] text-xs font-normal"></span>
                   )}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* 구분선 1 */}
-          <div className="border-t border-[var(--border)]" />
-
-          {/* 구역 2: 수량, 단가, 통화, 환율, 총 거래금액 */}
-          <div className="space-y-3.5">
+            {/* 통화, 단가, 수량 순서 */}
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                  수량 (+매수 / -매도) <span className="text-red-500">*</span>
+                  통화
                 </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="+10 또는 -10"
-                  value={quantity}
-                  onChange={(e) => setQuantity(formatCommaString(e.target.value))}
-                  className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
-                    parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
-                  }`}
-                  required
+                <CodeSelect
+                  groupId="CURRENCY_CODE"
+                  value={currency}
+                  onChange={(val) => setCurrency(val as any)}
                 />
               </div>
               <div>
@@ -323,73 +337,91 @@ export function TradeModal({
               </div>
               <div>
                 <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                  통화
+                  수량 (+매수 / -매도) <span className="text-red-500">*</span>
                 </label>
-                <CodeSelect
-                  groupId="CURRENCY_CODE"
-                  value={currency}
-                  onChange={(val) => setCurrency(val as any)}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="+10 또는 -10"
+                  value={quantity}
+                  onChange={(e) => setQuantity(formatCommaString(e.target.value))}
+                  className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
+                    parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
+                  }`}
+                  required
                 />
               </div>
             </div>
 
-            {/* Exchange Rate (Conditional display for Foreign currencies) */}
-            {currency !== 'KRW' && (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
-                    <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    적용 환율
-                  </span>
-                  {isFetchingRate && (
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 animate-spin" />
-                      환율 조회 중...
+            {/* 환율 및 거래금액 일체형 고정 카드 (UI 들썩거림 방지) */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3.5 space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                {/* Left: 환율 정보 */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
+                      <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      적용 환율
                     </span>
-                  )}
+                    {currency !== 'KRW' && (
+                      <div className="flex items-center gap-1 text-[11px] text-[var(--fg-muted)]">
+                        {rateFetchedAt && <span>{format(rateFetchedAt, 'HH:mm:ss')} 기준</span>}
+                        <button
+                          type="button"
+                          onClick={() => fetchRate()}
+                          disabled={isFetchingRate}
+                          className="p-1 rounded-md hover:bg-[var(--bg)] text-[var(--fg-muted)] hover:text-emerald-600 transition-colors cursor-pointer"
+                          title="환율 새로고침"
+                          aria-label="환율 새로고침"
+                        >
+                          <RefreshCw className={`h-3 w-3 ${isFetchingRate ? 'animate-spin text-emerald-600' : ''}`} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      disabled={currency === 'KRW'}
+                      value={currency === 'KRW' ? '1' : exchangeRate}
+                      onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner disabled:opacity-60"
+                      placeholder="1,450.00"
+                    />
+                    <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(formatCommaString(e.target.value))}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
-                    placeholder="1,450.00"
-                  />
-                  <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
-                </div>
-              </div>
-            )}
 
-            {/* Live Calculated Total Summary Banner */}
-            {parsedQty !== 0 && parsedPrice > 0 && (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3.5 space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--fg-muted)] font-semibold">
-                    총 거래금액 ({currency})
-                  </span>
-                  <span className={`font-extrabold text-sm ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                    {rawTotal < 0 ? '- ' : ''}{currency === 'KRW' ? '₩ ' : currency === 'USD' ? '$ ' : ''}
-                    {Math.abs(rawTotal).toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}
-                  </span>
-                </div>
-                {currency !== 'KRW' && (
-                  <div className="flex items-center justify-between border-t border-[var(--border)] pt-1">
-                    <span className="text-[var(--fg-muted)] font-semibold">원화 환산 금액 (KRW)</span>
-                    <span className={`font-bold ${krwTotal < 0 ? 'text-red-500' : 'text-[var(--fg)]'}`}>
-                      {krwTotal < 0 ? '- ' : ''}₩ {Math.round(Math.abs(krwTotal)).toLocaleString()}
+                {/* Right: 총 거래금액 & 원화 환산 */}
+                <div className="sm:border-l sm:border-[var(--border)] sm:pl-3 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--fg-muted)] font-semibold">총 거래금액</span>
+                    <span className={`font-extrabold text-sm ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {rawTotal < 0 ? '- ' : ''}{currency === 'KRW' ? '₩ ' : currency === 'USD' ? '$ ' : `${currency} `}
+                      {parsedQty !== 0 && parsedPrice > 0 ? Math.abs(rawTotal).toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 }) : '0'}
                     </span>
                   </div>
-                )}
+                  <div className="flex items-center justify-between text-xs border-t border-[var(--border)]/60 pt-1">
+                    <span className="text-[var(--fg-muted)] font-semibold">원화 환산 금액</span>
+                    <span className={`font-bold ${krwTotal < 0 ? 'text-red-500' : 'text-[var(--fg)]'}`}>
+                      {krwTotal < 0 ? '- ' : ''}₩ {parsedQty !== 0 && parsedPrice > 0 ? Math.round(Math.abs(krwTotal)).toLocaleString() : '0'}
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* 환율 변동 주의 안내 문구 */}
+              <p className="text-[10.5px] text-[var(--fg-muted)] pt-0.5 border-t border-[var(--border)]/40 leading-relaxed">
+                * 환율은 시간에 따라 변하고, 예측치이므로 실제 환산금액은 다를 수 있습니다.
+              </p>
+            </div>
           </div>
 
-          {/* 구분선 2 */}
+          {/* 구분선 1 */}
           <div className="border-t border-[var(--border)]" />
 
-          {/* 구역 3: 수수료 및 제세금 */}
+          {/* 구역 2: 수수료 및 제세금 */}
           <div className="space-y-2">
             <label className="block text-xs font-bold text-[var(--fg-muted)]">
               수수료 및 제세금
@@ -397,7 +429,7 @@ export function TradeModal({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div>
                 <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
-                  수수료 ({currency})
+                  수수료
                 </label>
                 <input
                   type="text"
@@ -409,7 +441,7 @@ export function TradeModal({
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-[var(--fg-muted)] mb-1">
-                  제세금 ({currency})
+                  제세금
                 </label>
                 <input
                   type="text"
@@ -446,10 +478,10 @@ export function TradeModal({
             </div>
           </div>
 
-          {/* 구분선 3 */}
+          {/* 구분선 2 */}
           <div className="border-t border-[var(--border)]" />
 
-          {/* 구역 4: 비고 (메모) */}
+          {/* 구역 3: 비고 (메모) */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-[var(--fg-muted)]">
               비고 (메모)
