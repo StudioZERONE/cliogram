@@ -97,6 +97,8 @@ export function TradeModal({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const backdropRef = useRef<HTMLDivElement>(null);
+  const tickerInputRef = useRef<HTMLInputElement>(null);
+  const priceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -159,6 +161,16 @@ export function TradeModal({
         setForeignTax('0');
         setNotes('');
       }
+
+      // Auto-focus on ticker (create) or price selected (edit)
+      setTimeout(() => {
+        if (mode === 'create') {
+          tickerInputRef.current?.focus();
+        } else if (mode === 'edit') {
+          priceInputRef.current?.focus();
+          priceInputRef.current?.select();
+        }
+      }, 50);
     }
   }, [isOpen, mode, initialData, stocks, accounts]);
 
@@ -425,8 +437,9 @@ export function TradeModal({
                   티커 <span className="text-red-500">*</span>
                 </label>
                 <input
+                  ref={tickerInputRef}
                   type="text"
-                  placeholder="AAPL, 005930"
+                  placeholder=""
                   value={ticker}
                   onChange={(e) => handleTickerChange(e.target.value)}
                   className="w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-bold uppercase text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
@@ -469,9 +482,10 @@ export function TradeModal({
                     단가 <span className="text-red-500">*</span>
                   </label>
                   <input
+                    ref={priceInputRef}
                     type="text"
                     inputMode="decimal"
-                    placeholder="185.50"
+                    placeholder=""
                     value={price}
                     onChange={(e) => setPrice(formatCommaString(e.target.value))}
                     className="w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
@@ -485,7 +499,7 @@ export function TradeModal({
                   <input
                     type="text"
                     inputMode="decimal"
-                    placeholder="+10"
+                    placeholder=""
                     value={quantity}
                     onChange={(e) => setQuantity(formatCommaString(e.target.value))}
                     className={`w-full h-[38px] sm:h-[40px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-xs sm:text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
@@ -497,21 +511,38 @@ export function TradeModal({
               </div>
             </div>
 
-            {/* 매도 수량 및 잔여수량 가이드 배지 */}
-            {tradeType === 'SELL' && ticker.trim() && accountId && (
-              <div className={`text-[11px] flex items-center justify-between px-3 py-1.5 rounded-xl transition-colors ${
-                isSellExceeded
+            {/* 잔여수량 & 보유 잔고 상태 바 (상시 안정적 표출로 모달 높이 흔들림 100% 방지) */}
+            <div
+              className={`text-[11px] flex items-center justify-between px-3 py-1.5 rounded-xl transition-all duration-150 ${
+                !accountId || !ticker.trim()
+                  ? 'bg-[var(--bg)] text-[var(--fg-muted)] border border-[var(--border)]/50'
+                  : isSellExceeded
                   ? 'bg-red-500/10 text-red-500 font-bold border border-red-500/30'
                   : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-500/20'
-              }`}>
-                <span>현재 계좌 보유 잔여수량: <strong className="font-bold">{currentHoldingQty.toLocaleString(undefined, { maximumFractionDigits: 6 })}주</strong></span>
-                {isSellExceeded ? (
-                  <span className="text-red-500 font-bold">보유 잔고 초과 불가</span>
+              }`}
+            >
+              <span>
+                현재 계좌 보유 잔고:{' '}
+                <strong className="font-bold">
+                  {accountId && ticker.trim()
+                    ? `${currentHoldingQty.toLocaleString(undefined, { maximumFractionDigits: 6 })}주`
+                    : '-'}
+                </strong>
+              </span>
+              {accountId && ticker.trim() ? (
+                tradeType === 'SELL' ? (
+                  isSellExceeded ? (
+                    <span className="text-red-500 font-bold">보유 잔고 초과</span>
+                  ) : (
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">매도 가능</span>
+                  )
                 ) : (
-                  <span className="font-semibold">매도 가능</span>
-                )}
-              </div>
-            )}
+                  <span className="text-[var(--fg-muted)]">매수 거래</span>
+                )
+              ) : (
+                <span className="text-[10px] text-[var(--fg-muted)]">계좌/티커 연동</span>
+              )}
+            </div>
 
             {/* 환율 및 거래금액 요약 카드 (은은한 틴트 배경 & 픽셀 단위 완전 일치 고정 3단 구조) */}
             <div className="rounded-xl border border-emerald-500/20 dark:border-emerald-500/30 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08] p-3 sm:p-3.5 space-y-2 shadow-2xs">
