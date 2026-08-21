@@ -13,7 +13,7 @@ import { TradeModal, TradeRecordData, StockOption } from '@/components/TradeModa
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
 
-type SortField = 'trade_date' | 'ticker' | 'stock_name' | 'price' | 'quantity' | 'total_amount';
+type SortField = 'trade_date' | 'ticker' | 'stock_name' | 'total_amount';
 type SortDirection = 'asc' | 'desc';
 
 export default function TradesPage() {
@@ -31,7 +31,7 @@ export default function TradesPage() {
   const [currencyFilter, setCurrencyFilter] = useState<string>('ALL');
   const [currencyViewMode, setCurrencyViewMode] = useState<CurrencyViewMode>('ORIGINAL');
 
-  // Sorting: Default trade_date DESC
+  // Sorting: Default trade_date DESC (최신순)
   const [sortField, setSortField] = useState<SortField>('trade_date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -155,13 +155,11 @@ export default function TradesPage() {
         let diff = 0;
 
         if (sortField === 'total_amount') {
-          const valA = currencyViewMode === 'KRW' ? a.total_amount_krw || a.quantity * a.price * (a.exchange_rate || 1) : a.quantity * a.price;
-          const valB = currencyViewMode === 'KRW' ? b.total_amount_krw || b.quantity * b.price * (b.exchange_rate || 1) : b.quantity * b.price;
+          const rawA = a.trade_type === 'SELL' ? -Math.abs(a.quantity * a.price) : Math.abs(a.quantity * a.price);
+          const rawB = b.trade_type === 'SELL' ? -Math.abs(b.quantity * b.price) : Math.abs(b.quantity * b.price);
+          const valA = currencyViewMode === 'KRW' ? rawA * (a.exchange_rate || 1) : rawA;
+          const valB = currencyViewMode === 'KRW' ? rawB * (b.exchange_rate || 1) : rawB;
           diff = valA - valB;
-        } else if (sortField === 'price') {
-          diff = a.price - b.price;
-        } else if (sortField === 'quantity') {
-          diff = a.quantity - b.quantity;
         } else if (sortField === 'ticker') {
           diff = (a.ticker || '').localeCompare(b.ticker || '');
         } else if (sortField === 'stock_name') {
@@ -174,7 +172,7 @@ export default function TradesPage() {
           return sortDirection === 'asc' ? diff : -diff;
         }
 
-        // Secondary Tie-breaker: trade_date DESC
+        // Secondary Tie-breaker: trade_date DESC (최신 일자 우선)
         const dateDiff = new Date(b.trade_date).getTime() - new Date(a.trade_date).getTime();
         if (dateDiff !== 0) return dateDiff;
 
@@ -261,12 +259,17 @@ export default function TradesPage() {
     return <span className="text-xs font-bold text-[var(--fg-muted)]">{curr}</span>;
   };
 
+  /**
+   * Sort Icon Direction Rule:
+   * - Ascending (작은 것 -> 큰 것, 가나다순, 위에서 아래로): ArrowDown (아래 화살표)
+   * - Descending (큰 것 -> 작은 것, 최근 일자, 다나가순, 위에서 아래로): ArrowUp (위 화살표)
+   */
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 opacity-40 inline ml-1" />;
     return sortDirection === 'asc' ? (
-      <ArrowUp className="h-3 w-3 text-emerald-500 inline ml-1" />
-    ) : (
       <ArrowDown className="h-3 w-3 text-emerald-500 inline ml-1" />
+    ) : (
+      <ArrowUp className="h-3 w-3 text-emerald-500 inline ml-1" />
     );
   };
 
@@ -379,25 +382,25 @@ export default function TradesPage() {
             </div>
 
             {/* Data Table View */}
-            {/* Desktop Columns: 거래일자, 구분, 티커, 종목, 통화, 단가, 수량, 거래금액, 환율, 작업 */}
+            {/* Desktop Columns Order: 매매일자, 구분, 티커, 종목, 통화, 단가, 수량, 거래금액, 환율, 작업 */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm">
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
                   <tr>
-                    {/* 1. 거래일자 */}
+                    {/* 1. 매매일자 (Sortable) */}
                     <th onClick={() => handleSort('trade_date')} className="hidden sm:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)]">
-                      거래일자 {renderSortIcon('trade_date')}
+                      매매일자 {renderSortIcon('trade_date')}
                     </th>
 
                     {/* 2. 구분 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-center">구분</th>
 
-                    {/* 3. 티커 */}
+                    {/* 3. 티커 (Sortable) */}
                     <th onClick={() => handleSort('ticker')} className="hidden sm:table-cell py-2.5 px-3 text-center cursor-pointer hover:text-[var(--fg)]">
                       티커 {renderSortIcon('ticker')}
                     </th>
 
-                    {/* 4. 종목 */}
+                    {/* 4. 종목 (Sortable) */}
                     <th onClick={() => handleSort('stock_name')} className="hidden sm:table-cell py-2.5 px-3 text-left cursor-pointer hover:text-[var(--fg)]">
                       종목 {renderSortIcon('stock_name')}
                     </th>
@@ -405,19 +408,15 @@ export default function TradesPage() {
                     {/* 5. 통화 */}
                     <th className="hidden sm:table-cell py-2.5 px-2.5 text-center">통화</th>
 
-                    {/* 6. 단가 */}
-                    <th onClick={() => handleSort('price')} className="hidden sm:table-cell py-2.5 px-2.5 text-right cursor-pointer hover:text-[var(--fg)]">
-                      단가 {renderSortIcon('price')}
-                    </th>
+                    {/* 6. 단가 (No Sort) */}
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">단가</th>
 
-                    {/* 7. 수량 */}
-                    <th onClick={() => handleSort('quantity')} className="hidden sm:table-cell py-2.5 px-2.5 text-right cursor-pointer hover:text-[var(--fg)]">
-                      수량 {renderSortIcon('quantity')}
-                    </th>
+                    {/* 7. 수량 (No Sort) */}
+                    <th className="hidden sm:table-cell py-2.5 px-2.5 text-right">수량</th>
 
-                    {/* 8. 거래금액 */}
+                    {/* 8. 거래금액 (Sortable, No Parentheses) */}
                     <th onClick={() => handleSort('total_amount')} className="hidden sm:table-cell py-2.5 px-3 text-right cursor-pointer hover:text-[var(--fg)] font-bold">
-                      거래금액 ({currencyViewMode === 'KRW' ? '원화 환산' : '원본 통화'}) {renderSortIcon('total_amount')}
+                      거래금액 {renderSortIcon('total_amount')}
                     </th>
 
                     {/* 9. 환율 */}
@@ -427,9 +426,9 @@ export default function TradesPage() {
                     <th className="hidden sm:table-cell py-2.5 px-3 text-center w-24">작업</th>
 
                     {/* Mobile 3-Column Headers */}
-                    <th className="sm:hidden py-2.5 px-3 text-left">거래일자 / 종목</th>
-                    <th className="sm:hidden py-2.5 px-2 text-center w-28">구분 / 금액</th>
-                    <th className="sm:hidden py-2.5 px-2 text-center w-12">작업</th>
+                    <th className="sm:hidden py-2.5 px-3 text-left">매매일자 / 종목</th>
+                    <th className="sm:hidden py-2.5 px-3 text-right w-36">단가·수량 / 거래금액</th>
+                    <th className="sm:hidden py-2.5 px-2 text-center w-10">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] font-medium">
@@ -441,18 +440,22 @@ export default function TradesPage() {
                     </tr>
                   ) : (
                     filteredTrades.map((item) => {
-                      const amount = item.quantity * item.price;
+                      const isSell = item.trade_type === 'SELL';
+                      const rawQty = item.quantity || 0;
+                      // Signed quantity: negative for SELL, positive for BUY
+                      const effectiveQty = isSell ? -Math.abs(rawQty) : Math.abs(rawQty);
+
                       const rate = item.exchange_rate || (item.currency === 'KRW' ? 1 : 1450);
-                      const displayAmount =
-                        currencyViewMode === 'KRW'
-                          ? item.total_amount_krw || amount * rate
-                          : amount;
+                      const rawAmount = Math.abs(effectiveQty * item.price);
+                      const baseAmount = currencyViewMode === 'KRW' ? rawAmount * rate : rawAmount;
+                      const effectiveAmount = isSell ? -baseAmount : baseAmount;
 
                       const shortName = (item.ticker ? tickerToShortNameMap[item.ticker] : undefined) || item.stock_name;
+                      const currSymbol = currencyViewMode === 'KRW' ? '₩' : item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '';
 
                       return (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
-                          {/* 1. 거래일자 (Desktop) */}
+                          {/* 1. 매매일자 (Desktop) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-center text-xs text-[var(--fg-muted)] font-semibold">
                             {item.trade_date}
                           </td>
@@ -461,12 +464,12 @@ export default function TradesPage() {
                           <td className="hidden sm:table-cell py-3 px-2.5 text-center">
                             <span
                               className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold border ${
-                                item.trade_type === 'BUY'
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                                  : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+                                isSell
+                                  ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                               }`}
                             >
-                              {item.trade_type === 'BUY' ? '매수' : '매도'}
+                              {isSell ? '매도' : '매수'}
                             </span>
                           </td>
 
@@ -475,7 +478,7 @@ export default function TradesPage() {
                             {item.ticker}
                           </td>
 
-                          {/* 4. 종목 (Desktop: wide -> full name, narrow -> short name) */}
+                          {/* 4. 종목 (Desktop: wide -> full name, narrow -> short name, clean without ticker) */}
                           <td className="hidden sm:table-cell py-3 px-3 text-left font-bold text-[var(--fg)]">
                             <span className="hidden lg:inline">{item.stock_name}</span>
                             <span className="inline lg:hidden">{shortName}</span>
@@ -491,15 +494,30 @@ export default function TradesPage() {
                             {item.price.toLocaleString(undefined, { minimumFractionDigits: item.currency === 'KRW' ? 0 : 2 })}
                           </td>
 
-                          {/* 7. 수량 (Desktop) */}
-                          <td className="hidden sm:table-cell py-3 px-2.5 text-right font-semibold">
-                            {item.quantity.toLocaleString()}
+                          {/* 7. 수량 (Desktop: 매도(-)는 빨간색, 매수(+)는 회색/노말) */}
+                          <td className="hidden sm:table-cell py-3 px-2.5 text-right">
+                            {effectiveQty < 0 ? (
+                              <span className="text-red-500 dark:text-red-400 font-bold">
+                                {effectiveQty.toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-[var(--fg-muted)] font-semibold">
+                                {effectiveQty.toLocaleString()}
+                              </span>
+                            )}
                           </td>
 
-                          {/* 8. 거래금액 (Desktop) */}
-                          <td className="hidden sm:table-cell py-3 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                            {currencyViewMode === 'KRW' ? '₩ ' : item.currency === 'USD' ? '$ ' : item.currency === 'EUR' ? '€ ' : ''}
-                            {Math.round(displayAmount).toLocaleString()}
+                          {/* 8. 거래금액 (Desktop: 매도(-)는 빨간색, 매수(+)는 노말) */}
+                          <td className="hidden sm:table-cell py-3 px-3 text-right">
+                            {effectiveAmount < 0 ? (
+                              <span className="text-red-500 dark:text-red-400 font-bold">
+                                - {currSymbol} {Math.round(Math.abs(effectiveAmount)).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-[var(--fg)] font-bold">
+                                {currSymbol} {Math.round(effectiveAmount).toLocaleString()}
+                              </span>
+                            )}
                           </td>
 
                           {/* 9. 환율 (Desktop) */}
@@ -528,35 +546,48 @@ export default function TradesPage() {
                           </td>
 
                           {/* Mobile 3-Column Cells */}
-                          {/* Column 1: 거래일자 + 짧은 종목명 (티커 숨김) */}
+                          {/* Mobile Col 1: 매매일자 + 구분 배지 (1행), 짧은 종목명 (2행) */}
                           <td className="sm:hidden py-2.5 px-3 text-left">
-                            <p className="text-[10px] text-[var(--fg-muted)] font-bold">{item.trade_date}</p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-[var(--fg-muted)] font-bold">{item.trade_date}</span>
+                              <span
+                                className={`inline-block rounded-full px-1.5 py-0.2 text-[9px] font-bold border ${
+                                  isSell
+                                    ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+                                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                }`}
+                              >
+                                {isSell ? '매도' : '매수'}
+                              </span>
+                            </div>
                             <p className="font-bold text-xs text-[var(--fg)] mt-0.5">
                               {shortName}
                             </p>
                           </td>
 
-                          {/* Column 2: 구분 + 국기 + 금액 */}
-                          <td className="sm:hidden py-2.5 px-2 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <span
-                                className={`inline-block rounded-full px-1.5 py-0.2 text-[9px] font-bold border ${
-                                  item.trade_type === 'BUY'
-                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                                    : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
-                                }`}
-                              >
-                                {item.trade_type === 'BUY' ? '매수' : '매도'}
+                          {/* Mobile Col 2: 단가·수량 (1행), 거래금액 (2행) */}
+                          <td className="sm:hidden py-2.5 px-3 text-right">
+                            <div className="text-[10px] font-medium text-[var(--fg-muted)] flex items-center justify-end gap-1">
+                              <span>@{item.price.toLocaleString(undefined, { minimumFractionDigits: item.currency === 'KRW' ? 0 : 2 })}</span>
+                              <span>·</span>
+                              <span className={effectiveQty < 0 ? 'text-red-500 font-bold' : 'text-[var(--fg-muted)] font-semibold'}>
+                                {effectiveQty.toLocaleString()}주
                               </span>
-                              {renderFlagEmoji(item.currency)}
                             </div>
-                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                              {currencyViewMode === 'KRW' ? '₩ ' : item.currency === 'USD' ? '$ ' : ''}
-                              {Math.round(displayAmount).toLocaleString()}
-                            </p>
+                            <div className="mt-0.5">
+                              {effectiveAmount < 0 ? (
+                                <span className="text-xs font-bold text-red-500 dark:text-red-400">
+                                  - {currSymbol} {Math.round(Math.abs(effectiveAmount)).toLocaleString()}
+                                </span>
+                              ) : (
+                                <span className="text-xs font-bold text-[var(--fg)]">
+                                  {currSymbol} {Math.round(effectiveAmount).toLocaleString()}
+                                </span>
+                              )}
+                            </div>
                           </td>
 
-                          {/* Column 3: 작업 Popover Menu Button */}
+                          {/* Mobile Col 3: 작업 Popover Menu Button */}
                           <td className="sm:hidden py-2.5 px-2 text-center relative">
                             <button
                               onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id || null)}

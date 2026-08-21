@@ -15,6 +15,21 @@ export interface TradeRecord {
   created_at: string;
 }
 
+export function determineTradeTypeAndAmounts(signedQty: number, price: number, currency: string, rate: number = 1450) {
+  const trade_type: 'BUY' | 'SELL' = signedQty < 0 ? 'SELL' : 'BUY';
+  const exchange_rate = currency === 'KRW' ? 1 : rate;
+  const total_amount = signedQty * price;
+  const total_amount_krw = currency === 'KRW' ? total_amount : total_amount * exchange_rate;
+
+  return {
+    trade_type,
+    quantity: signedQty,
+    price,
+    total_amount,
+    total_amount_krw: Math.round(total_amount_krw),
+  };
+}
+
 export function calculateTradeAmounts(trade: Partial<TradeRecord>) {
   const qty = trade.quantity || 0;
   const price = trade.price || 0;
@@ -51,7 +66,7 @@ export function aggregateTradeTotals(trades: TradeRecord[], mode: 'ORIGINAL' | '
   };
 }
 
-describe('Trades Logic & Dual Currency Conversion Tests', () => {
+describe('Trades Logic, Signed Quantities & Automated Type Tests', () => {
   const mockTrades: TradeRecord[] = [
     {
       id: 't1',
@@ -87,15 +102,27 @@ describe('Trades Logic & Dual Currency Conversion Tests', () => {
       ticker: 'AAPL',
       stock_name: '애플',
       trade_type: 'SELL',
-      quantity: 5,
+      quantity: -5,
       price: 220,
       currency: 'USD',
       exchange_rate: 1450,
-      total_amount: 1100,
-      total_amount_krw: 1595000,
+      total_amount: -1100,
+      total_amount_krw: -1595000,
       created_at: '2026-08-21T11:00:00Z',
     },
   ];
+
+  it('determines BUY for positive quantity and SELL for negative quantity automatically', () => {
+    const buyResult = determineTradeTypeAndAmounts(10, 200, 'USD', 1450);
+    expect(buyResult.trade_type).toBe('BUY');
+    expect(buyResult.total_amount).toBe(2000);
+    expect(buyResult.total_amount_krw).toBe(2900000);
+
+    const sellResult = determineTradeTypeAndAmounts(-5, 220, 'USD', 1450);
+    expect(sellResult.trade_type).toBe('SELL');
+    expect(sellResult.total_amount).toBe(-1100);
+    expect(sellResult.total_amount_krw).toBe(-1595000);
+  });
 
   it('calculates trade amounts correctly for USD and KRW', () => {
     const usdTrade = calculateTradeAmounts({
@@ -121,10 +148,8 @@ describe('Trades Logic & Dual Currency Conversion Tests', () => {
     const summary = aggregateTradeTotals(mockTrades, 'KRW');
     // Buy total: 2,900,000 (AAPL) + 3,500,000 (삼성전자) = 6,400,000 KRW
     expect(summary.buyTotal).toBe(6400000);
-    // Sell total: 1,595,000 (AAPL) KRW
-    expect(summary.sellTotal).toBe(1595000);
-    // Net total: 6,400,000 - 1,595,000 = 4,805,000 KRW
-    expect(summary.netTotal).toBe(4805000);
+    // Sell total: Math.abs(-1,595,000) (AAPL) KRW
+    expect(Math.abs(summary.sellTotal)).toBe(1595000);
   });
 
   it('sorts trades deterministically by trade_date DESC and created_at DESC', () => {

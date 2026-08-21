@@ -55,7 +55,6 @@ export function TradeModal({
   const [selectedStockId, setSelectedStockId] = useState<string>('');
   const [ticker, setTicker] = useState<string>('');
   const [stockName, setStockName] = useState<string>('');
-  const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
   const [quantity, setQuantity] = useState<string>('');
   const [price, setPrice] = useState<string>('');
   const [currency, setCurrency] = useState<'KRW' | 'USD' | 'EUR' | 'JPY' | 'CNY'>('USD');
@@ -75,8 +74,12 @@ export function TradeModal({
         setTradeDate(initialData.trade_date ? new Date(initialData.trade_date) : new Date());
         setTicker(initialData.ticker || '');
         setStockName(initialData.stock_name || '');
-        setTradeType(initialData.trade_type || 'BUY');
-        setQuantity(initialData.quantity ? String(initialData.quantity) : '');
+        
+        // If SELL, make sure quantity reflects negative sign
+        const rawQty = initialData.quantity || 0;
+        const signedQty = initialData.trade_type === 'SELL' ? -Math.abs(rawQty) : Math.abs(rawQty);
+        setQuantity(String(signedQty));
+
         setPrice(initialData.price ? String(initialData.price) : '');
         setCurrency(initialData.currency || 'USD');
         setExchangeRate(initialData.exchange_rate ? String(initialData.exchange_rate) : '1');
@@ -96,7 +99,6 @@ export function TradeModal({
         setSelectedStockId('');
         setTicker('');
         setStockName('');
-        setTradeType('BUY');
         setQuantity('');
         setPrice('');
         setCurrency('USD');
@@ -173,12 +175,15 @@ export function TradeModal({
   const parsedFee = parseFloat(fee) || 0;
   const parsedTax = parseFloat(tax) || 0;
 
+  // Automated trade type: positive -> BUY, negative -> SELL
+  const tradeType: 'BUY' | 'SELL' = parsedQty < 0 ? 'SELL' : 'BUY';
+
   const rawTotal = parsedQty * parsedPrice;
   const krwTotal = currency === 'KRW' ? rawTotal : rawTotal * parsedRate;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stockName.trim() || parsedQty <= 0 || parsedPrice <= 0) return;
+    if (!stockName.trim() || parsedQty === 0 || parsedPrice <= 0) return;
 
     setIsSubmitting(true);
     try {
@@ -207,7 +212,7 @@ export function TradeModal({
     }
   };
 
-  const isSubmitDisabled = isSubmitting || !stockName.trim() || parsedQty <= 0 || parsedPrice <= 0;
+  const isSubmitDisabled = isSubmitting || !stockName.trim() || parsedQty === 0 || parsedPrice <= 0;
 
   return (
     <div
@@ -238,11 +243,11 @@ export function TradeModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-          {/* Trade Date & Type */}
+          {/* Trade Date & Automated Type Indicator */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                거래 일자 <span className="text-red-500">*</span>
+                매매 일자 <span className="text-red-500">*</span>
               </label>
               <DatePicker
                 selected={tradeDate}
@@ -253,13 +258,21 @@ export function TradeModal({
             </div>
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                거래 구분 <span className="text-red-500">*</span>
+                매매 구분 (수량 부호 자동 판정)
               </label>
-              <CodeSelect
-                groupId="TRADE_TYPE"
-                value={tradeType}
-                onChange={(val) => setTradeType(val as any)}
-              />
+              <div className="flex items-center h-[42px] px-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] shadow-inner text-sm font-bold">
+                {parsedQty < 0 ? (
+                  <span className="text-red-500 font-bold flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-red-500 inline-block" />
+                    매도 (SELL)
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
+                    매수 (BUY)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -287,7 +300,7 @@ export function TradeModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                짧은 종목명 <span className="text-red-500">*</span>
+                종목 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -316,15 +329,17 @@ export function TradeModal({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-                수량 <span className="text-red-500">*</span>
+                수량 (+매수 / -매도) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 step="any"
-                placeholder="10"
+                placeholder="+10 또는 -10"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+                className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner ${
+                  parsedQty < 0 ? 'text-red-500' : 'text-[var(--fg)]'
+                }`}
                 required
               />
             </div>
@@ -358,81 +373,111 @@ export function TradeModal({
           {currency !== 'KRW' && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  적용 환율 ({currency} ➔ KRW)
-                </label>
+                <span className="text-xs font-bold text-[var(--fg)] flex items-center gap-1.5">
+                  <Calculator className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  환율 정보 (원/달러)
+                </span>
                 {isFetchingRate && (
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">
-                    실시간 환율 수집 중...
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 animate-spin" />
+                    환율 조회 중...
                   </span>
                 )}
               </div>
-              <input
-                type="number"
-                step="any"
-                placeholder="1450.0"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2 text-sm font-bold text-right text-emerald-600 dark:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-inner"
-              />
-              <p className="text-[10px] text-[var(--fg-muted)]">
-                거래일자 기준 환율이 자동 반영되며, 수동으로 수정할 수 있습니다.
-              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="any"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-right text-[var(--fg)] focus:outline-none shadow-inner"
+                  placeholder="1450"
+                />
+                <span className="text-xs font-bold text-[var(--fg-muted)] shrink-0">KRW/{currency}</span>
+              </div>
             </div>
           )}
 
-          {/* Live Calculated Total Summary Card */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3.5 space-y-1 text-xs">
-            <div className="flex items-center justify-between font-bold">
-              <span className="text-[var(--fg-muted)] flex items-center gap-1">
-                <Calculator className="h-3.5 w-3.5 text-emerald-500" />
-                원화 외화 거래금액 (원본):
-              </span>
-              <span className="text-sm font-bold text-[var(--fg)]">
-                {currency === 'KRW' ? '₩' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency}{' '}
-                {rawTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            {currency !== 'KRW' && (
-              <div className="flex items-center justify-between font-bold border-t border-[var(--border)] pt-1 text-emerald-600 dark:text-emerald-400">
-                <span>원화 환산 예상 총금액 (KRW):</span>
-                <span className="text-sm font-bold">
-                  ₩ {Math.round(krwTotal).toLocaleString()} 원
+          {/* Live Calculated Total Summary Banner */}
+          {parsedQty !== 0 && parsedPrice > 0 && (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3.5 space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--fg-muted)] font-semibold">
+                  총 거래금액 ({currency})
+                </span>
+                <span className={`font-extrabold text-sm ${rawTotal < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {rawTotal < 0 ? '- ' : ''}{currency === 'KRW' ? '₩ ' : currency === 'USD' ? '$ ' : ''}
+                  {Math.abs(rawTotal).toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}
                 </span>
               </div>
-            )}
+              {currency !== 'KRW' && (
+                <div className="flex items-center justify-between border-t border-[var(--border)] pt-1">
+                  <span className="text-[var(--fg-muted)] font-semibold">원화 환산 금액 (KRW)</span>
+                  <span className={`font-bold ${krwTotal < 0 ? 'text-red-500' : 'text-[var(--fg)]'}`}>
+                    {krwTotal < 0 ? '- ' : ''}₩ {Math.round(Math.abs(krwTotal)).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fee & Tax Inputs */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                수수료 ({currency})
+              </label>
+              <input
+                type="number"
+                step="any"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
+                제세금 ({currency})
+              </label>
+              <input
+                type="number"
+                step="any"
+                value={tax}
+                onChange={(e) => setTax(e.target.value)}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs font-semibold text-right text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+              />
+            </div>
           </div>
 
-          {/* Notes */}
+          {/* Notes Input */}
           <div>
             <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
-              비고 (선택)
+              비고 (메모)
             </label>
             <input
               type="text"
-              placeholder="예: 분할매수, 손절, 해외대체입고 등"
+              placeholder="예: ISA 계좌 매매, 분할 매수 등"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2 text-xs font-semibold text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
             />
           </div>
 
-          {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3">
+          {/* Footer Action Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border)]">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-xs sm:text-sm font-bold text-[var(--fg)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs sm:text-sm font-bold text-[var(--fg-muted)] hover:bg-[var(--bg)] rounded-xl transition-colors cursor-pointer"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isSubmitDisabled}
-              className="rounded-xl bg-emerald-600 dark:bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
-              {isSubmitting ? '저장 중...' : mode === 'create' ? '매매 내역 추가' : '수정 완료'}
+              {isSubmitting ? '저장 중...' : mode === 'create' ? '신규 등록' : '수정 완료'}
             </button>
           </div>
         </form>
