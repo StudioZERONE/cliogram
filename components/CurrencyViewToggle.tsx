@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Globe, Coins } from 'lucide-react';
 
 export type CurrencyViewMode = 'ORIGINAL' | 'KRW';
 
@@ -9,40 +8,54 @@ export interface CurrencyViewToggleProps {
   mode: CurrencyViewMode;
   onChange: (mode: CurrencyViewMode) => void;
   className?: string;
+  showLabels?: boolean;
 }
 
+/**
+ * Toss Securities style compact Currency View Toggle ($ vs 원)
+ * - '$': 외화(달러 등 원본 통화) 기준 표출
+ * - '원': 원화(KRW 환율 환산) 통합 기준 표출
+ */
 export function CurrencyViewToggle({
   mode,
   onChange,
   className = '',
+  showLabels = false,
 }: CurrencyViewToggleProps) {
   return (
-    <div className={`inline-flex rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-1 font-bold text-xs shadow-xs ${className}`}>
+    <div
+      className={`inline-flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-0.5 text-xs font-bold shadow-xs select-none ${className}`}
+      role="group"
+      aria-label="통화 표시 기준 선택"
+    >
       <button
         type="button"
         onClick={() => onChange('ORIGINAL')}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all cursor-pointer select-none ${
+        className={`flex items-center justify-center gap-1 rounded-lg px-2.5 sm:px-3 py-1 transition-all cursor-pointer min-w-[34px] ${
           mode === 'ORIGINAL'
-            ? 'bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs'
-            : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
+            ? 'bg-emerald-600 text-white dark:bg-emerald-500 shadow-xs font-extrabold'
+            : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface)] font-semibold'
         }`}
-        title="각 거래의 본래 원본 통화(KRW, USD, EUR 등)로 표출"
+        title="외화/원본 통화($ 등) 기준으로 표시"
+        aria-pressed={mode === 'ORIGINAL'}
       >
-        <Globe className="h-3.5 w-3.5" />
-        <span>원본 통화 보기</span>
+        <span className="text-xs sm:text-sm">$</span>
+        {showLabels && <span className="text-[11px] hidden sm:inline">외화</span>}
       </button>
+
       <button
         type="button"
         onClick={() => onChange('KRW')}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all cursor-pointer select-none ${
+        className={`flex items-center justify-center gap-1 rounded-lg px-2.5 sm:px-3 py-1 transition-all cursor-pointer min-w-[34px] ${
           mode === 'KRW'
-            ? 'bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs'
-            : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
+            ? 'bg-emerald-600 text-white dark:bg-emerald-500 shadow-xs font-extrabold'
+            : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface)] font-semibold'
         }`}
-        title="모든 외화 거래를 환율 반영 원화(KRW)로 환산하여 통합 표출"
+        title="원화(KRW) 환율 환산 통합 기준으로 표시"
+        aria-pressed={mode === 'KRW'}
       >
-        <Coins className="h-3.5 w-3.5" />
-        <span>원화 통합 보기</span>
+        <span className="text-xs sm:text-sm">원</span>
+        {showLabels && <span className="text-[11px] hidden sm:inline">원화</span>}
       </button>
     </div>
   );

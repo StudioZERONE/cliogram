@@ -23,6 +23,7 @@ import { Header } from '@/components/Header';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { StockModal, StockRecordData } from '@/components/StockModal';
 import { FilterDropdown, FilterOption } from '@/components/FilterDropdown';
+import { ViewSettingsMenu } from '@/components/ViewSettingsMenu';
 import { useCounts } from '@/components/CountsProvider';
 import { getCommonCodes, CommonCode } from '@/lib/codes';
 
@@ -47,6 +48,9 @@ export default function StocksPage() {
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [stocks, setStocks] = useState<StockRecord[]>([]);
+
+  // View Settings State (Toss Style)
+  const [displayTicker, setDisplayTicker] = useState<boolean>(false);
 
   // Common Codes State for Display Name and Sort Order
   const [stockTypeCodes, setStockTypeCodes] = useState<CommonCode[]>([]);
@@ -490,21 +494,27 @@ export default function StocksPage() {
                 </span>
               </h3>
 
-              {/* Top-Right Circular Green Add Button */}
-              <button
-                onClick={() =>
-                  setStockModal({
-                    isOpen: true,
-                    mode: 'create',
-                    initialData: null,
-                  })
-                }
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
-                title="종목 마스터 신규 추가"
-                aria-label="종목 마스터 신규 추가"
-              >
-                <Plus className="h-5 w-5 stroke-[2.5]" />
-              </button>
+              {/* Top-Right Action Controls */}
+              <div className="flex items-center gap-2">
+                <ViewSettingsMenu
+                  displayTicker={displayTicker}
+                  onToggleDisplayTicker={setDisplayTicker}
+                />
+                <button
+                  onClick={() =>
+                    setStockModal({
+                      isOpen: true,
+                      mode: 'create',
+                      initialData: null,
+                    })
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
+                  title="종목 마스터 신규 추가"
+                  aria-label="종목 마스터 신규 추가"
+                >
+                  <Plus className="h-5 w-5 stroke-[2.5]" />
+                </button>
+              </div>
             </div>
 
             {/* Filter Toolbar: Structured 2-Row Grid on Mobile, 1-Row Flex on Desktop */}
@@ -514,7 +524,7 @@ export default function StocksPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
                 <input
                   type="text"
-                  placeholder="종목명, 짧은 종목명, 티커 검색..."
+                  placeholder={displayTicker ? "티커, 종목명, 짧은 종목명 검색..." : "종목명, 짧은 종목명, 티커 검색..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2 text-xs sm:text-sm text-[var(--fg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 shadow-inner"
@@ -560,14 +570,14 @@ export default function StocksPage() {
               <table className="w-full text-xs sm:text-sm">
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-bold text-[11px] sm:text-xs">
                   <tr>
-                    {/* Mobile Only Header: 짧은 종목명 */}
+                    {/* Mobile Only Header: 짧은 종목명 / 티커 */}
                     <th
-                      onClick={() => handleSort('short_name')}
+                      onClick={() => handleSort(displayTicker ? 'ticker' : 'short_name')}
                       className="sm:hidden py-3 px-3.5 text-left cursor-pointer hover:bg-[var(--surface)] transition-colors group select-none"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span>짧은 종목명</span>
-                        {renderSortIcon('short_name')}
+                        <span>{displayTicker ? '티커 (종목명)' : '짧은 종목명'}</span>
+                        {renderSortIcon(displayTicker ? 'ticker' : 'short_name')}
                       </div>
                     </th>
 
@@ -667,9 +677,23 @@ export default function StocksPage() {
                           !item.is_active ? 'opacity-65 bg-gray-500/5' : ''
                         }`}
                       >
-                        {/* Mobile Only Cell: 짧은 종목명 */}
+                        {/* Mobile Only Cell: 짧은 종목명 / 티커 */}
                         <td className="sm:hidden py-3 px-3.5 text-left font-bold text-[var(--fg)] text-xs">
-                          {item.short_name || item.name}
+                          {displayTicker ? (
+                            <div>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">{item.ticker}</span>
+                              <span className="text-[10px] text-[var(--fg-muted)] font-normal ml-1.5">
+                                ({item.short_name || item.name})
+                              </span>
+                            </div>
+                          ) : (
+                            <div>
+                              <span>{item.short_name || item.name}</span>
+                              <span className="text-[10px] text-[var(--fg-muted)] font-normal ml-1.5">
+                                ({item.ticker})
+                              </span>
+                            </div>
+                          )}
                         </td>
 
                         {/* Desktop Name */}
