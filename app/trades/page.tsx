@@ -584,7 +584,7 @@ export default function TradesPage() {
 
         <main className="p-3.5 sm:p-8 space-y-4 sm:space-y-6 flex-1">
           {/* Top Info Banner Card (Desktop Only) */}
-          <div className="hidden sm:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs items-center justify-between gap-4">
+          <div className="hidden lg:flex rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs items-center justify-between gap-4">
             <div>
               <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#057a5d] dark:text-emerald-400" />
@@ -746,19 +746,19 @@ export default function TradesPage() {
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
                 <colgroup className="hidden lg:table-column-group">
-                  <col className="w-[105px] min-[1920px]:w-[115px]" />
-                  <col className="w-[65px] min-[1920px]:w-[70px]" />
-                  <col className="w-[85px] min-[1920px]:w-[95px]" />
-                  <col />
-                  <col className="w-[55px] min-[1920px]:w-[60px]" />
-                  <col className="w-[110px] min-[1920px]:w-[125px]" />
-                  <col className="w-[95px] min-[1920px]:w-[105px]" />
-                  <col className="w-[135px] min-[1920px]:w-[145px]" />
-                  <col className="w-[110px] min-[1920px]:w-[120px]" />
-                  <col className="w-[95px] min-[1920px]:w-[105px]" />
-                  <col className="w-[110px] min-[1920px]:w-[300px]" />
-                  <col />
+                  <col className="w-[100px] min-[1920px]:w-[110px]" />
+                  <col className="w-[58px] min-[1920px]:w-[65px]" />
                   <col className="w-[75px] min-[1920px]:w-[85px]" />
+                  <col />
+                  <col className="w-[42px] min-[1920px]:w-[50px]" />
+                  <col className="w-[88px] min-[1920px]:w-[105px]" />
+                  <col className="w-[70px] min-[1920px]:w-[85px]" />
+                  <col className="w-[110px] min-[1920px]:w-[130px]" />
+                  <col className="w-[85px] min-[1920px]:w-[100px]" />
+                  <col className="w-[70px] min-[1920px]:w-[85px]" />
+                  <col className="w-[90px] min-[1920px]:w-[300px]" />
+                  <col />
+                  <col className="w-[70px] min-[1920px]:w-[80px]" />
                 </colgroup>
                 <colgroup className="lg:hidden">
                   <col className="w-[43%]" />
@@ -787,24 +787,24 @@ export default function TradesPage() {
                     </th>
 
                     {/* 5. 통화 */}
-                    <th className="hidden lg:table-cell py-2.5 px-2 text-center font-medium">통화</th>
+                    <th className="hidden lg:table-cell py-2.5 px-1 text-center font-medium">통화</th>
 
                     {/* 6. 단가 (No Sort) */}
-                    <th className="hidden lg:table-cell py-2.5 px-2.5 text-right font-medium">단가</th>
+                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">단가</th>
 
                     {/* 7. 수량 (No Sort) */}
-                    <th className="hidden lg:table-cell py-2.5 px-2.5 text-right font-medium">수량</th>
+                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">수량</th>
 
                     {/* 8. 거래금액 (Sortable, No Parentheses) */}
-                    <th onClick={() => handleSort('total_amount')} className="hidden lg:table-cell py-2.5 px-3 text-right cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('total_amount')} className="hidden lg:table-cell py-2.5 px-2.5 text-right cursor-pointer hover:text-[var(--fg)] font-medium">
                       거래금액 {renderSortIcon('total_amount')}
                     </th>
 
                     {/* 9. 환율 */}
-                    <th className="hidden lg:table-cell py-2.5 px-2.5 text-right font-medium">환율</th>
+                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">환율</th>
 
                     {/* 10. 잔여수량 */}
-                    <th className="hidden lg:table-cell py-2.5 px-2.5 text-right font-medium">잔여수량</th>
+                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">잔여수량</th>
 
                     {/* 11. 계좌 */}
                     <th className="hidden lg:table-cell py-2.5 px-2 text-center font-medium">계좌</th>
@@ -895,16 +895,15 @@ export default function TradesPage() {
                             {shortName}
                           </td>
 
-                          {/* 5. 통화 (Desktop: Standard Flag & Text) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-center text-xs font-normal text-[var(--fg)]">
-                            <div className="flex items-center justify-center gap-1">
+                          {/* 5. 통화 (Desktop: Flag Icon Only) */}
+                          <td className="hidden lg:table-cell py-3 px-1 text-center text-xs font-normal text-[var(--fg)]">
+                            <div className="flex items-center justify-center text-base leading-none" title={item.currency}>
                               {renderFlagEmoji(item.currency)}
-                              <span>{item.currency}</span>
                             </div>
                           </td>
 
                           {/* 6. 단가 (Desktop: Formatted with currency symbol and commas) */}
-                          <td className="hidden lg:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg)] font-normal">
+                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs text-[var(--fg)] font-normal">
                             {currSymbol} {currencyViewMode === 'KRW'
                               ? Math.round(displayPrice).toLocaleString()
                               : displayPrice.toLocaleString(undefined, {
@@ -913,7 +912,7 @@ export default function TradesPage() {
                           </td>
 
                           {/* 7. 수량 (Desktop: 매도(-)는 빨간색) */}
-                          <td className="hidden lg:table-cell py-3 px-2.5 text-right text-xs font-normal">
+                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs font-normal">
                             {isSell ? (
                               <span className="text-red-500 dark:text-red-400">
                                 {displayQty.toLocaleString()}
@@ -926,7 +925,7 @@ export default function TradesPage() {
                           </td>
 
                           {/* 8. 거래금액 (Desktop: Formatted with currency symbol and commas, 매도(-)는 빨간색) */}
-                          <td className="hidden lg:table-cell py-3 px-3 text-right text-xs font-normal">
+                          <td className="hidden lg:table-cell py-3 px-2.5 text-right text-xs font-normal">
                             {isSell ? (
                               <span className="text-red-500 dark:text-red-400">
                                 - {currSymbol} {Math.round(Math.abs(displayAmount)).toLocaleString()}
@@ -939,13 +938,13 @@ export default function TradesPage() {
                           </td>
 
                           {/* 9. 환율 (Desktop: 또렷한 텍스트 font-normal) */}
-                          <td className="hidden lg:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg)] font-normal">
+                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs text-[var(--fg)] font-normal">
                             {item.currency === 'KRW' ? '-' : `${rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 원`}
                           </td>
 
-                          {/* 10. 잔여수량 (Desktop: 수량과 동일 폭, 소수점 지원) */}
-                          <td className="hidden lg:table-cell py-3 px-2.5 text-right text-xs text-[var(--fg)] font-medium">
-                            {(item.remaining_quantity !== undefined ? item.remaining_quantity : 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}주
+                          {/* 10. 잔여수량 (Desktop: 숫자만 표출) */}
+                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs text-[var(--fg)] font-medium">
+                            {(item.remaining_quantity !== undefined ? item.remaining_quantity : 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                           </td>
 
                           {/* 11. 계좌 (Desktop: 계좌명 우선 표출, 1920px+ 300px 공간 활용) */}
