@@ -759,9 +759,9 @@ export default function TradesPage() {
                   <col className="w-[75px] min-[1920px]:w-[85px]" />
                 </colgroup>
                 <colgroup className="sm:hidden">
-                  <col className="w-[52%]" />
-                  <col className="w-[36%]" />
-                  <col className="w-[12%]" />
+                  <col className="w-[43%]" />
+                  <col className="w-[49%]" />
+                  <col className="w-[8%]" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
@@ -814,9 +814,9 @@ export default function TradesPage() {
                     <th className="hidden sm:table-cell py-2.5 px-2 text-center font-medium">작업</th>
 
                     {/* Mobile 3-Column Headers (Single Line with whitespace-nowrap) */}
-                    <th className="sm:hidden py-2 px-2 text-left font-medium text-[10.5px] whitespace-nowrap">매매일자 / 종목</th>
-                    <th className="sm:hidden py-2 px-2 text-right font-medium text-[10.5px] whitespace-nowrap">단가·수량 / 거래금액</th>
-                    <th className="sm:hidden py-2 px-1 text-center font-medium text-[10.5px] whitespace-nowrap">작업</th>
+                    <th className="sm:hidden py-2 px-1.5 text-left font-medium text-[10px] sm:text-[10.5px] whitespace-nowrap">매매일자 / 종목</th>
+                    <th className="sm:hidden py-2 px-1.5 text-right font-medium text-[10px] sm:text-[10.5px] whitespace-nowrap">단가·수량 / 거래금액</th>
+                    <th className="sm:hidden py-2 pr-1.5 pl-0 text-center font-medium text-[10px] sm:text-[10.5px] whitespace-nowrap">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -994,9 +994,9 @@ export default function TradesPage() {
 
                           {/* Mobile 3-Column Cells */}
                           {/* Mobile Col 1: 매매일자(10px) + 초소형 구분 배지 (1행), 짧은 종목명 (2행: Click to search) */}
-                          <td className="sm:hidden py-2.5 px-2 text-left">
+                          <td className="sm:hidden py-2.5 px-1.5 text-left">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10.5px] text-[var(--fg-muted)] font-medium whitespace-nowrap shrink-0">
+                              <span className="text-[10px] sm:text-[10.5px] text-[var(--fg-muted)] font-medium whitespace-nowrap shrink-0">
                                 {item.trade_date}
                               </span>
                               <span
@@ -1018,9 +1018,9 @@ export default function TradesPage() {
                             </p>
                           </td>
 
-                          {/* Mobile Col 2: 단가 x 수량 (1행, 10px 간결화), 거래금액 (2행) */}
-                          <td className="sm:hidden py-2.5 px-2 text-right">
-                            <div className="text-[10px] sm:text-[11px] font-normal text-[var(--fg-muted)] flex items-center justify-end gap-1 whitespace-nowrap">
+                          {/* Mobile Col 2: 단가 x 수량 (1행), 거래금액 (2행) */}
+                          <td className="sm:hidden py-2.5 px-1.5 text-right">
+                            <div className="text-[9.5px] sm:text-[10px] font-normal text-[var(--fg-muted)] flex items-center justify-end gap-1 whitespace-nowrap">
                               <span>
                                 {currSymbol} {currencyViewMode === 'KRW'
                                   ? Math.round(displayPrice).toLocaleString()
@@ -1033,34 +1033,28 @@ export default function TradesPage() {
                                 {displayQty.toLocaleString()}주
                               </span>
                             </div>
-                            <div className="mt-1">
-                              {isSell ? (
-                                <span className="text-xs font-bold text-red-500 dark:text-red-400 whitespace-nowrap">
-                                  - {currSymbol} {Math.round(Math.abs(displayAmount)).toLocaleString()}
-                                </span>
-                              ) : (
-                                <span className="text-xs font-bold text-[var(--fg)] whitespace-nowrap">
-                                  {currSymbol} {Math.round(displayAmount).toLocaleString()}
-                                </span>
-                              )}
+                            <div className="mt-0.5">
+                              <span className={`text-[11.5px] sm:text-xs font-bold tracking-tight whitespace-nowrap ${isSell ? 'text-red-500 dark:text-red-400' : 'text-[var(--fg)]'}`}>
+                                {isSell ? '- ' : ''}{currSymbol} {Math.round(Math.abs(displayAmount)).toLocaleString()}
+                              </span>
                             </div>
                           </td>
 
                           {/* Mobile Col 3: 작업 Popover Menu Button */}
-                          <td className="sm:hidden py-2.5 px-1 text-center relative align-middle">
+                          <td className="sm:hidden py-2.5 pr-1.5 pl-0 text-center relative align-middle">
                             <div className="flex items-center justify-center">
                               <button
                                 onClick={() => setActivePopoverId(activePopoverId === item.id ? null : item.id || null)}
-                                className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)] transition-colors cursor-pointer"
                                 aria-label="작업 메뉴"
                               >
-                                <MoreVertical className="h-4 w-4" />
+                                <MoreVertical className="h-3.5 w-3.5" />
                               </button>
                             </div>
 
                             {/* Floating Touch Popover Menu */}
                             {activePopoverId === item.id && (
-                              <div className="absolute right-2 top-8 z-30 w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] overflow-hidden text-left animate-in zoom-in-95">
+                              <div className="absolute right-1.5 top-8 z-30 w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] overflow-hidden text-left animate-in zoom-in-95">
                                 <button
                                   onClick={() => handleOpenEditModal(item)}
                                   className="w-full min-h-[42px] px-3 py-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-[var(--bg)] flex items-center gap-2 cursor-pointer"

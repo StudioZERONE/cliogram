@@ -211,8 +211,6 @@ export function TradeModal({
     }
   }, [isOpen, tradeDate, currency]);
 
-  if (!isOpen) return null;
-
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === backdropRef.current) {
       onClose();
@@ -359,6 +357,8 @@ export function TradeModal({
   };
 
   const isSubmitDisabled = isSubmitting || !accountId || !ticker.trim() || parsedQty === 0 || parsedPrice <= 0 || isSellExceeded;
+
+  if (!isOpen) return null;
 
   return (
     <div
