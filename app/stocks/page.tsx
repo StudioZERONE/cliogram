@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Plus,
   Trash2,
@@ -44,8 +44,9 @@ export interface StockRecord {
 type SortField = 'name' | 'short_name' | 'ticker' | 'type' | 'currency' | 'market' | 'is_active';
 type SortDirection = 'asc' | 'desc';
 
-export default function StocksPage() {
+function StocksContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
@@ -97,6 +98,19 @@ export default function StocksPage() {
     });
   }, [router]);
 
+  // Handle Deep-link / Action Parameters (e.g. ?action=create&ticker=005380)
+  useEffect(() => {
+    const action = searchParams.get('action');
+    const tickerParam = searchParams.get('ticker');
+    if (action === 'create' && tickerParam) {
+      setStockModal({
+        isOpen: true,
+        mode: 'create',
+        initialData: { ticker: tickerParam.trim().toUpperCase() } as StockRecordData,
+      });
+    }
+  }, [searchParams]);
+
   const fetchCommonCodes = async () => {
     const [types, markets] = await Promise.all([
       getCommonCodes('STOCK_TYPE'),
@@ -139,7 +153,17 @@ export default function StocksPage() {
         );
 
         if (missingTickers.length > 0) {
-          toast.error(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목을 지금 등록하세요.`);
+          const primaryTicker = missingTickers[0];
+          toast.error(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다.`, {
+            label: '여기를 눌러 종목 등록하기',
+            onClick: () => {
+              setStockModal({
+                isOpen: true,
+                mode: 'create',
+                initialData: { ticker: primaryTicker } as StockRecordData,
+              });
+            },
+          });
         }
       }
 
@@ -942,3 +966,12 @@ export default function StocksPage() {
     </div>
   );
 }
+
+export default function StocksPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-zinc-950" />}>
+      <StocksContent />
+    </Suspense>
+  );
+}
+

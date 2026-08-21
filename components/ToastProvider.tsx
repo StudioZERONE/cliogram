@@ -1,22 +1,30 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X, ArrowRight } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastAction {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+}
 
 export interface ToastItem {
   id: string;
   type: ToastType;
   message: string;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  showToast: (message: string, type?: ToastType) => void;
-  success: (message: string) => void;
-  error: (message: string) => void;
-  warning: (message: string) => void;
-  info: (message: string) => void;
+  showToast: (message: string, type?: ToastType, action?: ToastAction) => void;
+  success: (message: string, action?: ToastAction) => void;
+  error: (message: string, action?: ToastAction) => void;
+  warning: (message: string, action?: ToastAction) => void;
+  info: (message: string, action?: ToastAction) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -28,7 +36,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
+  const showToast = useCallback((message: string, type: ToastType = 'info', action?: ToastAction) => {
     setToasts((prev) => {
       // Prevent duplicate toasts with the exact same message and type
       if (prev.some((t) => t.message === message && t.type === type)) {
@@ -45,14 +53,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         }, 5000);
       }
 
-      return [...prev, { id, type, message }];
+      return [...prev, { id, type, message, action }];
     });
   }, [removeToast]);
 
-  const success = useCallback((msg: string) => showToast(msg, 'success'), [showToast]);
-  const error = useCallback((msg: string) => showToast(msg, 'error'), [showToast]);
-  const warning = useCallback((msg: string) => showToast(msg, 'warning'), [showToast]);
-  const info = useCallback((msg: string) => showToast(msg, 'info'), [showToast]);
+  const success = useCallback((msg: string, act?: ToastAction) => showToast(msg, 'success', act), [showToast]);
+  const error = useCallback((msg: string, act?: ToastAction) => showToast(msg, 'error', act), [showToast]);
+  const warning = useCallback((msg: string, act?: ToastAction) => showToast(msg, 'warning', act), [showToast]);
+  const info = useCallback((msg: string, act?: ToastAction) => showToast(msg, 'info', act), [showToast]);
 
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
@@ -89,19 +97,47 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={item.id}
               role="alert"
               onClick={() => {
-                if (isPersistent) removeToast(item.id);
+                if (isPersistent && !item.action) removeToast(item.id);
               }}
               className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl border shadow-xl backdrop-blur-md transition-all duration-300 animate-in fade-in-50 slide-in-from-top-4 ${
-                isPersistent ? 'cursor-pointer' : ''
+                isPersistent && !item.action ? 'cursor-pointer' : ''
               } ${typeStyles}`}
             >
               <IconComponent className={`h-5 w-5 shrink-0 mt-0.5 ${iconColor}`} />
               <div className="flex-1 text-xs sm:text-sm font-semibold leading-relaxed break-keep">
-                {item.message}
-                {isPersistent && (
-                  <span className="block text-[11px] font-normal opacity-75 mt-0.5">
-                    (클릭하여 닫기)
-                  </span>
+                <div>{item.message}</div>
+                {item.action ? (
+                  <div className="mt-2">
+                    {item.action.href ? (
+                      <Link
+                        href={item.action.href}
+                        onClick={() => removeToast(item.id)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 dark:bg-rose-500 text-white hover:bg-rose-700 dark:hover:bg-rose-600 transition-colors shadow-xs"
+                      >
+                        <span>{item.action.label}</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          item.action?.onClick?.();
+                          removeToast(item.id);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 dark:bg-rose-500 text-white hover:bg-rose-700 dark:hover:bg-rose-600 transition-colors shadow-xs cursor-pointer"
+                      >
+                        <span>{item.action.label}</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  isPersistent && (
+                    <span className="block text-[11px] font-normal opacity-75 mt-0.5">
+                      (클릭하여 닫기)
+                    </span>
+                  )
                 )}
               </div>
               <button
@@ -137,3 +173,4 @@ export function useToast() {
   }
   return context;
 }
+

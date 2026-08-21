@@ -72,14 +72,18 @@ export function StockModal({
         setMarket(initialData.market || 'NASDAQ');
         setIsActive(initialData.is_active ?? true);
       } else {
-        setTicker('');
-        setName('');
-        setShortName('');
-        setIsCustomShortName(false);
-        setType('Growth');
-        setCurrency('USD');
-        setMarket('NASDAQ');
-        setIsActive(true);
+        const initialTicker = initialData?.ticker?.trim()?.toUpperCase() || '';
+        setTicker(initialTicker);
+        setName(initialData?.name || '');
+        setShortName(initialData?.short_name || initialData?.name || '');
+        setIsCustomShortName(!!initialData?.short_name);
+        setType(initialData?.type || 'Growth');
+        setCurrency(initialData?.currency || 'USD');
+        setMarket(initialData?.market || 'NASDAQ');
+        setIsActive(initialData?.is_active ?? true);
+        if (initialTicker) {
+          handleTickerChange(initialTicker);
+        }
       }
       setAutoFillNotice(null);
     }

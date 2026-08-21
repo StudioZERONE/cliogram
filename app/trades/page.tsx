@@ -169,7 +169,11 @@ export default function TradesPage() {
         );
 
         if (missingTickers.length > 0) {
-          toast.error(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다. 종목 마스터에서 종목을 지금 등록하세요.`);
+          const primaryTicker = missingTickers[0];
+          toast.error(`매매한 <${missingTickers.join(', ')}> 종목의 기준정보가 없습니다.`, {
+            label: '여기를 눌러 종목 등록하기',
+            href: `/stocks?action=create&ticker=${encodeURIComponent(primaryTicker)}`,
+          });
         }
 
         const normalizedTrades = rawTrades.map((t: any) => {
