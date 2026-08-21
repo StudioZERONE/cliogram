@@ -635,27 +635,24 @@ export default function TradesPage() {
             {/* Data Table View (Tightly Clustered Numbers with Iconic 계좌 Column before 비고) */}
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
-                {/* Fixed tight column widths for standard metrics & auto-expansion for 종목 and 비고 */}
                 <colgroup className="hidden sm:table-column-group">
-                  <col className="w-[105px] min-[1920px]:w-[115px]" /> {/* 1. 매매일자 */}
-                  <col className="w-[65px] min-[1920px]:w-[70px]" />   {/* 2. 구분 */}
-                  <col className="w-[85px] min-[1920px]:w-[95px]" />   {/* 3. 티커 */}
-                  <col />                                              {/* 4. 종목 (가변 폭) */}
-                  {/* 밀집형 수치 데이터 클러스터 (통화, 단가, 수량, 거래금액, 환율) */}
-                  <col className="w-[55px] min-[1920px]:w-[60px]" />   {/* 5. 통화 */}
-                  <col className="w-[110px] min-[1920px]:w-[125px]" /> {/* 6. 단가 */}
-                  <col className="w-[95px] min-[1920px]:w-[105px]" />  {/* 7. 수량 */}
-                  <col className="w-[135px] min-[1920px]:w-[145px]" /> {/* 8. 거래금액 */}
-                  <col className="w-[110px] min-[1920px]:w-[120px]" /> {/* 9. 환율 */}
-                  {/* 10. 계좌 배지 영역 */}
+                  <col className="w-[105px] min-[1920px]:w-[115px]" />
+                  <col className="w-[65px] min-[1920px]:w-[70px]" />
+                  <col className="w-[85px] min-[1920px]:w-[95px]" />
+                  <col />
+                  <col className="w-[55px] min-[1920px]:w-[60px]" />
+                  <col className="w-[110px] min-[1920px]:w-[125px]" />
+                  <col className="w-[95px] min-[1920px]:w-[105px]" />
+                  <col className="w-[135px] min-[1920px]:w-[145px]" />
+                  <col className="w-[110px] min-[1920px]:w-[120px]" />
                   <col className="w-[105px] min-[1920px]:w-[120px]" />
-                  <col />                                              {/* 11. 비고 (가변 폭) */}
-                  <col className="w-[75px] min-[1920px]:w-[85px]" />   {/* 12. 작업 */}
+                  <col />
+                  <col className="w-[75px] min-[1920px]:w-[85px]" />
                 </colgroup>
                 <colgroup className="sm:hidden">
-                  <col className="w-[48%]" /> {/* 1. 매매일자 / 종목 */}
-                  <col className="w-[44%]" /> {/* 2. 단가·수량 / 거래금액 */}
-                  <col className="w-[8%]" />  {/* 3. 작업 */}
+                  <col className="w-[48%]" />
+                  <col className="w-[44%]" />
+                  <col className="w-[8%]" />
                 </colgroup>
 
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
