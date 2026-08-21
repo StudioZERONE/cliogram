@@ -12,6 +12,7 @@ import { CurrencyViewToggle, CurrencyViewMode } from '@/components/CurrencyViewT
 import { TradeModal, TradeRecordData, StockOption, AccountOption } from '@/components/TradeModal';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
+import { useToast } from '@/components/ToastProvider';
 
 type SortField = 'trade_date' | 'ticker' | 'stock_name' | 'total_amount';
 type SortDirection = 'asc' | 'desc';
@@ -47,6 +48,7 @@ export function computeRemainingQuantities(rawTrades: TradeRecordData[]): TradeR
 
 export default function TradesPage() {
   const router = useRouter();
+  const toast = useToast();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
@@ -570,12 +572,19 @@ export default function TradesPage() {
         const withRem = computeRemainingQuantities(remainingTrades as TradeRecordData[]);
         for (const t of withRem) {
           if (t.id && t.account_id === deletedTrade.account_id && t.ticker?.toUpperCase() === deletedTrade.ticker?.toUpperCase()) {
-            await supabase.from('trades').update({ remaining_quantity: t.remaining_quantity }).eq('id', t.id);
+            try {
+              await supabase.from('trades').update({ remaining_quantity: t.remaining_quantity }).eq('id', t.id);
+            } catch {
+              // Safe fallback
+            }
           }
         }
       }
       await fetchTrades();
       refreshCounts();
+      toast.success('매매 내역이 삭제되었습니다.');
+    } else if (error) {
+      toast.error(`삭제 중 오류가 발생했습니다: ${error.message}`);
     }
     setDeleteTargetId(null);
     setActivePopoverId(null);

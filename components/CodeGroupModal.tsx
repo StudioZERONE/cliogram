@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Layers } from 'lucide-react';
+import { X, Layers, AlertCircle } from 'lucide-react';
+import { useToast } from '@/components/ToastProvider';
 
 interface CodeGroupModalProps {
   isOpen: boolean;
@@ -22,14 +23,17 @@ export function CodeGroupModal({
   onClose,
   onSave,
 }: CodeGroupModalProps) {
+  const toast = useToast();
   const [groupId, setGroupId] = useState<string>('');
   const [groupName, setGroupName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
+      setFormError(null);
       if (mode === 'edit' && initialData) {
         setGroupId(initialData.group_id);
         setGroupName(initialData.group_name);
@@ -62,12 +66,18 @@ export function CodeGroupModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
     if (!groupId.trim()) {
-      alert('그룹 ID를 입력해 주세요.');
+      const msg = '그룹 ID를 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (!groupName.trim()) {
-      alert('그룹명을 입력해 주세요.');
+      const msg = '그룹명을 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
 
@@ -78,10 +88,13 @@ export function CodeGroupModal({
         group_name: groupName.trim(),
         description: description.trim(),
       });
+      toast.success(mode === 'create' ? '코드 그룹이 등록되었습니다.' : '코드 그룹이 수정되었습니다.');
       onClose();
     } catch (err: any) {
       console.error('CodeGroupModal save error:', err);
-      alert(`코드 그룹 저장 중 오류가 발생했습니다: ${err?.message || err}`);
+      const msg = err?.message || '코드 그룹 저장 중 오류가 발생했습니다.';
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -113,6 +126,13 @@ export function CodeGroupModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Inline Form Error Notification */}
+          {formError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold animate-in fade-in-50">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
+              <span className="leading-relaxed">{formError}</span>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
               그룹 ID (Group ID) {mode === 'create' && <span className="text-red-500">*</span>}

@@ -23,6 +23,7 @@ import { Header } from '@/components/Header';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { CodeGroupModal } from '@/components/CodeGroupModal';
 import { CommonCodeModal } from '@/components/CommonCodeModal';
+import { useToast } from '@/components/ToastProvider';
 
 interface CodeGroup {
   group_id: string;
@@ -38,12 +39,15 @@ interface CommonCode {
   code_name: string;
   sort_order: number;
   is_active: boolean;
+  created_at?: string;
 }
 
 type GroupSortOption = 'name_asc' | 'name_desc' | 'id_asc' | 'id_desc';
 
 export default function CodesPage() {
   const router = useRouter();
+  const toast = useToast();
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [isLoadingGroups, setIsLoadingGroups] = useState<boolean>(true);
   const [isLoadingCodes, setIsLoadingCodes] = useState<boolean>(true);
   const [groups, setGroups] = useState<CodeGroup[]>([]);
@@ -239,22 +243,36 @@ export default function CodesPage() {
 
   // Inline Active status toggle
   const toggleCodeActive = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus;
     setCodes((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, is_active: !currentStatus } : c))
+      prev.map((c) => (c.id === id ? { ...c, is_active: nextStatus } : c))
     );
-    await supabase.from('common_codes').update({ is_active: !currentStatus }).eq('id', id);
+    const { error } = await supabase.from('common_codes').update({ is_active: nextStatus }).eq('id', id);
+    if (error) {
+      toast.error(`상태 변경 실패: ${error.message}`);
+    } else {
+      toast.success(`상태가 ${nextStatus ? '사용' : '미사용'}으로 변경되었습니다.`);
+    }
   };
 
   // Deletion Execution
   const handleConfirmDelete = async () => {
     if (deleteConfirm.type === 'code') {
       const { error } = await supabase.from('common_codes').delete().eq('id', deleteConfirm.targetId);
-      if (!error) fetchCodes();
+      if (!error) {
+        fetchCodes();
+        toast.success('상세 코드가 삭제되었습니다.');
+      } else {
+        toast.error(`코드 삭제 실패: ${error.message}`);
+      }
     } else if (deleteConfirm.type === 'group') {
       const { error } = await supabase.from('common_code_groups').delete().eq('group_id', deleteConfirm.targetId);
       if (!error) {
         fetchGroups();
         fetchCodes();
+        toast.success('코드 그룹이 삭제되었습니다.');
+      } else {
+        toast.error(`그룹 삭제 실패: ${error.message}`);
       }
     }
   };

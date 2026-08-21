@@ -13,6 +13,7 @@ import { Header } from '@/components/Header';
 import { CodeSelect } from '@/components/CodeSelect';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { useCounts } from '@/components/CountsProvider';
+import { useToast } from '@/components/ToastProvider';
 
 interface DividendRecord {
   id?: string;
@@ -26,6 +27,7 @@ interface DividendRecord {
 
 export default function DividendsPage() {
   const router = useRouter();
+  const toast = useToast();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [dividends, setDividends] = useState<DividendRecord[]>([]);
@@ -51,15 +53,17 @@ export default function DividendsPage() {
   const [activeStocks, setActiveStocks] = useState<{ ticker: string; name: string; short_name: string }[]>([]);
 
   useEffect(() => {
-    checkSessionExpiry().then((valid) => {
-      if (!valid) {
-        router.replace('/?error=unauthorized');
+    const initPage = async () => {
+      const isExpired = await checkSessionExpiry();
+      if (isExpired) {
+        router.replace('/?error=session_expired');
         return;
       }
       setIsAuthChecking(false);
       fetchDividends();
       fetchActiveStocks();
-    });
+    };
+    initPage();
   }, [router]);
 
   const fetchActiveStocks = async () => {
@@ -68,18 +72,13 @@ export default function DividendsPage() {
 
     const { data } = await supabase
       .from('stocks')
-      .select('ticker, name, short_name, is_active')
+      .select('ticker, name, short_name')
       .eq('user_id', user.id)
       .eq('is_active', true)
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .order('ticker', { ascending: true });
 
-    if (data) {
-      setActiveStocks(data.map((s: any) => ({
-        ticker: s.ticker,
-        name: s.name,
-        short_name: s.short_name || s.name,
-      })));
-    }
+    if (data) setActiveStocks(data);
   };
 
   const fetchDividends = async () => {
@@ -98,17 +97,17 @@ export default function DividendsPage() {
   const handleAddDividend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dividendForm.stock_name) {
-      alert('종목을 선택해 주세요.');
+      toast.warning('종목을 선택해 주세요.');
       return;
     }
     if (!dividendForm.amount || parseFloat(dividendForm.amount) <= 0) {
-      alert('배당금을 0보다 큰 금액으로 입력해 주세요.');
+      toast.warning('배당금을 0보다 큰 금액으로 입력해 주세요.');
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      alert('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+      toast.error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
       router.replace('/?error=unauthorized');
       return;
     }
@@ -125,7 +124,7 @@ export default function DividendsPage() {
     const { data, error } = await supabase.from('dividends').insert([newRecord]).select();
     if (error) {
       console.error('Failed to insert dividend:', error);
-      alert(`배당 내역 저장 중 오류가 발생했습니다: ${error.message}`);
+      toast.error(`배당 내역 저장 중 오류가 발생했습니다: ${error.message}`);
       return;
     }
 
@@ -134,6 +133,7 @@ export default function DividendsPage() {
       setDividendForm({ ...dividendForm, stock_name: '', amount: '', tax: '0' });
       setIsMobileFormOpen(false);
       refreshCounts();
+      toast.success('배당 내역이 등록되었습니다.');
     }
   };
 
@@ -142,10 +142,11 @@ export default function DividendsPage() {
     const { error } = await supabase.from('dividends').delete().eq('id', deleteTargetId);
     if (error) {
       console.error('Failed to delete dividend:', error);
-      alert(`배당 내역 삭제 중 오류가 발생했습니다: ${error.message}`);
+      toast.error(`배당 내역 삭제 중 오류가 발생했습니다: ${error.message}`);
     } else {
       setDividends(dividends.filter((d) => d.id !== deleteTargetId));
       refreshCounts();
+      toast.success('배당 내역이 삭제되었습니다.');
     }
     setDeleteTargetId(null);
   };

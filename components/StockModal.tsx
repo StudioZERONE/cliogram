@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { X, Layers, Sparkles, AlertCircle } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
 import { lookupTickerInfo, fetchRemoteTickerInfo } from '@/lib/stock-ticker';
+import { useToast } from '@/components/ToastProvider';
 
 export interface StockRecordData {
   id?: string;
@@ -42,6 +43,7 @@ export function StockModal({
   onClose,
   onSave,
 }: StockModalProps) {
+  const toast = useToast();
   const [ticker, setTicker] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [shortName, setShortName] = useState<string>('');
@@ -49,6 +51,7 @@ export function StockModal({
   const [currency, setCurrency] = useState<string>('USD');
   const [market, setMarket] = useState<string>('NASDAQ');
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [autoFillNotice, setAutoFillNotice] = useState<string | null>(null);
   const [isSearchingTicker, setIsSearchingTicker] = useState<boolean>(false);
@@ -58,6 +61,7 @@ export function StockModal({
 
   useEffect(() => {
     if (isOpen) {
+      setFormError(null);
       if (mode === 'edit' && initialData) {
         setTicker(initialData.ticker || '');
         setName(initialData.name || '');
@@ -178,16 +182,24 @@ export function StockModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
     if (!ticker.trim()) {
-      alert('티커(종목코드)를 입력해 주세요.');
+      const msg = '티커(종목코드)를 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (!name.trim()) {
-      alert('종목명을 입력해 주세요.');
+      const msg = '종목명을 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (isDuplicateTicker) {
-      alert(`이미 등록되어 있는 티커(${ticker.trim().toUpperCase()})입니다.`);
+      const msg = `이미 등록되어 있는 티커(${ticker.trim().toUpperCase()})입니다.`;
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
 
@@ -204,10 +216,13 @@ export function StockModal({
         market: market || 'NASDAQ',
         is_active: isActive,
       });
+      toast.success(mode === 'create' ? '종목이 등록되었습니다.' : '종목 정보가 수정되었습니다.');
       onClose();
     } catch (err: any) {
       console.error('StockModal save error:', err);
-      alert(`종목 정보 저장 중 오류가 발생했습니다: ${err?.message || err}`);
+      const msg = err?.message || '종목 정보 저장 중 오류가 발생했습니다.';
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -245,6 +260,13 @@ export function StockModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+          {/* Inline Form Error Notification */}
+          {formError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold animate-in fade-in-50">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
+              <span className="leading-relaxed">{formError}</span>
+            </div>
+          )}
           {/* Ticker Input */}
           <div>
             <div className="flex items-center justify-between mb-1">

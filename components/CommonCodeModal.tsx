@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Code2 } from 'lucide-react';
+import { X, Code2, AlertCircle } from 'lucide-react';
+import { useToast } from '@/components/ToastProvider';
 
 interface CommonCodeModalProps {
   isOpen: boolean;
@@ -33,15 +34,18 @@ export function CommonCodeModal({
   onClose,
   onSave,
 }: CommonCodeModalProps) {
+  const toast = useToast();
   const [code, setCode] = useState<string>('');
   const [codeName, setCodeName] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<number>(1);
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
+      setFormError(null);
       if (mode === 'edit' && initialData) {
         setCode(initialData.code);
         setCodeName(initialData.code_name);
@@ -76,12 +80,18 @@ export function CommonCodeModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
     if (!code.trim()) {
-      alert('코드를 입력해 주세요.');
+      const msg = '코드를 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (!codeName.trim()) {
-      alert('코드명을 입력해 주세요.');
+      const msg = '코드명을 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
 
@@ -95,10 +105,13 @@ export function CommonCodeModal({
         sort_order: Number(sortOrder) || 1,
         is_active: isActive,
       });
+      toast.success(mode === 'create' ? '공통코드가 등록되었습니다.' : '공통코드가 수정되었습니다.');
       onClose();
     } catch (err: any) {
       console.error('CommonCodeModal save error:', err);
-      alert(`공통코드 저장 중 오류가 발생했습니다: ${err?.message || err}`);
+      const msg = err?.message || '공통코드 저장 중 오류가 발생했습니다.';
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -132,6 +145,13 @@ export function CommonCodeModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Inline Form Error Notification */}
+          {formError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold animate-in fade-in-50">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
+              <span className="leading-relaxed">{formError}</span>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold text-[var(--fg-muted)] mb-1">
               코드 (Code) {mode === 'create' && <span className="text-red-500">*</span>}

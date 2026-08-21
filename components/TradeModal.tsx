@@ -4,11 +4,12 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
-import { X, Layers, Calculator, RefreshCw } from 'lucide-react';
+import { X, Layers, Calculator, RefreshCw, AlertCircle } from 'lucide-react';
 import { CodeSelect } from '@/components/CodeSelect';
 import { AccountSelect, AccountOption } from '@/components/AccountSelect';
 import { formatCommaString, parseCommaNumber } from '@/lib/format';
 import { lookupTickerInfo, fetchRemoteTickerInfo } from '@/lib/stock-ticker';
+import { useToast } from '@/components/ToastProvider';
 
 export interface StockOption {
   id?: string;
@@ -78,6 +79,7 @@ export function TradeModal({
   onClose,
   onSave,
 }: TradeModalProps) {
+  const toast = useToast();
   const [tradeDate, setTradeDate] = useState<Date>(new Date());
   const [accountId, setAccountId] = useState<string>('');
   const [ticker, setTicker] = useState<string>('');
@@ -93,6 +95,7 @@ export function TradeModal({
   const [foreignTax, setForeignTax] = useState<string>('0');
   const [notes, setNotes] = useState<string>('');
 
+  const [formError, setFormError] = useState<string | null>(null);
   const [isFetchingRate, setIsFetchingRate] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -328,24 +331,36 @@ export function TradeModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
     if (!accountId) {
-      alert('계좌를 선택해 주세요.');
+      const msg = '계좌를 선택해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (!ticker.trim()) {
-      alert('티커를 입력해 주세요.');
+      const msg = '티커를 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (parsedQty === 0) {
-      alert('수량을 0이 아닌 숫자로 입력해 주세요.');
+      const msg = '수량을 0이 아닌 숫자로 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (parsedPrice <= 0) {
-      alert('단가를 0보다 큰 숫자로 입력해 주세요.');
+      const msg = '단가를 0보다 큰 숫자로 입력해 주세요.';
+      setFormError(msg);
+      toast.warning(msg);
       return;
     }
     if (isSellExceeded) {
-      alert(`매도 수량(${Math.abs(parsedQty)}주)이 현재 보유 잔여수량(${currentHoldingQty}주)을 초과하여 저장할 수 없습니다.`);
+      const msg = `매도 수량(${Math.abs(parsedQty)}주)이 현재 보유 잔여수량(${currentHoldingQty}주)을 초과하여 저장할 수 없습니다.`;
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -370,10 +385,13 @@ export function TradeModal({
         notes: notes.trim(),
         resolvedStock,
       });
+      toast.success(mode === 'create' ? '매매 기록이 등록되었습니다.' : '매매 기록이 수정되었습니다.');
       onClose();
     } catch (err: any) {
       console.error('TradeModal save error:', err);
-      alert(`매매 내역 저장 중 오류가 발생했습니다: ${err?.message || err}`);
+      const msg = err?.message || '매매 내역 저장 중 오류가 발생했습니다.';
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -412,6 +430,13 @@ export function TradeModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
+          {/* Inline Form Error Notification */}
+          {formError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold animate-in fade-in-50">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
+              <span className="leading-relaxed">{formError}</span>
+            </div>
+          )}
           {/* 구역 1: 기본 거래 정보 및 환율/금액 통합 블록 (매매일자, 계좌, 티커, 종목명, 통화, 단가, 수량, 환율&거래금액) */}
           <div className="space-y-3 sm:space-y-3.5">
             {/* 행 1: [매매 일자 (50%)] | [계좌 (50%)] */}

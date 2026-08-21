@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { CountsProvider } from '@/components/CountsProvider';
+import { ToastProvider } from '@/components/ToastProvider';
 
 // Suppress React 19 development warning for next-themes internal script tag injection
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -21,7 +22,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
-      <CountsProvider>{children}</CountsProvider>
+      <ToastProvider>
+        <CountsProvider>{children}</CountsProvider>
+      </ToastProvider>
     </NextThemesProvider>
   );
 }

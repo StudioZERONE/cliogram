@@ -21,6 +21,7 @@ import { Header } from '@/components/Header';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { AccountModal, AccountRecordData } from '@/components/AccountModal';
 import { useCounts } from '@/components/CountsProvider';
+import { useToast } from '@/components/ToastProvider';
 
 export interface AccountRecord {
   id: string;
@@ -38,6 +39,7 @@ type SortDirection = 'asc' | 'desc';
 
 export default function AccountsPage() {
   const router = useRouter();
+  const toast = useToast();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState<boolean>(true);
@@ -236,7 +238,7 @@ export default function AccountsPage() {
       .eq('id', account.id);
 
     if (error) {
-      alert(`상태 변경에 실패했습니다: ${error.message}`);
+      toast.error(`상태 변경에 실패했습니다: ${error.message}`);
       return;
     }
 
@@ -244,6 +246,7 @@ export default function AccountsPage() {
       prev.map((a) => (a.id === account.id ? { ...a, is_active: updatedStatus } : a))
     );
     refreshCounts();
+    toast.success(`계좌가 ${updatedStatus ? '사용' : '미사용'} 상태로 변경되었습니다.`);
   };
 
   const executeDelete = async () => {
@@ -251,10 +254,11 @@ export default function AccountsPage() {
 
     const { error } = await supabase.from('accounts').delete().eq('id', deleteTargetId);
     if (error) {
-      alert(`계좌 삭제에 실패했습니다: ${error.message}`);
+      toast.error(`계좌 삭제에 실패했습니다: ${error.message}`);
     } else {
       await fetchAccounts();
       refreshCounts();
+      toast.success('계좌가 삭제되었습니다.');
     }
     setDeleteTargetId(null);
   };

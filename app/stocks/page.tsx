@@ -24,6 +24,7 @@ import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { StockModal, StockRecordData } from '@/components/StockModal';
 import { FilterDropdown, FilterOption } from '@/components/FilterDropdown';
 import { useCounts } from '@/components/CountsProvider';
+import { useToast } from '@/components/ToastProvider';
 import { getCommonCodes, CommonCode } from '@/lib/codes';
 
 export interface StockRecord {
@@ -44,6 +45,7 @@ type SortDirection = 'asc' | 'desc';
 
 export default function StocksPage() {
   const router = useRouter();
+  const toast = useToast();
   const { refreshCounts } = useCounts();
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [isLoadingStocks, setIsLoadingStocks] = useState<boolean>(true);
@@ -330,8 +332,9 @@ export default function StocksPage() {
     if (!error) {
       setStocks((prev) => prev.filter((s) => s.ticker !== deleteTargetTicker));
       refreshCounts();
+      toast.success(`종목(${deleteTargetTicker})이 삭제되었습니다.`);
     } else {
-      alert(`종목 삭제 실패: ${error.message}`);
+      toast.error(`종목 삭제 실패: ${error.message}`);
     }
     setDeleteTargetTicker(null);
   };
