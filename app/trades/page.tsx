@@ -746,17 +746,17 @@ export default function TradesPage() {
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs sm:text-sm table-fixed">
                 <colgroup className="hidden lg:table-column-group">
-                  <col className="w-[88px] min-[1920px]:w-[105px]" />
-                  <col className="w-[48px] min-[1920px]:w-[58px]" />
+                  <col className="w-[80px] min-[1920px]:w-[105px]" />
+                  <col className="w-[45px] min-[1920px]:w-[58px]" />
                   <col className="w-[65px] min-[1920px]:w-[80px]" />
                   <col />
-                  <col className="w-[36px] min-[1920px]:w-[45px]" />
-                  <col className="w-[78px] min-[1920px]:w-[95px]" />
-                  <col className="w-[58px] min-[1920px]:w-[75px]" />
+                  <col className="w-[30px] min-[1920px]:w-[45px]" />
+                  <col className="w-[70px] min-[1920px]:w-[95px]" />
+                  <col className="w-[55px] min-[1920px]:w-[75px]" />
                   <col className="w-[105px] min-[1920px]:w-[125px]" />
-                  <col className="w-[70px] min-[1920px]:w-[90px]" />
-                  <col className="w-[58px] min-[1920px]:w-[75px]" />
-                  <col className="w-[80px] min-[1920px]:w-[300px]" />
+                  <col className="w-[65px] min-[1920px]:w-[90px]" />
+                  <col className="w-[55px] min-[1920px]:w-[75px]" />
+                  <col className="w-[75px] min-[1920px]:w-[300px]" />
                   <col />
                   <col className="w-[60px] min-[1920px]:w-[70px]" />
                 </colgroup>
@@ -769,15 +769,15 @@ export default function TradesPage() {
                 <thead className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--fg-muted)] font-medium text-[11px] sm:text-xs">
                   <tr>
                     {/* 1. 매매일자 (Sortable) */}
-                    <th onClick={() => handleSort('trade_date')} className="hidden lg:table-cell py-2.5 px-2 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('trade_date')} className="hidden lg:table-cell py-2.5 px-1 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
                       매매일자 {renderSortIcon('trade_date')}
                     </th>
 
                     {/* 2. 구분 */}
-                    <th className="hidden lg:table-cell py-2.5 px-1 text-center font-medium">구분</th>
+                    <th className="hidden lg:table-cell py-2.5 px-0.5 text-center font-medium">구분</th>
 
                     {/* 3. 티커 (Sortable) */}
-                    <th onClick={() => handleSort('ticker')} className="hidden lg:table-cell py-2.5 px-2 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('ticker')} className="hidden lg:table-cell py-2.5 px-1 text-center cursor-pointer hover:text-[var(--fg)] font-medium">
                       티커 {renderSortIcon('ticker')}
                     </th>
 
@@ -787,24 +787,24 @@ export default function TradesPage() {
                     </th>
 
                     {/* 5. 통화 */}
-                    <th className="hidden lg:table-cell py-2.5 px-1 text-center font-medium">통화</th>
+                    <th className="hidden lg:table-cell py-2.5 px-0.5 text-center font-medium">통화</th>
 
                     {/* 6. 단가 (No Sort) */}
-                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">단가</th>
+                    <th className="hidden lg:table-cell py-2.5 px-1 text-right font-medium">단가</th>
 
                     {/* 7. 수량 (No Sort) */}
-                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">수량</th>
+                    <th className="hidden lg:table-cell py-2.5 px-1 text-right font-medium">수량</th>
 
                     {/* 8. 거래금액 (Sortable, No Parentheses) */}
-                    <th onClick={() => handleSort('total_amount')} className="hidden lg:table-cell py-2.5 px-2 text-right cursor-pointer hover:text-[var(--fg)] font-medium">
+                    <th onClick={() => handleSort('total_amount')} className="hidden lg:table-cell py-2.5 px-1.5 text-right cursor-pointer hover:text-[var(--fg)] font-medium">
                       거래금액 {renderSortIcon('total_amount')}
                     </th>
 
                     {/* 9. 환율 */}
-                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">환율</th>
+                    <th className="hidden lg:table-cell py-2.5 px-1 text-right font-medium">환율</th>
 
                     {/* 10. 잔여수량 */}
-                    <th className="hidden lg:table-cell py-2.5 px-2 text-right font-medium">잔여수량</th>
+                    <th className="hidden lg:table-cell py-2.5 px-1 text-right font-medium">잔여수량</th>
 
                     {/* 11. 계좌 */}
                     <th className="hidden lg:table-cell py-2.5 px-1 text-center font-medium">계좌</th>
@@ -860,14 +860,14 @@ export default function TradesPage() {
                       return (
                         <tr key={item.id} className="hover:bg-[var(--bg)]/70 transition-colors">
                           {/* 1. 매매일자 (Desktop: Standard text) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-center text-xs text-[var(--fg)] font-normal">
+                          <td className="hidden lg:table-cell py-3 px-1 text-center text-xs text-[var(--fg)] font-normal whitespace-nowrap">
                             {item.trade_date}
                           </td>
 
                           {/* 2. 구분 (Desktop: 매도(-)는 빨간색, 매수는 녹색) */}
-                          <td className="hidden lg:table-cell py-3 px-1 text-center">
+                          <td className="hidden lg:table-cell py-3 px-0.5 text-center">
                             <span
-                              className={`inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold border whitespace-nowrap ${
+                              className={`inline-flex items-center justify-center rounded-full px-1 py-0.5 text-[10px] sm:text-[10.5px] font-bold border whitespace-nowrap ${
                                 isSell
                                   ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
                                   : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
@@ -880,7 +880,7 @@ export default function TradesPage() {
                           {/* 3. 티커 (Desktop: 클릭 시 필터 검색 연동) */}
                           <td
                             onClick={() => setSearchQuery(item.ticker)}
-                            className="hidden lg:table-cell py-3 px-2 text-center text-xs font-semibold text-[var(--fg)] cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
+                            className="hidden lg:table-cell py-3 px-1 text-center text-xs font-semibold text-[var(--fg)] truncate cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors"
                             title={`"${item.ticker}" 검색`}
                           >
                             {item.ticker}
@@ -896,14 +896,14 @@ export default function TradesPage() {
                           </td>
 
                           {/* 5. 통화 (Desktop: Flag Icon Only) */}
-                          <td className="hidden lg:table-cell py-3 px-1 text-center text-xs font-normal text-[var(--fg)]">
+                          <td className="hidden lg:table-cell py-3 px-0.5 text-center text-xs font-normal text-[var(--fg)]">
                             <div className="flex items-center justify-center text-base leading-none" title={item.currency}>
                               {renderFlagEmoji(item.currency)}
                             </div>
                           </td>
 
                           {/* 6. 단가 (Desktop: Formatted with currency symbol and commas) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs text-[var(--fg)] font-normal">
+                          <td className="hidden lg:table-cell py-3 px-1 text-right text-xs text-[var(--fg)] font-normal whitespace-nowrap">
                             {currSymbol} {currencyViewMode === 'KRW'
                               ? Math.round(displayPrice).toLocaleString()
                               : displayPrice.toLocaleString(undefined, {
@@ -912,7 +912,7 @@ export default function TradesPage() {
                           </td>
 
                           {/* 7. 수량 (Desktop: 매도(-)는 빨간색) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs font-normal">
+                          <td className="hidden lg:table-cell py-3 px-1 text-right text-xs font-normal whitespace-nowrap">
                             {isSell ? (
                               <span className="text-red-500 dark:text-red-400">
                                 {displayQty.toLocaleString()}
@@ -925,7 +925,7 @@ export default function TradesPage() {
                           </td>
 
                           {/* 8. 거래금액 (Desktop: Formatted with currency symbol and commas, 매도(-)는 빨간색) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs font-normal">
+                          <td className="hidden lg:table-cell py-3 px-1.5 text-right text-xs font-normal whitespace-nowrap">
                             {isSell ? (
                               <span className="text-red-500 dark:text-red-400">
                                 - {currSymbol} {Math.round(Math.abs(displayAmount)).toLocaleString()}
@@ -938,22 +938,22 @@ export default function TradesPage() {
                           </td>
 
                           {/* 9. 환율 (Desktop: 또렷한 텍스트 font-normal, '원' 제거) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs text-[var(--fg)] font-normal">
+                          <td className="hidden lg:table-cell py-3 px-1 text-right text-xs text-[var(--fg)] font-normal whitespace-nowrap">
                             {item.currency === 'KRW' ? '-' : rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
 
                           {/* 10. 잔여수량 (Desktop: 숫자만 표출) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-right text-xs text-[var(--fg)] font-medium">
+                          <td className="hidden lg:table-cell py-3 px-1 text-right text-xs text-[var(--fg)] font-medium whitespace-nowrap">
                             {(item.remaining_quantity !== undefined ? item.remaining_quantity : 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                           </td>
 
                           {/* 11. 계좌 (Desktop: 계좌명 우선 표출, 1920px+ 300px 공간 활용) */}
-                          <td className="hidden lg:table-cell py-3 px-2 text-center">
+                          <td className="hidden lg:table-cell py-3 px-1 text-center">
                             {(() => {
                               const linkedAccount = item.account_id ? accountsMap[item.account_id] : item.accounts;
                               const accName = linkedAccount?.account_name || linkedAccount?.broker_name;
                               return accName ? (
-                                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 truncate max-w-full" title={accName}>
                                   {accName}
                                 </span>
                               ) : (
